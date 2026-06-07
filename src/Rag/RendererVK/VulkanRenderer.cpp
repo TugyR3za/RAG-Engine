@@ -40,7 +40,8 @@ namespace rag::renderer::vk
             frames_ = std::make_unique<VulkanFrameResources>(
                 device_->Device(),
                 device_->Families().graphics_family.value(),
-                desc_.frames_in_flight);
+                desc_.frames_in_flight,
+                swapchain_->ImageCount());
 
             image_in_flight_.assign(swapchain_->ImageCount(), VK_NULL_HANDLE);
             UpdateStats();
@@ -131,7 +132,8 @@ namespace rag::renderer::vk
 
             const VkSemaphore wait_semaphores[] = {frame.image_available};
             const VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-            const VkSemaphore signal_semaphores[] = {frame.render_finished};
+            const VkSemaphore render_finished = frames_->RenderFinishedSemaphore(image_index);
+            const VkSemaphore signal_semaphores[] = {render_finished};
 
             VkSubmitInfo submit_info{};
             submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -232,6 +234,7 @@ namespace rag::renderer::vk
 
             WaitIdle();
             swapchain_->Recreate(desc_.window->Width(), desc_.window->Height());
+            frames_->RecreateRenderFinishedSemaphores(swapchain_->ImageCount());
             image_in_flight_.assign(swapchain_->ImageCount(), VK_NULL_HANDLE);
             UpdateStats();
             resize_requested_ = false;
