@@ -6,6 +6,7 @@
 #include <cstring>
 #include <limits>
 #include <set>
+#include <sstream>
 
 namespace rag::renderer::vk
 {
@@ -14,6 +15,34 @@ namespace rag::renderer::vk
         constexpr const char* RequiredDeviceExtensions[] = {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         };
+
+        std::string VulkanVersionToString(u32 version)
+        {
+            std::ostringstream stream;
+            stream << VK_VERSION_MAJOR(version)
+                   << '.'
+                   << VK_VERSION_MINOR(version)
+                   << '.'
+                   << VK_VERSION_PATCH(version);
+            return stream.str();
+        }
+
+        const char* DeviceTypeName(VkPhysicalDeviceType type)
+        {
+            switch (type)
+            {
+            case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+                return "Integrated GPU";
+            case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+                return "Discrete GPU";
+            case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+                return "Virtual GPU";
+            case VK_PHYSICAL_DEVICE_TYPE_CPU:
+                return "CPU";
+            default:
+                return "Other";
+            }
+        }
     }
 
     bool QueueFamilyIndices::IsComplete() const
@@ -113,7 +142,19 @@ namespace rag::renderer::vk
         families_ = FindQueueFamilies(physical_device_);
         vkGetPhysicalDeviceProperties(physical_device_, &properties_);
 
-        RAG_LOG_INFO("Selected Vulkan device: ", properties_.deviceName);
+        RAG_LOG_INFO(
+            "Selected Vulkan device: ",
+            properties_.deviceName,
+            " (",
+            DeviceTypeName(properties_.deviceType),
+            ", Vulkan ",
+            VulkanVersionToString(properties_.apiVersion),
+            ")");
+        RAG_LOG_INFO(
+            "Vulkan queue families: graphics=",
+            families_.graphics_family.value(),
+            ", present=",
+            families_.present_family.value());
     }
 
     void VulkanDevice::CreateLogicalDevice()
@@ -152,6 +193,8 @@ namespace rag::renderer::vk
 
         vkGetDeviceQueue(device_, families_.graphics_family.value(), 0, &graphics_queue_);
         vkGetDeviceQueue(device_, families_.present_family.value(), 0, &present_queue_);
+
+        RAG_LOG_INFO("Created Vulkan logical device and graphics/present queues.");
     }
 
     bool VulkanDevice::IsDeviceSuitable(VkPhysicalDevice device) const

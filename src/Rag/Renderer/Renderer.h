@@ -29,7 +29,7 @@ namespace rag::renderer
 
     struct RenderFrameContext
     {
-        std::array<f32, 4> clear_color = {0.02f, 0.025f, 0.035f, 1.0f};
+        std::array<f32, 4> clear_color = {0.0f, 0.18f, 1.0f, 1.0f};
         const struct RenderWorld* render_world = nullptr;
     };
 
@@ -123,6 +123,9 @@ namespace rag::renderer
         u32 swapchain_width = 0;
         u32 swapchain_height = 0;
         u32 swapchain_image_count = 0;
+        f64 last_frame_ms = 0.0;
+        f64 average_fps = 0.0;
+        std::string active_gpu_name;
     };
 
     class IRenderer

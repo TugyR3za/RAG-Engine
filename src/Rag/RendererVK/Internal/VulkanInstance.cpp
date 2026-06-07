@@ -10,6 +10,7 @@ namespace rag::renderer::vk
 {
     namespace
     {
+#if defined(RAG_ENABLE_VULKAN_VALIDATION)
         constexpr const char* ValidationLayer = "VK_LAYER_KHRONOS_validation";
 
         VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
@@ -82,12 +83,21 @@ namespace rag::renderer::vk
                 function(instance, messenger, allocator);
             }
         }
+#endif
     }
 
     VulkanInstance::VulkanInstance(std::string application_name, bool enable_validation)
         : application_name_(std::move(application_name)),
           enable_validation_(enable_validation)
     {
+#if !defined(RAG_ENABLE_VULKAN_VALIDATION)
+        if (enable_validation_)
+        {
+            RAG_LOG_WARNING("Vulkan validation was requested, but validation support is not compiled in this build.");
+            enable_validation_ = false;
+        }
+#endif
+
         if (enable_validation_ && !ValidationLayersSupported())
         {
             throw VulkanError("Vulkan validation was requested, but VK_LAYER_KHRONOS_validation is unavailable.");
@@ -136,8 +146,9 @@ namespace rag::renderer::vk
         create_info.enabledExtensionCount = static_cast<u32>(extensions.size());
         create_info.ppEnabledExtensionNames = extensions.data();
 
-        const char* validation_layers[] = {ValidationLayer};
+#if defined(RAG_ENABLE_VULKAN_VALIDATION)
         VkDebugUtilsMessengerCreateInfoEXT debug_create_info{};
+        const char* validation_layers[] = {ValidationLayer};
 
         if (enable_validation_)
         {
@@ -146,13 +157,15 @@ namespace rag::renderer::vk
             create_info.ppEnabledLayerNames = validation_layers;
             create_info.pNext = &debug_create_info;
         }
+#endif
 
         RAG_VK_CHECK(vkCreateInstance(&create_info, nullptr, &instance_));
-        RAG_LOG_INFO("Created Vulkan instance.");
+        RAG_LOG_INFO("Created Vulkan instance for RAG Engine.");
     }
 
     void VulkanInstance::CreateDebugMessenger()
     {
+#if defined(RAG_ENABLE_VULKAN_VALIDATION)
         if (!enable_validation_)
         {
             return;
@@ -161,19 +174,23 @@ namespace rag::renderer::vk
         const VkDebugUtilsMessengerCreateInfoEXT create_info = MakeDebugMessengerCreateInfo();
         RAG_VK_CHECK(CreateDebugUtilsMessenger(instance_, &create_info, nullptr, &debug_messenger_));
         RAG_LOG_INFO("Enabled Vulkan validation layers.");
+#endif
     }
 
     void VulkanInstance::DestroyDebugMessenger()
     {
+#if defined(RAG_ENABLE_VULKAN_VALIDATION)
         if (debug_messenger_ != VK_NULL_HANDLE)
         {
             DestroyDebugUtilsMessenger(instance_, debug_messenger_, nullptr);
             debug_messenger_ = VK_NULL_HANDLE;
         }
+#endif
     }
 
     bool VulkanInstance::ValidationLayersSupported() const
     {
+#if defined(RAG_ENABLE_VULKAN_VALIDATION)
         u32 layer_count = 0;
         RAG_VK_CHECK(vkEnumerateInstanceLayerProperties(&layer_count, nullptr));
 
@@ -183,6 +200,9 @@ namespace rag::renderer::vk
         return std::any_of(layers.begin(), layers.end(), [](const VkLayerProperties& layer) {
             return std::strcmp(layer.layerName, ValidationLayer) == 0;
         });
+#else
+        return false;
+#endif
     }
 
     std::vector<const char*> VulkanInstance::RequiredExtensions() const
@@ -198,7 +218,9 @@ namespace rag::renderer::vk
 
         if (enable_validation_)
         {
+#if defined(RAG_ENABLE_VULKAN_VALIDATION)
             extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+#endif
         }
 
         return extensions;

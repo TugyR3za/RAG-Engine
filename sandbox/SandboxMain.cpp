@@ -1,7 +1,6 @@
 #include "Rag/Core/Application.h"
 #include "Rag/Core/Event.h"
 #include "Rag/Core/Log.h"
-#include "Rag/Scene/Scene.h"
 
 #if defined(RAG_ENABLE_VULKAN)
     #include "Rag/RendererVK/VulkanRenderer.h"
@@ -23,8 +22,7 @@ namespace
 
         void OnStart() override
         {
-            BuildDemoScene();
-            RAG_LOG_INFO("Sandbox started. Press Escape to quit.");
+            RAG_LOG_INFO("RAG Engine Phase 2A Vulkan clear sandbox started. Press Escape to quit, F11 to toggle fullscreen.");
             if (smoke_test_)
             {
 #if defined(RAG_ENABLE_VULKAN)
@@ -38,6 +36,8 @@ namespace
 
         void InitializeRenderer(rag::platform::IWindow& window)
         {
+            window_ = &window;
+
 #if defined(RAG_ENABLE_VULKAN)
             rag::renderer::RendererDesc renderer_desc{};
             renderer_desc.backend = rag::renderer::RendererBackend::Vulkan;
@@ -83,15 +83,17 @@ namespace
                 requested_close_ = true;
             }
 
-            scene_.Update();
-            scene_.ExtractRenderWorld(render_world_);
+            if (input.WasKeyPressed(rag::core::KeyCode::F11) && window_ != nullptr)
+            {
+                window_->SetFullscreen(!window_->IsFullscreen());
+            }
 
 #if defined(RAG_ENABLE_VULKAN)
             if (renderer_ != nullptr)
             {
                 rag::renderer::RenderFrameContext render_context{};
-                render_context.clear_color = {0.015f, 0.018f, 0.026f, 1.0f};
-                render_context.render_world = &render_world_;
+                render_context.clear_color = {0.0f, 0.18f, 1.0f, 1.0f};
+                render_context.render_world = nullptr;
                 renderer_->RenderFrame(render_context);
             }
 #endif
@@ -135,56 +137,8 @@ namespace
         }
 
     private:
-        void BuildDemoScene()
-        {
-            if (scene_initialized_)
-            {
-                return;
-            }
-
-            const rag::scene::EntityId camera_entity = scene_.CreateEntity();
-            rag::scene::TransformComponent& camera_transform = scene_.AddTransform(camera_entity);
-            camera_transform.local_position = rag::math::Vec3{0.0f, 0.0f, 5.0f};
-
-            rag::scene::CameraComponent& camera = scene_.AddCamera(camera_entity);
-            camera.active = true;
-            camera.aspect_ratio = 16.0f / 9.0f;
-            scene_.SetActiveCamera(camera_entity);
-
-            const rag::scene::EntityId object_entity = scene_.CreateEntity();
-            rag::scene::TransformComponent& object_transform = scene_.AddTransform(object_entity);
-            object_transform.local_position = rag::math::Vec3{0.0f, 0.0f, 0.0f};
-
-            rag::scene::RenderableComponent& renderable = scene_.AddRenderable(object_entity);
-            renderable.local_bounds.center = rag::math::Vec3{};
-            renderable.local_bounds.extents = rag::math::Vec3{0.5f, 0.5f, 0.5f};
-
-            const rag::scene::EntityId light_entity = scene_.CreateEntity();
-            rag::scene::TransformComponent& light_transform = scene_.AddTransform(light_entity);
-            light_transform.local_rotation_radians = rag::math::Vec3{-0.7f, 0.35f, 0.0f};
-
-            rag::scene::LightComponent& light = scene_.AddLight(light_entity);
-            light.type = rag::renderer::RenderLightType::Directional;
-            light.intensity = 2.0f;
-
-            scene_.Update();
-            scene_.ExtractRenderWorld(render_world_);
-            RAG_LOG_INFO(
-                "Scene initialized with ",
-                scene_.EntityCount(),
-                " entities, ",
-                render_world_.objects.size(),
-                " render objects, and ",
-                render_world_.lights.size(),
-                " lights.");
-
-            scene_initialized_ = true;
-        }
-
-        rag::scene::Scene scene_;
-        rag::renderer::RenderWorld render_world_;
+        rag::platform::IWindow* window_ = nullptr;
         rag::f64 time_since_title_update_ = 0.0;
-        bool scene_initialized_ = false;
         bool smoke_test_ = false;
         bool requested_close_ = false;
 

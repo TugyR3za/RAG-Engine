@@ -7,6 +7,7 @@
 #include "Rag/RendererVK/Internal/VulkanSurface.h"
 #include "Rag/RendererVK/Internal/VulkanSwapchain.h"
 
+#include <chrono>
 #include <limits>
 #include <vector>
 
@@ -53,18 +54,33 @@ namespace rag::renderer::vk
         ~Impl()
         {
             WaitIdle();
+            RAG_LOG_INFO("Shut down Vulkan renderer.");
         }
 
         void RenderFrame(const RenderFrameContext& context)
         {
+            const auto frame_start = std::chrono::steady_clock::now();
+            f64 frame_interval_seconds = 0.0;
+            if (has_previous_frame_time_)
+            {
+                frame_interval_seconds = std::chrono::duration<f64>(frame_start - previous_frame_time_).count();
+                stats_.last_frame_ms = frame_interval_seconds * 1000.0;
+            }
+            previous_frame_time_ = frame_start;
+            has_previous_frame_time_ = true;
+
             if (desc_.window->Width() == 0 || desc_.window->Height() == 0)
             {
+                surface_suspended_ = true;
                 return;
             }
 
             if (resize_requested_)
             {
-                RecreateSwapchain();
+                if (!RecreateSwapchain())
+                {
+                    return;
+                }
             }
 
             VulkanFrameData& frame = frames_->CurrentFrame();
@@ -86,7 +102,8 @@ namespace rag::renderer::vk
 
             if (acquire_result == VK_ERROR_OUT_OF_DATE_KHR)
             {
-                RecreateSwapchain();
+                resize_requested_ = true;
+                (void)RecreateSwapchain();
                 return;
             }
 
@@ -140,8 +157,8 @@ namespace rag::renderer::vk
             const VkResult present_result = vkQueuePresentKHR(device_->PresentQueue(), &present_info);
             if (present_result == VK_ERROR_OUT_OF_DATE_KHR || present_result == VK_SUBOPTIMAL_KHR || resize_requested_)
             {
-                resize_requested_ = false;
-                RecreateSwapchain();
+                resize_requested_ = true;
+                (void)RecreateSwapchain();
             }
             else
             {
@@ -150,15 +167,25 @@ namespace rag::renderer::vk
 
             frames_->Advance();
             ++stats_.frame_index;
+            UpdateFrameDiagnostics(frame_interval_seconds);
         }
 
         void OnWindowResized(u32 width, u32 height)
         {
             if (width == 0 || height == 0)
             {
+                surface_suspended_ = true;
+                resize_requested_ = true;
+                RAG_LOG_INFO("Vulkan surface suspended because the window is minimized or has zero extent.");
                 return;
             }
 
+            if (surface_suspended_)
+            {
+                RAG_LOG_INFO("Vulkan surface restored at ", width, "x", height, ".");
+            }
+
+            surface_suspended_ = false;
             resize_requested_ = true;
         }
 
@@ -166,7 +193,11 @@ namespace rag::renderer::vk
         {
             if (device_ != nullptr && device_->Device() != VK_NULL_HANDLE)
             {
-                vkDeviceWaitIdle(device_->Device());
+                const VkResult result = vkDeviceWaitIdle(device_->Device());
+                if (result != VK_SUCCESS)
+                {
+                    RAG_LOG_ERROR("vkDeviceWaitIdle failed during Vulkan shutdown: ", VkResultToString(result));
+                }
             }
         }
 
@@ -191,11 +222,12 @@ namespace rag::renderer::vk
             RAG_VK_CHECK(vkEndCommandBuffer(command_buffer));
         }
 
-        void RecreateSwapchain()
+        bool RecreateSwapchain()
         {
             if (desc_.window->Width() == 0 || desc_.window->Height() == 0)
             {
-                return;
+                surface_suspended_ = true;
+                return false;
             }
 
             WaitIdle();
@@ -203,6 +235,8 @@ namespace rag::renderer::vk
             image_in_flight_.assign(swapchain_->ImageCount(), VK_NULL_HANDLE);
             UpdateStats();
             resize_requested_ = false;
+            surface_suspended_ = false;
+            return true;
         }
 
         void UpdateStats()
@@ -212,6 +246,42 @@ namespace rag::renderer::vk
             stats_.swapchain_width = extent.width;
             stats_.swapchain_height = extent.height;
             stats_.swapchain_image_count = swapchain_->ImageCount();
+            stats_.active_gpu_name = device_->Properties().deviceName;
+        }
+
+        void UpdateFrameDiagnostics(f64 frame_interval_seconds)
+        {
+            if (frame_interval_seconds <= 0.0)
+            {
+                return;
+            }
+
+            diagnostics_elapsed_seconds_ += frame_interval_seconds;
+            ++diagnostics_frame_count_;
+
+            if (diagnostics_elapsed_seconds_ < 1.0)
+            {
+                return;
+            }
+
+            stats_.average_fps = static_cast<f64>(diagnostics_frame_count_) / diagnostics_elapsed_seconds_;
+
+            RAG_LOG_INFO(
+                "Vulkan frame diagnostics: gpu=\"",
+                stats_.active_gpu_name,
+                "\", fps=",
+                stats_.average_fps,
+                ", frame_ms=",
+                stats_.last_frame_ms,
+                ", swapchain=",
+                stats_.swapchain_width,
+                "x",
+                stats_.swapchain_height,
+                ", images=",
+                stats_.swapchain_image_count);
+
+            diagnostics_elapsed_seconds_ = 0.0;
+            diagnostics_frame_count_ = 0;
         }
 
         RendererDesc desc_{};
@@ -222,7 +292,12 @@ namespace rag::renderer::vk
         std::unique_ptr<VulkanFrameResources> frames_;
         std::vector<VkFence> image_in_flight_;
         RendererStats stats_{};
+        std::chrono::steady_clock::time_point previous_frame_time_{};
+        f64 diagnostics_elapsed_seconds_ = 0.0;
+        u32 diagnostics_frame_count_ = 0;
         bool resize_requested_ = false;
+        bool has_previous_frame_time_ = false;
+        bool surface_suspended_ = false;
     };
 
     VulkanRenderer::VulkanRenderer(const RendererDesc& desc)

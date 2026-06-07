@@ -11,6 +11,7 @@ option(RAG_BUILD_TESTS "Build RAG Engine test executables" ON)
 option(RAG_ENABLE_VULKAN "Build the Vulkan renderer backend" ON)
 
 include(cmake/RagCompilerOptions.cmake)
+include(cmake/RagVulkan.cmake)
 
 add_library(RagCore STATIC
     src/Rag/Core/Base.h
@@ -72,7 +73,7 @@ add_library(RagEngine INTERFACE)
 target_link_libraries(RagEngine INTERFACE RagRuntime RagRenderer RagScene)
 
 if(RAG_ENABLE_VULKAN)
-    find_package(Vulkan REQUIRED)
+    rag_find_vulkan()
 
     add_library(RagRendererVK STATIC
         src/Rag/RendererVK/VulkanRenderer.cpp
@@ -93,7 +94,9 @@ if(RAG_ENABLE_VULKAN)
     rag_configure_target(RagRendererVK)
     target_compile_definitions(RagRendererVK
         PUBLIC RAG_ENABLE_VULKAN=1
-        PRIVATE VK_USE_PLATFORM_WIN32_KHR
+        PRIVATE
+            VK_USE_PLATFORM_WIN32_KHR
+            $<$<CONFIG:Debug>:RAG_ENABLE_VULKAN_VALIDATION=1>
     )
     target_link_libraries(RagRendererVK PUBLIC RagRenderer PRIVATE Vulkan::Vulkan)
 

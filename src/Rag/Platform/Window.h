@@ -32,8 +32,10 @@ namespace rag::platform
         virtual void PollEvents() = 0;
         virtual void SetEventCallback(WindowEventCallback callback) = 0;
         virtual void SetTitle(const std::string& title) = 0;
+        virtual void SetFullscreen(bool fullscreen) = 0;
 
         [[nodiscard]] virtual bool ShouldClose() const = 0;
+        [[nodiscard]] virtual bool IsFullscreen() const = 0;
         [[nodiscard]] virtual u32 Width() const = 0;
         [[nodiscard]] virtual u32 Height() const = 0;
         [[nodiscard]] virtual NativeWindowHandle GetNativeHandle() const = 0;

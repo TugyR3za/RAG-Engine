@@ -1,10 +1,49 @@
 #include "Rag/RendererVK/Internal/VulkanSwapchain.h"
 
+#include "Rag/Core/Log.h"
+
 #include <algorithm>
 #include <limits>
 
 namespace rag::renderer::vk
 {
+    namespace
+    {
+        const char* FormatName(VkFormat format)
+        {
+            switch (format)
+            {
+            case VK_FORMAT_B8G8R8A8_SRGB:
+                return "VK_FORMAT_B8G8R8A8_SRGB";
+            case VK_FORMAT_B8G8R8A8_UNORM:
+                return "VK_FORMAT_B8G8R8A8_UNORM";
+            case VK_FORMAT_R8G8B8A8_SRGB:
+                return "VK_FORMAT_R8G8B8A8_SRGB";
+            case VK_FORMAT_R8G8B8A8_UNORM:
+                return "VK_FORMAT_R8G8B8A8_UNORM";
+            default:
+                return "VK_FORMAT_OTHER";
+            }
+        }
+
+        const char* PresentModeName(VkPresentModeKHR present_mode)
+        {
+            switch (present_mode)
+            {
+            case VK_PRESENT_MODE_IMMEDIATE_KHR:
+                return "VK_PRESENT_MODE_IMMEDIATE_KHR";
+            case VK_PRESENT_MODE_MAILBOX_KHR:
+                return "VK_PRESENT_MODE_MAILBOX_KHR";
+            case VK_PRESENT_MODE_FIFO_KHR:
+                return "VK_PRESENT_MODE_FIFO_KHR";
+            case VK_PRESENT_MODE_FIFO_RELAXED_KHR:
+                return "VK_PRESENT_MODE_FIFO_RELAXED_KHR";
+            default:
+                return "VK_PRESENT_MODE_OTHER";
+            }
+        }
+    }
+
     VulkanSwapchain::VulkanSwapchain(VulkanDevice& device, VkSurfaceKHR surface, u32 width, u32 height)
         : device_(device),
           surface_(surface)
@@ -19,6 +58,7 @@ namespace rag::renderer::vk
 
     void VulkanSwapchain::Recreate(u32 width, u32 height)
     {
+        RAG_LOG_INFO("Recreating Vulkan swapchain for ", width, "x", height, ".");
         Cleanup();
         Create(width, height);
     }
@@ -73,10 +113,24 @@ namespace rag::renderer::vk
 
     void VulkanSwapchain::Create(u32 width, u32 height)
     {
+        if (width == 0 || height == 0)
+        {
+            throw VulkanError("Cannot create a Vulkan swapchain with zero extent.");
+        }
+
         const SwapchainSupportDetails support = device_.QuerySwapchainSupport();
+        if (support.formats.empty() || support.present_modes.empty())
+        {
+            throw VulkanError("Selected Vulkan device does not provide usable swapchain formats or present modes.");
+        }
+
         const VkSurfaceFormatKHR surface_format = ChooseSurfaceFormat(support.formats);
         const VkPresentModeKHR present_mode = ChoosePresentMode(support.present_modes);
         extent_ = ChooseExtent(support.capabilities, width, height);
+        if (extent_.width == 0 || extent_.height == 0)
+        {
+            throw VulkanError("Cannot create a Vulkan swapchain because the resolved surface extent is zero.");
+        }
 
         u32 image_count = support.capabilities.minImageCount + 1;
         if (support.capabilities.maxImageCount > 0)
@@ -128,6 +182,18 @@ namespace rag::renderer::vk
         CreateImageViews();
         CreateRenderPass();
         CreateFramebuffers();
+
+        RAG_LOG_INFO(
+            "Created Vulkan swapchain: ",
+            extent_.width,
+            "x",
+            extent_.height,
+            ", images=",
+            images_.size(),
+            ", format=",
+            FormatName(image_format_),
+            ", present=",
+            PresentModeName(present_mode));
     }
 
     void VulkanSwapchain::Cleanup()
@@ -258,8 +324,8 @@ namespace rag::renderer::vk
 
     VkPresentModeKHR VulkanSwapchain::ChoosePresentMode(const std::vector<VkPresentModeKHR>& present_modes) const
     {
-        const auto mailbox = std::find(present_modes.begin(), present_modes.end(), VK_PRESENT_MODE_MAILBOX_KHR);
-        return mailbox != present_modes.end() ? VK_PRESENT_MODE_MAILBOX_KHR : VK_PRESENT_MODE_FIFO_KHR;
+        const auto fifo = std::find(present_modes.begin(), present_modes.end(), VK_PRESENT_MODE_FIFO_KHR);
+        return fifo != present_modes.end() ? VK_PRESENT_MODE_FIFO_KHR : present_modes.front();
     }
 
     VkExtent2D VulkanSwapchain::ChooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, u32 width, u32 height) const

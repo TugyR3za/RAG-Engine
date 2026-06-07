@@ -221,6 +221,7 @@ namespace rag::platform
             window_class.lpfnWndProc = WindowProc;
             window_class.hInstance = instance;
             window_class.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));
+            window_class.hbrBackground = nullptr;
             window_class.lpszClassName = WindowClassName;
 
             const ATOM atom = RegisterClassExW(&window_class);
@@ -301,9 +302,79 @@ namespace rag::platform
         SetWindowTextW(static_cast<HWND>(hwnd_), wide_title.c_str());
     }
 
+    void Win32Window::SetFullscreen(bool fullscreen)
+    {
+        if (fullscreen_ == fullscreen || hwnd_ == nullptr)
+        {
+            return;
+        }
+
+        HWND hwnd = static_cast<HWND>(hwnd_);
+
+        if (fullscreen)
+        {
+            RECT rect{};
+            GetWindowRect(hwnd, &rect);
+            windowed_left_ = rect.left;
+            windowed_top_ = rect.top;
+            windowed_right_ = rect.right;
+            windowed_bottom_ = rect.bottom;
+            windowed_style_ = GetWindowLongPtrW(hwnd, GWL_STYLE);
+            windowed_ex_style_ = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+
+            HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+            MONITORINFO monitor_info{};
+            monitor_info.cbSize = sizeof(MONITORINFO);
+            GetMonitorInfoW(monitor, &monitor_info);
+
+            const LONG_PTR fullscreen_style =
+                (static_cast<LONG_PTR>(windowed_style_) & ~static_cast<LONG_PTR>(WS_OVERLAPPEDWINDOW)) |
+                static_cast<LONG_PTR>(WS_POPUP) |
+                static_cast<LONG_PTR>(WS_VISIBLE);
+            const LONG_PTR fullscreen_ex_style =
+                static_cast<LONG_PTR>(windowed_ex_style_) &
+                ~static_cast<LONG_PTR>(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
+
+            SetWindowLongPtrW(hwnd, GWL_STYLE, fullscreen_style);
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, fullscreen_ex_style);
+
+            SetWindowPos(
+                hwnd,
+                HWND_TOP,
+                monitor_info.rcMonitor.left,
+                monitor_info.rcMonitor.top,
+                monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
+                monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
+                SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+
+            fullscreen_ = true;
+            RAG_LOG_INFO("Entered borderless fullscreen.");
+            return;
+        }
+
+        SetWindowLongPtrW(hwnd, GWL_STYLE, static_cast<LONG_PTR>(windowed_style_));
+        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, static_cast<LONG_PTR>(windowed_ex_style_));
+        SetWindowPos(
+            hwnd,
+            nullptr,
+            windowed_left_,
+            windowed_top_,
+            windowed_right_ - windowed_left_,
+            windowed_bottom_ - windowed_top_,
+            SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+
+        fullscreen_ = false;
+        RAG_LOG_INFO("Exited borderless fullscreen.");
+    }
+
     bool Win32Window::ShouldClose() const
     {
         return should_close_;
+    }
+
+    bool Win32Window::IsFullscreen() const
+    {
+        return fullscreen_;
     }
 
     u32 Win32Window::Width() const
@@ -331,6 +402,21 @@ namespace rag::platform
     {
         switch (message)
         {
+        case WM_ERASEBKGND:
+            result = 1;
+            handled = true;
+            break;
+
+        case WM_PAINT:
+        {
+            PAINTSTRUCT paint{};
+            BeginPaint(static_cast<HWND>(hwnd), &paint);
+            EndPaint(static_cast<HWND>(hwnd), &paint);
+            result = 0;
+            handled = true;
+            break;
+        }
+
         case WM_CLOSE:
             should_close_ = true;
             if (event_callback_)

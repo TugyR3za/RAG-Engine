@@ -49,8 +49,16 @@ namespace rag::renderer::vk
             return "VK_ERROR_FORMAT_NOT_SUPPORTED";
         case VK_ERROR_FRAGMENTED_POOL:
             return "VK_ERROR_FRAGMENTED_POOL";
+        case VK_ERROR_UNKNOWN:
+            return "VK_ERROR_UNKNOWN";
+        case VK_ERROR_SURFACE_LOST_KHR:
+            return "VK_ERROR_SURFACE_LOST_KHR";
+        case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
+            return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
         case VK_ERROR_OUT_OF_DATE_KHR:
             return "VK_ERROR_OUT_OF_DATE_KHR";
+        case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:
+            return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
         case VK_SUBOPTIMAL_KHR:
             return "VK_SUBOPTIMAL_KHR";
         default:

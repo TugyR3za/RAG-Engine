@@ -20,8 +20,10 @@ namespace rag::platform
         void PollEvents() override;
         void SetEventCallback(WindowEventCallback callback) override;
         void SetTitle(const std::string& title) override;
+        void SetFullscreen(bool fullscreen) override;
 
         [[nodiscard]] bool ShouldClose() const override;
+        [[nodiscard]] bool IsFullscreen() const override;
         [[nodiscard]] u32 Width() const override;
         [[nodiscard]] u32 Height() const override;
         [[nodiscard]] NativeWindowHandle GetNativeHandle() const override;
@@ -33,7 +35,14 @@ namespace rag::platform
         void* hwnd_ = nullptr;
         u32 width_ = 0;
         u32 height_ = 0;
+        i64 windowed_style_ = 0;
+        i64 windowed_ex_style_ = 0;
+        i32 windowed_left_ = 0;
+        i32 windowed_top_ = 0;
+        i32 windowed_right_ = 0;
+        i32 windowed_bottom_ = 0;
         bool should_close_ = false;
+        bool fullscreen_ = false;
         WindowEventCallback event_callback_;
     };
 }
