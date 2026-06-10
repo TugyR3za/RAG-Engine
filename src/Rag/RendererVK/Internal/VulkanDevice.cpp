@@ -102,6 +102,26 @@ namespace rag::renderer::vk
         return properties_;
     }
 
+    u32 VulkanDevice::FindMemoryType(u32 type_filter, VkMemoryPropertyFlags properties) const
+    {
+        VkPhysicalDeviceMemoryProperties memory_properties{};
+        vkGetPhysicalDeviceMemoryProperties(physical_device_, &memory_properties);
+
+        for (u32 index = 0; index < memory_properties.memoryTypeCount; ++index)
+        {
+            const bool type_supported = (type_filter & (1u << index)) != 0;
+            const bool properties_supported =
+                (memory_properties.memoryTypes[index].propertyFlags & properties) == properties;
+
+            if (type_supported && properties_supported)
+            {
+                return index;
+            }
+        }
+
+        throw VulkanError("No Vulkan memory type satisfies the requested buffer properties.");
+    }
+
     void VulkanDevice::PickPhysicalDevice()
     {
         u32 device_count = 0;

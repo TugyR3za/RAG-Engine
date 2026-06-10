@@ -1,6 +1,7 @@
 #include "Rag/RendererVK/Internal/VulkanGraphicsPipeline.h"
 
 #include "Rag/Core/Log.h"
+#include "Rag/RendererVK/Internal/VulkanVertexBuffer.h"
 
 #include <array>
 #include <fstream>
@@ -92,7 +93,7 @@ namespace rag::renderer::vk
         Cleanup();
     }
 
-    void VulkanGraphicsPipeline::BindAndDraw(VkCommandBuffer command_buffer, VkExtent2D extent) const
+    void VulkanGraphicsPipeline::Bind(VkCommandBuffer command_buffer, VkExtent2D extent) const
     {
         vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_);
 
@@ -109,8 +110,6 @@ namespace rag::renderer::vk
         scissor.offset = {0, 0};
         scissor.extent = extent;
         vkCmdSetScissor(command_buffer, 0, 1, &scissor);
-
-        vkCmdDraw(command_buffer, 3, 1, 0, 0);
     }
 
     void VulkanGraphicsPipeline::Create(VkRenderPass render_pass)
@@ -138,8 +137,16 @@ namespace rag::renderer::vk
             },
         };
 
+        const VkVertexInputBindingDescription binding_description = Vertex::BindingDescription();
+        const std::array<VkVertexInputAttributeDescription, 2> attribute_descriptions =
+            Vertex::AttributeDescriptions();
+
         VkPipelineVertexInputStateCreateInfo vertex_input{};
         vertex_input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertex_input.vertexBindingDescriptionCount = 1;
+        vertex_input.pVertexBindingDescriptions = &binding_description;
+        vertex_input.vertexAttributeDescriptionCount = static_cast<u32>(attribute_descriptions.size());
+        vertex_input.pVertexAttributeDescriptions = attribute_descriptions.data();
 
         VkPipelineInputAssemblyStateCreateInfo input_assembly{};
         input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -218,7 +225,7 @@ namespace rag::renderer::vk
             &pipeline_));
 
         RAG_LOG_INFO(
-            "Created Phase 2B Vulkan triangle graphics pipeline using shaders ",
+            "Created Phase 2D Vulkan indexed graphics pipeline using shaders ",
             vertex_path.string(),
             " and ",
             fragment_path.string(),

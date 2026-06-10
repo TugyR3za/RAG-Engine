@@ -17,7 +17,7 @@ namespace rag::renderer::vk
         VulkanGraphicsPipeline(const VulkanGraphicsPipeline&) = delete;
         VulkanGraphicsPipeline& operator=(const VulkanGraphicsPipeline&) = delete;
 
-        void BindAndDraw(VkCommandBuffer command_buffer, VkExtent2D extent) const;
+        void Bind(VkCommandBuffer command_buffer, VkExtent2D extent) const;
 
     private:
         void Create(VkRenderPass render_pass);

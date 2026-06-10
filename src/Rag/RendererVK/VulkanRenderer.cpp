@@ -4,16 +4,34 @@
 #include "Rag/RendererVK/Internal/VulkanDevice.h"
 #include "Rag/RendererVK/Internal/VulkanFrameResources.h"
 #include "Rag/RendererVK/Internal/VulkanGraphicsPipeline.h"
+#include "Rag/RendererVK/Internal/VulkanIndexBuffer.h"
 #include "Rag/RendererVK/Internal/VulkanInstance.h"
 #include "Rag/RendererVK/Internal/VulkanSurface.h"
 #include "Rag/RendererVK/Internal/VulkanSwapchain.h"
+#include "Rag/RendererVK/Internal/VulkanVertexBuffer.h"
 
+#include <array>
 #include <chrono>
 #include <limits>
 #include <vector>
 
 namespace rag::renderer::vk
 {
+    namespace
+    {
+        constexpr std::array<Vertex, 4> QuadVertices{
+            Vertex{{-0.6f, -0.5f, 0.0f}, {1.0f, 0.15f, 0.1f}},
+            Vertex{{0.6f, -0.5f, 0.0f}, {0.95f, 0.8f, 0.1f}},
+            Vertex{{0.6f, 0.5f, 0.0f}, {0.1f, 1.0f, 0.2f}},
+            Vertex{{-0.6f, 0.5f, 0.0f}, {0.1f, 0.35f, 1.0f}},
+        };
+
+        constexpr std::array<u32, 6> QuadIndices{
+            0, 1, 2,
+            2, 3, 0,
+        };
+    }
+
     class VulkanRenderer::Impl final
     {
     public:
@@ -41,6 +59,8 @@ namespace rag::renderer::vk
             pipeline_ = std::make_unique<VulkanGraphicsPipeline>(
                 device_->Device(),
                 swapchain_->RenderPass());
+            vertex_buffer_ = std::make_unique<VulkanVertexBuffer>(*device_, QuadVertices);
+            index_buffer_ = std::make_unique<VulkanIndexBuffer>(*device_, QuadIndices);
             frames_ = std::make_unique<VulkanFrameResources>(
                 device_->Device(),
                 device_->Families().graphics_family.value(),
@@ -224,7 +244,10 @@ namespace rag::renderer::vk
 
             RAG_VK_CHECK(vkBeginCommandBuffer(command_buffer, &begin_info));
             swapchain_->BeginRenderPass(command_buffer, image_index, context.clear_color);
-            pipeline_->BindAndDraw(command_buffer, swapchain_->Extent());
+            pipeline_->Bind(command_buffer, swapchain_->Extent());
+            vertex_buffer_->Bind(command_buffer);
+            index_buffer_->Bind(command_buffer);
+            vkCmdDrawIndexed(command_buffer, index_buffer_->IndexCount(), 1, 0, 0, 0);
             swapchain_->EndRenderPass(command_buffer);
             RAG_VK_CHECK(vkEndCommandBuffer(command_buffer));
         }
@@ -243,7 +266,7 @@ namespace rag::renderer::vk
 
             if (swapchain_->ImageFormat() != previous_format)
             {
-                RAG_LOG_WARNING("Vulkan swapchain format changed; rebuilding the Phase 2B graphics pipeline.");
+                RAG_LOG_WARNING("Vulkan swapchain format changed; rebuilding the Phase 2D graphics pipeline.");
                 pipeline_ = std::make_unique<VulkanGraphicsPipeline>(
                     device_->Device(),
                     swapchain_->RenderPass());
@@ -308,6 +331,8 @@ namespace rag::renderer::vk
         std::unique_ptr<VulkanDevice> device_;
         std::unique_ptr<VulkanSwapchain> swapchain_;
         std::unique_ptr<VulkanGraphicsPipeline> pipeline_;
+        std::unique_ptr<VulkanVertexBuffer> vertex_buffer_;
+        std::unique_ptr<VulkanIndexBuffer> index_buffer_;
         std::unique_ptr<VulkanFrameResources> frames_;
         std::vector<VkFence> image_in_flight_;
         RendererStats stats_{};

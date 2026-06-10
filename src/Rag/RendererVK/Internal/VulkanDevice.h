@@ -38,6 +38,7 @@ namespace rag::renderer::vk
         [[nodiscard]] const QueueFamilyIndices& Families() const;
         [[nodiscard]] SwapchainSupportDetails QuerySwapchainSupport() const;
         [[nodiscard]] const VkPhysicalDeviceProperties& Properties() const;
+        [[nodiscard]] u32 FindMemoryType(u32 type_filter, VkMemoryPropertyFlags properties) const;
 
     private:
         void PickPhysicalDevice();

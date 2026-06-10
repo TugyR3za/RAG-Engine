@@ -86,12 +86,16 @@ if(RAG_ENABLE_VULKAN)
         src/Rag/RendererVK/Internal/VulkanFrameResources.h
         src/Rag/RendererVK/Internal/VulkanGraphicsPipeline.cpp
         src/Rag/RendererVK/Internal/VulkanGraphicsPipeline.h
+        src/Rag/RendererVK/Internal/VulkanIndexBuffer.cpp
+        src/Rag/RendererVK/Internal/VulkanIndexBuffer.h
         src/Rag/RendererVK/Internal/VulkanInstance.cpp
         src/Rag/RendererVK/Internal/VulkanInstance.h
         src/Rag/RendererVK/Internal/VulkanSurface.cpp
         src/Rag/RendererVK/Internal/VulkanSurface.h
         src/Rag/RendererVK/Internal/VulkanSwapchain.cpp
         src/Rag/RendererVK/Internal/VulkanSwapchain.h
+        src/Rag/RendererVK/Internal/VulkanVertexBuffer.cpp
+        src/Rag/RendererVK/Internal/VulkanVertexBuffer.h
         src/Rag/RendererVK/Shaders/Triangle.frag
         src/Rag/RendererVK/Shaders/Triangle.vert
     )
@@ -120,7 +124,7 @@ if(RAG_ENABLE_VULKAN)
         DEPENDS
             "${RAG_VULKAN_VERTEX_SHADER}"
             "${RAG_VULKAN_FRAGMENT_SHADER}"
-        COMMENT "Compiling RAG Engine Phase 2B Vulkan shaders"
+        COMMENT "Compiling RAG Engine Phase 2D Vulkan shaders"
         VERBATIM
     )
 
