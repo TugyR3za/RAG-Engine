@@ -86,7 +86,7 @@ namespace rag::renderer::vk
 
         index_count_ = static_cast<u32>(indices.size());
         RAG_LOG_INFO(
-            "Created Phase 2D host-visible Vulkan index buffer: indices=",
+            "Created host-visible Vulkan index buffer: indices=",
             index_count_,
             ", bytes=",
             buffer_size,

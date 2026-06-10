@@ -11,16 +11,20 @@ namespace rag::renderer::vk
     class VulkanGraphicsPipeline final
     {
     public:
-        VulkanGraphicsPipeline(VkDevice device, VkRenderPass render_pass);
+        VulkanGraphicsPipeline(
+            VkDevice device,
+            VkRenderPass render_pass,
+            VkDescriptorSetLayout descriptor_set_layout);
         ~VulkanGraphicsPipeline();
 
         VulkanGraphicsPipeline(const VulkanGraphicsPipeline&) = delete;
         VulkanGraphicsPipeline& operator=(const VulkanGraphicsPipeline&) = delete;
 
         void Bind(VkCommandBuffer command_buffer, VkExtent2D extent) const;
+        void BindDescriptorSet(VkCommandBuffer command_buffer, VkDescriptorSet descriptor_set) const;
 
     private:
-        void Create(VkRenderPass render_pass);
+        void Create(VkRenderPass render_pass, VkDescriptorSetLayout descriptor_set_layout);
         void Cleanup();
 
         [[nodiscard]] static std::filesystem::path ResolveShaderPath(std::string_view filename);

@@ -42,6 +42,21 @@ namespace rag::renderer::vk
                 return "VK_PRESENT_MODE_OTHER";
             }
         }
+
+        const char* DepthFormatName(VkFormat format)
+        {
+            switch (format)
+            {
+            case VK_FORMAT_D32_SFLOAT:
+                return "VK_FORMAT_D32_SFLOAT";
+            case VK_FORMAT_D32_SFLOAT_S8_UINT:
+                return "VK_FORMAT_D32_SFLOAT_S8_UINT";
+            case VK_FORMAT_D24_UNORM_S8_UINT:
+                return "VK_FORMAT_D24_UNORM_S8_UINT";
+            default:
+                return "VK_FORMAT_OTHER";
+            }
+        }
     }
 
     VulkanSwapchain::VulkanSwapchain(VulkanDevice& device, VkSurfaceKHR surface, u32 width, u32 height)
@@ -68,11 +83,12 @@ namespace rag::renderer::vk
         u32 image_index,
         const std::array<f32, 4>& clear_color) const
     {
-        VkClearValue clear_value{};
-        clear_value.color.float32[0] = clear_color[0];
-        clear_value.color.float32[1] = clear_color[1];
-        clear_value.color.float32[2] = clear_color[2];
-        clear_value.color.float32[3] = clear_color[3];
+        std::array<VkClearValue, 2> clear_values{};
+        clear_values[0].color.float32[0] = clear_color[0];
+        clear_values[0].color.float32[1] = clear_color[1];
+        clear_values[0].color.float32[2] = clear_color[2];
+        clear_values[0].color.float32[3] = clear_color[3];
+        clear_values[1].depthStencil = {1.0f, 0};
 
         VkRenderPassBeginInfo begin_info{};
         begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -80,8 +96,8 @@ namespace rag::renderer::vk
         begin_info.framebuffer = framebuffers_[image_index];
         begin_info.renderArea.offset = {0, 0};
         begin_info.renderArea.extent = extent_;
-        begin_info.clearValueCount = 1;
-        begin_info.pClearValues = &clear_value;
+        begin_info.clearValueCount = static_cast<u32>(clear_values.size());
+        begin_info.pClearValues = clear_values.data();
 
         vkCmdBeginRenderPass(command_buffer, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
     }
@@ -109,6 +125,11 @@ namespace rag::renderer::vk
     VkFormat VulkanSwapchain::ImageFormat() const
     {
         return image_format_;
+    }
+
+    VkFormat VulkanSwapchain::DepthFormat() const
+    {
+        return depth_format_;
     }
 
     u32 VulkanSwapchain::ImageCount() const
@@ -183,8 +204,10 @@ namespace rag::renderer::vk
         RAG_VK_CHECK(vkGetSwapchainImagesKHR(device_.Device(), swapchain_, &image_count, images_.data()));
 
         image_format_ = surface_format.format;
+        depth_format_ = FindDepthFormat();
 
         CreateImageViews();
+        CreateDepthResources();
         CreateRenderPass();
         CreateFramebuffers();
 
@@ -197,6 +220,8 @@ namespace rag::renderer::vk
             images_.size(),
             ", format=",
             FormatName(image_format_),
+            ", depth=",
+            DepthFormatName(depth_format_),
             ", present=",
             PresentModeName(present_mode));
     }
@@ -216,6 +241,25 @@ namespace rag::renderer::vk
             vkDestroyRenderPass(device, render_pass_, nullptr);
             render_pass_ = VK_NULL_HANDLE;
         }
+
+        if (depth_image_view_ != VK_NULL_HANDLE)
+        {
+            vkDestroyImageView(device, depth_image_view_, nullptr);
+            depth_image_view_ = VK_NULL_HANDLE;
+        }
+
+        if (depth_image_ != VK_NULL_HANDLE)
+        {
+            vkDestroyImage(device, depth_image_, nullptr);
+            depth_image_ = VK_NULL_HANDLE;
+        }
+
+        if (depth_memory_ != VK_NULL_HANDLE)
+        {
+            vkFreeMemory(device, depth_memory_, nullptr);
+            depth_memory_ = VK_NULL_HANDLE;
+        }
+        depth_format_ = VK_FORMAT_UNDEFINED;
 
         for (VkImageView image_view : image_views_)
         {
@@ -256,6 +300,52 @@ namespace rag::renderer::vk
         }
     }
 
+    void VulkanSwapchain::CreateDepthResources()
+    {
+        VkImageCreateInfo image_info{};
+        image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        image_info.imageType = VK_IMAGE_TYPE_2D;
+        image_info.extent.width = extent_.width;
+        image_info.extent.height = extent_.height;
+        image_info.extent.depth = 1;
+        image_info.mipLevels = 1;
+        image_info.arrayLayers = 1;
+        image_info.format = depth_format_;
+        image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+        image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+        image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        RAG_VK_CHECK(vkCreateImage(device_.Device(), &image_info, nullptr, &depth_image_));
+
+        VkMemoryRequirements memory_requirements{};
+        vkGetImageMemoryRequirements(device_.Device(), depth_image_, &memory_requirements);
+
+        VkMemoryAllocateInfo allocation_info{};
+        allocation_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocation_info.allocationSize = memory_requirements.size;
+        allocation_info.memoryTypeIndex = device_.FindMemoryType(
+            memory_requirements.memoryTypeBits,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+        RAG_VK_CHECK(vkAllocateMemory(device_.Device(), &allocation_info, nullptr, &depth_memory_));
+        RAG_VK_CHECK(vkBindImageMemory(device_.Device(), depth_image_, depth_memory_, 0));
+
+        VkImageViewCreateInfo view_info{};
+        view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        view_info.image = depth_image_;
+        view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        view_info.format = depth_format_;
+        view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        view_info.subresourceRange.baseMipLevel = 0;
+        view_info.subresourceRange.levelCount = 1;
+        view_info.subresourceRange.baseArrayLayer = 0;
+        view_info.subresourceRange.layerCount = 1;
+
+        RAG_VK_CHECK(vkCreateImageView(device_.Device(), &view_info, nullptr, &depth_image_view_));
+    }
+
     void VulkanSwapchain::CreateRenderPass()
     {
         VkAttachmentDescription color_attachment{};
@@ -272,22 +362,48 @@ namespace rag::renderer::vk
         color_attachment_ref.attachment = 0;
         color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+        VkAttachmentDescription depth_attachment{};
+        depth_attachment.format = depth_format_;
+        depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+        depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+        VkAttachmentReference depth_attachment_ref{};
+        depth_attachment_ref.attachment = 1;
+        depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
         VkSubpassDescription subpass{};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &color_attachment_ref;
+        subpass.pDepthStencilAttachment = &depth_attachment_ref;
 
         VkSubpassDependency dependency{};
         dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
         dependency.dstSubpass = 0;
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        dependency.srcStageMask =
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.dstStageMask =
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+            VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.dstAccessMask =
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+            VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+        const VkAttachmentDescription attachments[] = {
+            color_attachment,
+            depth_attachment,
+        };
 
         VkRenderPassCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        create_info.attachmentCount = 1;
-        create_info.pAttachments = &color_attachment;
+        create_info.attachmentCount = static_cast<u32>(std::size(attachments));
+        create_info.pAttachments = attachments;
         create_info.subpassCount = 1;
         create_info.pSubpasses = &subpass;
         create_info.dependencyCount = 1;
@@ -302,12 +418,15 @@ namespace rag::renderer::vk
 
         for (std::size_t index = 0; index < image_views_.size(); ++index)
         {
-            const VkImageView attachments[] = {image_views_[index]};
+            const VkImageView attachments[] = {
+                image_views_[index],
+                depth_image_view_,
+            };
 
             VkFramebufferCreateInfo create_info{};
             create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
             create_info.renderPass = render_pass_;
-            create_info.attachmentCount = 1;
+            create_info.attachmentCount = static_cast<u32>(std::size(attachments));
             create_info.pAttachments = attachments;
             create_info.width = extent_.width;
             create_info.height = extent_.height;
@@ -315,6 +434,28 @@ namespace rag::renderer::vk
 
             RAG_VK_CHECK(vkCreateFramebuffer(device_.Device(), &create_info, nullptr, &framebuffers_[index]));
         }
+    }
+
+    VkFormat VulkanSwapchain::FindDepthFormat() const
+    {
+        constexpr VkFormat candidates[] = {
+            VK_FORMAT_D32_SFLOAT,
+            VK_FORMAT_D32_SFLOAT_S8_UINT,
+            VK_FORMAT_D24_UNORM_S8_UINT,
+        };
+
+        for (VkFormat format : candidates)
+        {
+            VkFormatProperties properties{};
+            vkGetPhysicalDeviceFormatProperties(device_.PhysicalDevice(), format, &properties);
+
+            if ((properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0)
+            {
+                return format;
+            }
+        }
+
+        throw VulkanError("No supported Vulkan depth attachment format was found.");
     }
 
     VkSurfaceFormatKHR VulkanSwapchain::ChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats) const

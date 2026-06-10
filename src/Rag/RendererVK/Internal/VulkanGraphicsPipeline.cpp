@@ -74,12 +74,15 @@ namespace rag::renderer::vk
         }
     }
 
-    VulkanGraphicsPipeline::VulkanGraphicsPipeline(VkDevice device, VkRenderPass render_pass)
+    VulkanGraphicsPipeline::VulkanGraphicsPipeline(
+        VkDevice device,
+        VkRenderPass render_pass,
+        VkDescriptorSetLayout descriptor_set_layout)
         : device_(device)
     {
         try
         {
-            Create(render_pass);
+            Create(render_pass, descriptor_set_layout);
         }
         catch (...)
         {
@@ -112,7 +115,24 @@ namespace rag::renderer::vk
         vkCmdSetScissor(command_buffer, 0, 1, &scissor);
     }
 
-    void VulkanGraphicsPipeline::Create(VkRenderPass render_pass)
+    void VulkanGraphicsPipeline::BindDescriptorSet(
+        VkCommandBuffer command_buffer,
+        VkDescriptorSet descriptor_set) const
+    {
+        vkCmdBindDescriptorSets(
+            command_buffer,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            layout_,
+            0,
+            1,
+            &descriptor_set,
+            0,
+            nullptr);
+    }
+
+    void VulkanGraphicsPipeline::Create(
+        VkRenderPass render_pass,
+        VkDescriptorSetLayout descriptor_set_layout)
     {
         const std::filesystem::path vertex_path = ResolveShaderPath(VertexShaderFilename);
         const std::filesystem::path fragment_path = ResolveShaderPath(FragmentShaderFilename);
@@ -173,6 +193,14 @@ namespace rag::renderer::vk
         multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
         multisampling.sampleShadingEnable = VK_FALSE;
 
+        VkPipelineDepthStencilStateCreateInfo depth_stencil{};
+        depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depth_stencil.depthTestEnable = VK_TRUE;
+        depth_stencil.depthWriteEnable = VK_TRUE;
+        depth_stencil.depthCompareOp = VK_COMPARE_OP_LESS;
+        depth_stencil.depthBoundsTestEnable = VK_FALSE;
+        depth_stencil.stencilTestEnable = VK_FALSE;
+
         VkPipelineColorBlendAttachmentState color_blend_attachment{};
         color_blend_attachment.blendEnable = VK_FALSE;
         color_blend_attachment.colorWriteMask =
@@ -199,6 +227,8 @@ namespace rag::renderer::vk
 
         VkPipelineLayoutCreateInfo layout_info{};
         layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        layout_info.setLayoutCount = 1;
+        layout_info.pSetLayouts = &descriptor_set_layout;
         RAG_VK_CHECK(vkCreatePipelineLayout(device_, &layout_info, nullptr, &layout_));
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
@@ -210,6 +240,7 @@ namespace rag::renderer::vk
         pipeline_info.pViewportState = &viewport_state;
         pipeline_info.pRasterizationState = &rasterizer;
         pipeline_info.pMultisampleState = &multisampling;
+        pipeline_info.pDepthStencilState = &depth_stencil;
         pipeline_info.pColorBlendState = &color_blending;
         pipeline_info.pDynamicState = &dynamic_state;
         pipeline_info.layout = layout_;
@@ -225,7 +256,7 @@ namespace rag::renderer::vk
             &pipeline_));
 
         RAG_LOG_INFO(
-            "Created Phase 2D Vulkan indexed graphics pipeline using shaders ",
+            "Created Vulkan 3D cube graphics pipeline with UBO descriptors and depth testing using shaders ",
             vertex_path.string(),
             " and ",
             fragment_path.string(),

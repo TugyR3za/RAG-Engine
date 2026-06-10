@@ -8,6 +8,7 @@
 #include "Rag/RendererVK/Internal/VulkanInstance.h"
 #include "Rag/RendererVK/Internal/VulkanSurface.h"
 #include "Rag/RendererVK/Internal/VulkanSwapchain.h"
+#include "Rag/RendererVK/Internal/VulkanUniformResources.h"
 #include "Rag/RendererVK/Internal/VulkanVertexBuffer.h"
 
 #include <array>
@@ -19,16 +20,24 @@ namespace rag::renderer::vk
 {
     namespace
     {
-        constexpr std::array<Vertex, 4> QuadVertices{
-            Vertex{{-0.6f, -0.5f, 0.0f}, {1.0f, 0.15f, 0.1f}},
-            Vertex{{0.6f, -0.5f, 0.0f}, {0.95f, 0.8f, 0.1f}},
-            Vertex{{0.6f, 0.5f, 0.0f}, {0.1f, 1.0f, 0.2f}},
-            Vertex{{-0.6f, 0.5f, 0.0f}, {0.1f, 0.35f, 1.0f}},
+        constexpr std::array<Vertex, 8> CubeVertices{
+            Vertex{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.1f, 0.1f}},
+            Vertex{{0.5f, -0.5f, -0.5f}, {1.0f, 0.8f, 0.1f}},
+            Vertex{{0.5f, 0.5f, -0.5f}, {0.1f, 1.0f, 0.2f}},
+            Vertex{{-0.5f, 0.5f, -0.5f}, {0.1f, 0.4f, 1.0f}},
+            Vertex{{-0.5f, -0.5f, 0.5f}, {1.0f, 0.1f, 0.8f}},
+            Vertex{{0.5f, -0.5f, 0.5f}, {1.0f, 0.5f, 0.1f}},
+            Vertex{{0.5f, 0.5f, 0.5f}, {0.2f, 1.0f, 0.8f}},
+            Vertex{{-0.5f, 0.5f, 0.5f}, {0.5f, 0.2f, 1.0f}},
         };
 
-        constexpr std::array<u32, 6> QuadIndices{
-            0, 1, 2,
-            2, 3, 0,
+        constexpr std::array<u32, 36> CubeIndices{
+            4, 5, 6, 6, 7, 4,
+            1, 0, 3, 3, 2, 1,
+            0, 4, 7, 7, 3, 0,
+            5, 1, 2, 2, 6, 5,
+            3, 7, 6, 6, 2, 3,
+            0, 1, 5, 5, 4, 0,
         };
     }
 
@@ -56,11 +65,15 @@ namespace rag::renderer::vk
                 surface_->Get(),
                 desc_.window->Width(),
                 desc_.window->Height());
+            uniform_resources_ = std::make_unique<VulkanUniformResources>(
+                *device_,
+                desc_.frames_in_flight);
             pipeline_ = std::make_unique<VulkanGraphicsPipeline>(
                 device_->Device(),
-                swapchain_->RenderPass());
-            vertex_buffer_ = std::make_unique<VulkanVertexBuffer>(*device_, QuadVertices);
-            index_buffer_ = std::make_unique<VulkanIndexBuffer>(*device_, QuadIndices);
+                swapchain_->RenderPass(),
+                uniform_resources_->DescriptorSetLayout());
+            vertex_buffer_ = std::make_unique<VulkanVertexBuffer>(*device_, CubeVertices);
+            index_buffer_ = std::make_unique<VulkanIndexBuffer>(*device_, CubeIndices);
             frames_ = std::make_unique<VulkanFrameResources>(
                 device_->Device(),
                 device_->Families().graphics_family.value(),
@@ -93,6 +106,7 @@ namespace rag::renderer::vk
             }
             previous_frame_time_ = frame_start;
             has_previous_frame_time_ = true;
+            animation_elapsed_seconds_ += frame_interval_seconds;
 
             if (desc_.window->Width() == 0 || desc_.window->Height() == 0)
             {
@@ -149,10 +163,13 @@ namespace rag::renderer::vk
 
             image_in_flight_[image_index] = frame.in_flight;
 
+            const u32 frame_index = frames_->CurrentFrameIndex();
+            UpdateUniformBuffer(frame_index);
+
             RAG_VK_CHECK(vkResetFences(device_->Device(), 1, &frame.in_flight));
             RAG_VK_CHECK(vkResetCommandPool(device_->Device(), frame.command_pool, 0));
 
-            RecordCommandBuffer(frame.command_buffer, image_index, context);
+            RecordCommandBuffer(frame.command_buffer, image_index, frame_index, context);
 
             const VkSemaphore wait_semaphores[] = {frame.image_available};
             const VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
@@ -236,6 +253,7 @@ namespace rag::renderer::vk
         void RecordCommandBuffer(
             VkCommandBuffer command_buffer,
             u32 image_index,
+            u32 frame_index,
             const RenderFrameContext& context)
         {
             VkCommandBufferBeginInfo begin_info{};
@@ -245,6 +263,9 @@ namespace rag::renderer::vk
             RAG_VK_CHECK(vkBeginCommandBuffer(command_buffer, &begin_info));
             swapchain_->BeginRenderPass(command_buffer, image_index, context.clear_color);
             pipeline_->Bind(command_buffer, swapchain_->Extent());
+            pipeline_->BindDescriptorSet(
+                command_buffer,
+                uniform_resources_->DescriptorSet(frame_index));
             vertex_buffer_->Bind(command_buffer);
             index_buffer_->Bind(command_buffer);
             vkCmdDrawIndexed(command_buffer, index_buffer_->IndexCount(), 1, 0, 0, 0);
@@ -262,14 +283,17 @@ namespace rag::renderer::vk
 
             WaitIdle();
             const VkFormat previous_format = swapchain_->ImageFormat();
+            const VkFormat previous_depth_format = swapchain_->DepthFormat();
             swapchain_->Recreate(desc_.window->Width(), desc_.window->Height());
 
-            if (swapchain_->ImageFormat() != previous_format)
+            if (swapchain_->ImageFormat() != previous_format ||
+                swapchain_->DepthFormat() != previous_depth_format)
             {
-                RAG_LOG_WARNING("Vulkan swapchain format changed; rebuilding the Phase 2D graphics pipeline.");
+                RAG_LOG_WARNING("Vulkan swapchain attachment format changed; rebuilding the 3D cube graphics pipeline.");
                 pipeline_ = std::make_unique<VulkanGraphicsPipeline>(
                     device_->Device(),
-                    swapchain_->RenderPass());
+                    swapchain_->RenderPass(),
+                    uniform_resources_->DescriptorSetLayout());
             }
 
             frames_->RecreateRenderFinishedSemaphores(swapchain_->ImageCount());
@@ -278,6 +302,30 @@ namespace rag::renderer::vk
             resize_requested_ = false;
             surface_suspended_ = false;
             return true;
+        }
+
+        void UpdateUniformBuffer(u32 frame_index)
+        {
+            const VkExtent2D extent = swapchain_->Extent();
+            const f32 aspect_ratio =
+                static_cast<f32>(extent.width) /
+                static_cast<f32>(extent.height);
+            const f32 rotation = static_cast<f32>(animation_elapsed_seconds_);
+
+            UniformBufferObject uniform_data{};
+            uniform_data.model = math::Multiply(
+                math::RotationY(rotation * 0.7f),
+                math::RotationX(rotation * 0.4f));
+            uniform_data.view = math::InverseRigidTransform(
+                math::Translation(math::Vec3{0.0f, 0.0f, 3.0f}));
+            uniform_data.projection = math::PerspectiveRH_ZO(
+                math::Pi / 3.0f,
+                aspect_ratio,
+                0.1f,
+                100.0f);
+            uniform_data.projection(1, 1) *= -1.0f;
+
+            uniform_resources_->Update(frame_index, uniform_data);
         }
 
         void UpdateStats()
@@ -330,6 +378,7 @@ namespace rag::renderer::vk
         std::unique_ptr<VulkanSurface> surface_;
         std::unique_ptr<VulkanDevice> device_;
         std::unique_ptr<VulkanSwapchain> swapchain_;
+        std::unique_ptr<VulkanUniformResources> uniform_resources_;
         std::unique_ptr<VulkanGraphicsPipeline> pipeline_;
         std::unique_ptr<VulkanVertexBuffer> vertex_buffer_;
         std::unique_ptr<VulkanIndexBuffer> index_buffer_;
@@ -338,6 +387,7 @@ namespace rag::renderer::vk
         RendererStats stats_{};
         std::chrono::steady_clock::time_point previous_frame_time_{};
         f64 diagnostics_elapsed_seconds_ = 0.0;
+        f64 animation_elapsed_seconds_ = 0.0;
         u32 diagnostics_frame_count_ = 0;
         bool resize_requested_ = false;
         bool has_previous_frame_time_ = false;

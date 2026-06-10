@@ -114,7 +114,7 @@ namespace rag::renderer::vk
 
         vertex_count_ = static_cast<u32>(vertices.size());
         RAG_LOG_INFO(
-            "Created Phase 2D host-visible Vulkan vertex buffer: vertices=",
+            "Created host-visible Vulkan vertex buffer: vertices=",
             vertex_count_,
             ", bytes=",
             buffer_size,

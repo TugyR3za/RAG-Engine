@@ -94,6 +94,8 @@ if(RAG_ENABLE_VULKAN)
         src/Rag/RendererVK/Internal/VulkanSurface.h
         src/Rag/RendererVK/Internal/VulkanSwapchain.cpp
         src/Rag/RendererVK/Internal/VulkanSwapchain.h
+        src/Rag/RendererVK/Internal/VulkanUniformResources.cpp
+        src/Rag/RendererVK/Internal/VulkanUniformResources.h
         src/Rag/RendererVK/Internal/VulkanVertexBuffer.cpp
         src/Rag/RendererVK/Internal/VulkanVertexBuffer.h
         src/Rag/RendererVK/Shaders/Triangle.frag
@@ -124,7 +126,7 @@ if(RAG_ENABLE_VULKAN)
         DEPENDS
             "${RAG_VULKAN_VERTEX_SHADER}"
             "${RAG_VULKAN_FRAGMENT_SHADER}"
-        COMMENT "Compiling RAG Engine Phase 2D Vulkan shaders"
+        COMMENT "Compiling RAG Engine rotating-cube Vulkan shaders"
         VERBATIM
     )
 

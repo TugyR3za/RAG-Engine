@@ -25,15 +25,18 @@ namespace rag::renderer::vk
         [[nodiscard]] VkRenderPass RenderPass() const;
         [[nodiscard]] VkExtent2D Extent() const;
         [[nodiscard]] VkFormat ImageFormat() const;
+        [[nodiscard]] VkFormat DepthFormat() const;
         [[nodiscard]] u32 ImageCount() const;
 
     private:
         void Create(u32 width, u32 height);
         void Cleanup();
         void CreateImageViews();
+        void CreateDepthResources();
         void CreateRenderPass();
         void CreateFramebuffers();
 
+        [[nodiscard]] VkFormat FindDepthFormat() const;
         [[nodiscard]] VkSurfaceFormatKHR ChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats) const;
         [[nodiscard]] VkPresentModeKHR ChoosePresentMode(const std::vector<VkPresentModeKHR>& present_modes) const;
         [[nodiscard]] VkExtent2D ChooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, u32 width, u32 height) const;
@@ -45,6 +48,10 @@ namespace rag::renderer::vk
         VkExtent2D extent_{};
         std::vector<VkImage> images_;
         std::vector<VkImageView> image_views_;
+        VkFormat depth_format_ = VK_FORMAT_UNDEFINED;
+        VkImage depth_image_ = VK_NULL_HANDLE;
+        VkDeviceMemory depth_memory_ = VK_NULL_HANDLE;
+        VkImageView depth_image_view_ = VK_NULL_HANDLE;
         VkRenderPass render_pass_ = VK_NULL_HANDLE;
         std::vector<VkFramebuffer> framebuffers_;
     };
