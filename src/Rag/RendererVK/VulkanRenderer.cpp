@@ -3,6 +3,7 @@
 #include "Rag/Core/Log.h"
 #include "Rag/RendererVK/Internal/VulkanDevice.h"
 #include "Rag/RendererVK/Internal/VulkanFrameResources.h"
+#include "Rag/RendererVK/Internal/VulkanGraphicsPipeline.h"
 #include "Rag/RendererVK/Internal/VulkanInstance.h"
 #include "Rag/RendererVK/Internal/VulkanSurface.h"
 #include "Rag/RendererVK/Internal/VulkanSwapchain.h"
@@ -37,6 +38,9 @@ namespace rag::renderer::vk
                 surface_->Get(),
                 desc_.window->Width(),
                 desc_.window->Height());
+            pipeline_ = std::make_unique<VulkanGraphicsPipeline>(
+                device_->Device(),
+                swapchain_->RenderPass());
             frames_ = std::make_unique<VulkanFrameResources>(
                 device_->Device(),
                 device_->Families().graphics_family.value(),
@@ -220,6 +224,7 @@ namespace rag::renderer::vk
 
             RAG_VK_CHECK(vkBeginCommandBuffer(command_buffer, &begin_info));
             swapchain_->BeginRenderPass(command_buffer, image_index, context.clear_color);
+            pipeline_->BindAndDraw(command_buffer, swapchain_->Extent());
             swapchain_->EndRenderPass(command_buffer);
             RAG_VK_CHECK(vkEndCommandBuffer(command_buffer));
         }
@@ -233,7 +238,17 @@ namespace rag::renderer::vk
             }
 
             WaitIdle();
+            const VkFormat previous_format = swapchain_->ImageFormat();
             swapchain_->Recreate(desc_.window->Width(), desc_.window->Height());
+
+            if (swapchain_->ImageFormat() != previous_format)
+            {
+                RAG_LOG_WARNING("Vulkan swapchain format changed; rebuilding the Phase 2B graphics pipeline.");
+                pipeline_ = std::make_unique<VulkanGraphicsPipeline>(
+                    device_->Device(),
+                    swapchain_->RenderPass());
+            }
+
             frames_->RecreateRenderFinishedSemaphores(swapchain_->ImageCount());
             image_in_flight_.assign(swapchain_->ImageCount(), VK_NULL_HANDLE);
             UpdateStats();
@@ -292,6 +307,7 @@ namespace rag::renderer::vk
         std::unique_ptr<VulkanSurface> surface_;
         std::unique_ptr<VulkanDevice> device_;
         std::unique_ptr<VulkanSwapchain> swapchain_;
+        std::unique_ptr<VulkanGraphicsPipeline> pipeline_;
         std::unique_ptr<VulkanFrameResources> frames_;
         std::vector<VkFence> image_in_flight_;
         RendererStats stats_{};

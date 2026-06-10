@@ -22,6 +22,7 @@ namespace rag::renderer::vk
         void EndRenderPass(VkCommandBuffer command_buffer) const;
 
         [[nodiscard]] VkSwapchainKHR Handle() const;
+        [[nodiscard]] VkRenderPass RenderPass() const;
         [[nodiscard]] VkExtent2D Extent() const;
         [[nodiscard]] VkFormat ImageFormat() const;
         [[nodiscard]] u32 ImageCount() const;

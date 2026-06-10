@@ -84,12 +84,16 @@ if(RAG_ENABLE_VULKAN)
         src/Rag/RendererVK/Internal/VulkanDevice.h
         src/Rag/RendererVK/Internal/VulkanFrameResources.cpp
         src/Rag/RendererVK/Internal/VulkanFrameResources.h
+        src/Rag/RendererVK/Internal/VulkanGraphicsPipeline.cpp
+        src/Rag/RendererVK/Internal/VulkanGraphicsPipeline.h
         src/Rag/RendererVK/Internal/VulkanInstance.cpp
         src/Rag/RendererVK/Internal/VulkanInstance.h
         src/Rag/RendererVK/Internal/VulkanSurface.cpp
         src/Rag/RendererVK/Internal/VulkanSurface.h
         src/Rag/RendererVK/Internal/VulkanSwapchain.cpp
         src/Rag/RendererVK/Internal/VulkanSwapchain.h
+        src/Rag/RendererVK/Shaders/Triangle.frag
+        src/Rag/RendererVK/Shaders/Triangle.vert
     )
     rag_configure_target(RagRendererVK)
     target_compile_definitions(RagRendererVK
@@ -100,6 +104,33 @@ if(RAG_ENABLE_VULKAN)
     )
     target_link_libraries(RagRendererVK PUBLIC RagRenderer PRIVATE Vulkan::Vulkan)
 
+    set(RAG_VULKAN_SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/shaders")
+    set(RAG_VULKAN_VERTEX_SHADER "${CMAKE_CURRENT_SOURCE_DIR}/src/Rag/RendererVK/Shaders/Triangle.vert")
+    set(RAG_VULKAN_FRAGMENT_SHADER "${CMAKE_CURRENT_SOURCE_DIR}/src/Rag/RendererVK/Shaders/Triangle.frag")
+    set(RAG_VULKAN_VERTEX_SPV "${RAG_VULKAN_SHADER_OUTPUT_DIR}/triangle.vert.spv")
+    set(RAG_VULKAN_FRAGMENT_SPV "${RAG_VULKAN_SHADER_OUTPUT_DIR}/triangle.frag.spv")
+
+    add_custom_command(
+        OUTPUT
+            "${RAG_VULKAN_VERTEX_SPV}"
+            "${RAG_VULKAN_FRAGMENT_SPV}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${RAG_VULKAN_SHADER_OUTPUT_DIR}"
+        COMMAND "${RAG_GLSLANG_VALIDATOR_EXECUTABLE}" -V "${RAG_VULKAN_VERTEX_SHADER}" -o "${RAG_VULKAN_VERTEX_SPV}"
+        COMMAND "${RAG_GLSLANG_VALIDATOR_EXECUTABLE}" -V "${RAG_VULKAN_FRAGMENT_SHADER}" -o "${RAG_VULKAN_FRAGMENT_SPV}"
+        DEPENDS
+            "${RAG_VULKAN_VERTEX_SHADER}"
+            "${RAG_VULKAN_FRAGMENT_SHADER}"
+        COMMENT "Compiling RAG Engine Phase 2B Vulkan shaders"
+        VERBATIM
+    )
+
+    add_custom_target(RagRendererVKShaders
+        DEPENDS
+            "${RAG_VULKAN_VERTEX_SPV}"
+            "${RAG_VULKAN_FRAGMENT_SPV}"
+    )
+    add_dependencies(RagRendererVK RagRendererVKShaders)
+
     target_link_libraries(RagEngine INTERFACE RagRendererVK)
 endif()
 
@@ -107,6 +138,23 @@ if(RAG_BUILD_SANDBOX)
     add_executable(RagSandbox sandbox/SandboxMain.cpp)
     rag_configure_target(RagSandbox)
     target_link_libraries(RagSandbox PRIVATE RagEngine)
+
+    if(RAG_ENABLE_VULKAN)
+        add_dependencies(RagSandbox RagRendererVKShaders)
+        add_custom_command(
+            TARGET RagSandbox
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:RagSandbox>/shaders"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${RAG_VULKAN_VERTEX_SPV}"
+                "$<TARGET_FILE_DIR:RagSandbox>/shaders/triangle.vert.spv"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${RAG_VULKAN_FRAGMENT_SPV}"
+                "$<TARGET_FILE_DIR:RagSandbox>/shaders/triangle.frag.spv"
+            COMMENT "Copying RAG Engine Vulkan shaders next to RagSandbox"
+            VERBATIM
+        )
+    endif()
 endif()
 
 if(RAG_BUILD_TESTS)

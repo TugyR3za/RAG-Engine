@@ -22,7 +22,7 @@ namespace
 
         void OnStart() override
         {
-            RAG_LOG_INFO("RAG Engine Phase 2A Vulkan clear sandbox started. Press Escape to quit, F11 to toggle fullscreen.");
+            RAG_LOG_INFO("RAG Engine Phase 2B Vulkan triangle sandbox started. Press Escape to quit, F11 to toggle fullscreen.");
             if (smoke_test_)
             {
 #if defined(RAG_ENABLE_VULKAN)

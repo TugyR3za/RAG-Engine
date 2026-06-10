@@ -96,6 +96,11 @@ namespace rag::renderer::vk
         return swapchain_;
     }
 
+    VkRenderPass VulkanSwapchain::RenderPass() const
+    {
+        return render_pass_;
+    }
+
     VkExtent2D VulkanSwapchain::Extent() const
     {
         return extent_;

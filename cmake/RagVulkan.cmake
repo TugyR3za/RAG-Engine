@@ -31,6 +31,22 @@ macro(rag_find_vulkan)
         message(FATAL_ERROR "RAG Engine requires CMake's imported target Vulkan::Vulkan.")
     endif()
 
+    find_program(
+        RAG_GLSLANG_VALIDATOR_EXECUTABLE
+        NAMES glslangValidator glslangValidator.exe
+        HINTS
+            "$ENV{VULKAN_SDK}/Bin"
+            "${RAG_VULKAN_SDK}/Bin"
+        DOC "Path to the LunarG Vulkan SDK glslangValidator executable"
+    )
+
+    if(NOT RAG_GLSLANG_VALIDATOR_EXECUTABLE)
+        message(FATAL_ERROR
+            "RAG Engine Phase 2B requires glslangValidator from the LunarG Vulkan SDK "
+            "to compile GLSL shaders. Reinstall the SDK with shader tools enabled.")
+    endif()
+
     message(STATUS "RAG Engine: Vulkan include dirs: ${Vulkan_INCLUDE_DIRS}")
     message(STATUS "RAG Engine: Vulkan libraries: ${Vulkan_LIBRARIES}")
+    message(STATUS "RAG Engine: glslangValidator: ${RAG_GLSLANG_VALIDATOR_EXECUTABLE}")
 endmacro()
