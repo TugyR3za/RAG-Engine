@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Rag/Core/Math.h"
 #include "Rag/RendererVK/Internal/VulkanCommon.h"
 
 #include <filesystem>
@@ -22,6 +23,7 @@ namespace rag::renderer::vk
 
         void Bind(VkCommandBuffer command_buffer, VkExtent2D extent) const;
         void BindDescriptorSet(VkCommandBuffer command_buffer, VkDescriptorSet descriptor_set) const;
+        void PushModelMatrix(VkCommandBuffer command_buffer, const math::Mat4& model) const;
 
     private:
         void Create(VkRenderPass render_pass, VkDescriptorSetLayout descriptor_set_layout);

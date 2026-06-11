@@ -7,7 +7,7 @@
 namespace rag::renderer::vk
 {
     static_assert(sizeof(math::Mat4) == sizeof(f32) * 16);
-    static_assert(sizeof(UniformBufferObject) == sizeof(math::Mat4) * 3);
+    static_assert(sizeof(UniformBufferObject) == sizeof(math::Mat4) * 2);
 
     VulkanUniformResources::VulkanUniformResources(VulkanDevice& device, u32 frames_in_flight)
         : device_(device)

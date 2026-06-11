@@ -164,7 +164,7 @@ namespace rag::renderer::vk
             image_in_flight_[image_index] = frame.in_flight;
 
             const u32 frame_index = frames_->CurrentFrameIndex();
-            UpdateUniformBuffer(frame_index);
+            UpdateUniformBuffer(frame_index, context.render_world);
 
             RAG_VK_CHECK(vkResetFences(device_->Device(), 1, &frame.in_flight));
             RAG_VK_CHECK(vkResetCommandPool(device_->Device(), frame.command_pool, 0));
@@ -268,7 +268,25 @@ namespace rag::renderer::vk
                 uniform_resources_->DescriptorSet(frame_index));
             vertex_buffer_->Bind(command_buffer);
             index_buffer_->Bind(command_buffer);
-            vkCmdDrawIndexed(command_buffer, index_buffer_->IndexCount(), 1, 0, 0, 0);
+
+            if (UseRenderWorld(context.render_world))
+            {
+                for (const RenderObject& object : context.render_world->objects)
+                {
+                    pipeline_->PushModelMatrix(command_buffer, object.world_transform);
+                    vkCmdDrawIndexed(command_buffer, index_buffer_->IndexCount(), 1, 0, 0, 0);
+                }
+            }
+            else
+            {
+                const f32 rotation = static_cast<f32>(animation_elapsed_seconds_);
+                const math::Mat4 fallback_model = math::Multiply(
+                    math::RotationY(rotation * 0.7f),
+                    math::RotationX(rotation * 0.4f));
+                pipeline_->PushModelMatrix(command_buffer, fallback_model);
+                vkCmdDrawIndexed(command_buffer, index_buffer_->IndexCount(), 1, 0, 0, 0);
+            }
+
             swapchain_->EndRenderPass(command_buffer);
             RAG_VK_CHECK(vkEndCommandBuffer(command_buffer));
         }
@@ -304,25 +322,36 @@ namespace rag::renderer::vk
             return true;
         }
 
-        void UpdateUniformBuffer(u32 frame_index)
+        [[nodiscard]] static bool UseRenderWorld(const RenderWorld* render_world)
         {
-            const VkExtent2D extent = swapchain_->Extent();
-            const f32 aspect_ratio =
-                static_cast<f32>(extent.width) /
-                static_cast<f32>(extent.height);
-            const f32 rotation = static_cast<f32>(animation_elapsed_seconds_);
+            return render_world != nullptr && render_world->camera.valid;
+        }
 
+        void UpdateUniformBuffer(u32 frame_index, const RenderWorld* render_world)
+        {
             UniformBufferObject uniform_data{};
-            uniform_data.model = math::Multiply(
-                math::RotationY(rotation * 0.7f),
-                math::RotationX(rotation * 0.4f));
-            uniform_data.view = math::InverseRigidTransform(
-                math::Translation(math::Vec3{0.0f, 0.0f, 3.0f}));
-            uniform_data.projection = math::PerspectiveRH_ZO(
-                math::Pi / 3.0f,
-                aspect_ratio,
-                0.1f,
-                100.0f);
+            if (UseRenderWorld(render_world))
+            {
+                uniform_data.view = render_world->camera.view;
+                uniform_data.projection = render_world->camera.projection;
+            }
+            else
+            {
+                const VkExtent2D extent = swapchain_->Extent();
+                const f32 aspect_ratio =
+                    static_cast<f32>(extent.width) /
+                    static_cast<f32>(extent.height);
+
+                uniform_data.view = math::InverseRigidTransform(
+                    math::Translation(math::Vec3{0.0f, 0.0f, 3.0f}));
+                uniform_data.projection = math::PerspectiveRH_ZO(
+                    math::Pi / 3.0f,
+                    aspect_ratio,
+                    0.1f,
+                    100.0f);
+            }
+
+            // Engine projections target GL-style clip space; Vulkan clip-space Y points down.
             uniform_data.projection(1, 1) *= -1.0f;
 
             uniform_resources_->Update(frame_index, uniform_data);

@@ -9,7 +9,6 @@ namespace rag::renderer::vk
 {
     struct alignas(16) UniformBufferObject
     {
-        math::Mat4 model;
         math::Mat4 view;
         math::Mat4 projection;
     };

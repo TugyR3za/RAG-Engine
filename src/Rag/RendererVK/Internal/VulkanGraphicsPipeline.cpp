@@ -130,6 +130,20 @@ namespace rag::renderer::vk
             nullptr);
     }
 
+    void VulkanGraphicsPipeline::PushModelMatrix(
+        VkCommandBuffer command_buffer,
+        const math::Mat4& model) const
+    {
+        static_assert(sizeof(math::Mat4) == 64);
+        vkCmdPushConstants(
+            command_buffer,
+            layout_,
+            VK_SHADER_STAGE_VERTEX_BIT,
+            0,
+            sizeof(math::Mat4),
+            model.elements.data());
+    }
+
     void VulkanGraphicsPipeline::Create(
         VkRenderPass render_pass,
         VkDescriptorSetLayout descriptor_set_layout)
@@ -225,10 +239,17 @@ namespace rag::renderer::vk
         dynamic_state.dynamicStateCount = static_cast<u32>(std::size(dynamic_states));
         dynamic_state.pDynamicStates = dynamic_states;
 
+        VkPushConstantRange push_constant_range{};
+        push_constant_range.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        push_constant_range.offset = 0;
+        push_constant_range.size = sizeof(math::Mat4);
+
         VkPipelineLayoutCreateInfo layout_info{};
         layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         layout_info.setLayoutCount = 1;
         layout_info.pSetLayouts = &descriptor_set_layout;
+        layout_info.pushConstantRangeCount = 1;
+        layout_info.pPushConstantRanges = &push_constant_range;
         RAG_VK_CHECK(vkCreatePipelineLayout(device_, &layout_info, nullptr, &layout_));
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
@@ -256,7 +277,7 @@ namespace rag::renderer::vk
             &pipeline_));
 
         RAG_LOG_INFO(
-            "Created Vulkan 3D cube graphics pipeline with UBO descriptors and depth testing using shaders ",
+            "Created Vulkan graphics pipeline with camera UBO descriptors, a model push constant, and depth testing using shaders ",
             vertex_path.string(),
             " and ",
             fragment_path.string(),
