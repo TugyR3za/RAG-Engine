@@ -15,6 +15,8 @@ namespace rag::renderer::vk
         f32 light_direction_padding = 0.0f;
         alignas(16) math::Vec3 light_color;
         f32 light_intensity = 1.0f;
+        alignas(16) math::Vec3 camera_position;
+        f32 camera_position_padding = 0.0f;
     };
 
     class VulkanUniformResources final

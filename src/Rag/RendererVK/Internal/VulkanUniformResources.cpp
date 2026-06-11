@@ -8,13 +8,15 @@
 namespace rag::renderer::vk
 {
     static_assert(sizeof(math::Mat4) == sizeof(f32) * 16);
-    static_assert(sizeof(UniformBufferObject) == 160);
+    static_assert(sizeof(UniformBufferObject) == 176);
     static_assert(offsetof(UniformBufferObject, view) == 0);
     static_assert(offsetof(UniformBufferObject, projection) == 64);
     static_assert(offsetof(UniformBufferObject, light_direction) == 128);
     static_assert(offsetof(UniformBufferObject, light_direction_padding) == 140);
     static_assert(offsetof(UniformBufferObject, light_color) == 144);
     static_assert(offsetof(UniformBufferObject, light_intensity) == 156);
+    static_assert(offsetof(UniformBufferObject, camera_position) == 160);
+    static_assert(offsetof(UniformBufferObject, camera_position_padding) == 172);
 
     VulkanUniformResources::VulkanUniformResources(VulkanDevice& device, u32 frames_in_flight)
         : device_(device)

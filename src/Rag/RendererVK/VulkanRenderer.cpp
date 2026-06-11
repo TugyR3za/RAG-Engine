@@ -20,7 +20,7 @@ namespace rag::renderer::vk
 {
     namespace
     {
-        constexpr std::array<f32, 3> CubeColor{0.55f, 0.72f, 1.0f};
+        constexpr std::array<f32, 3> CubeColor{0.58f, 0.62f, 0.68f};
 
         constexpr std::array<Vertex, 24> CubeVertices{
             // Front (+Z)
@@ -367,6 +367,7 @@ namespace rag::renderer::vk
             {
                 uniform_data.view = render_world->camera.view;
                 uniform_data.projection = render_world->camera.projection;
+                uniform_data.camera_position = render_world->camera.position;
             }
             else
             {
@@ -377,6 +378,7 @@ namespace rag::renderer::vk
 
                 uniform_data.view = math::InverseRigidTransform(
                     math::Translation(math::Vec3{0.0f, 0.0f, 3.0f}));
+                uniform_data.camera_position = math::Vec3{0.0f, 0.0f, 3.0f};
                 uniform_data.projection = math::PerspectiveRH_ZO(
                     math::Pi / 3.0f,
                     aspect_ratio,

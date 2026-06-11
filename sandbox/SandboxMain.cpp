@@ -8,6 +8,7 @@
     #include "Rag/RendererVK/VulkanRenderer.h"
 #endif
 
+#include <algorithm>
 #include <cmath>
 #include <exception>
 #include <string_view>
@@ -27,6 +28,9 @@ namespace
         void OnStart() override
         {
             RAG_LOG_INFO("RAG Engine Vulkan scene sandbox started. Press Escape to quit, F11 to toggle fullscreen.");
+            RAG_LOG_INFO(
+                "Free-fly camera: WASD move, Space/E up, Left Ctrl/Q down, "
+                "hold Right Mouse to look, Left Shift to sprint.");
             BuildScene();
 
             if (smoke_test_)
@@ -104,6 +108,7 @@ namespace
                 window_->SetFullscreen(!window_->IsFullscreen());
             }
 
+            UpdateCamera(frame_time, input);
             AnimateScene(frame_time);
             scene_.Update();
             scene_.ExtractRenderWorld(render_world_);
@@ -195,14 +200,24 @@ namespace
 
             const rag::scene::EntityId center_cube = scene_.CreateEntity();
             rag::scene::TransformComponent& center_transform = scene_.AddTransform(center_cube);
+            center_transform.local_position = rag::math::Vec3{0.0f, 0.25f, 0.0f};
             center_transform.local_scale = rag::math::Vec3{1.5f, 1.5f, 1.5f};
             scene_.AddRenderable(center_cube);
             spinning_cubes_.push_back(SpinningCube{center_cube, 0.9f, 0.5f});
 
+            const rag::scene::EntityId ground = scene_.CreateEntity();
+            rag::scene::TransformComponent& ground_transform = scene_.AddTransform(ground);
+            ground_transform.local_position = rag::math::Vec3{0.0f, -0.6f, 0.0f};
+            ground_transform.local_scale = rag::math::Vec3{40.0f, 0.2f, 40.0f};
+            scene_.AddRenderable(ground);
+
             camera_entity_ = scene_.CreateEntity();
             rag::scene::TransformComponent& camera_transform = scene_.AddTransform(camera_entity_);
             camera_transform.local_position = rag::math::Vec3{0.0f, 3.0f, 9.0f};
-            camera_transform.local_rotation_radians = rag::math::Vec3{-0.3f, 0.0f, 0.0f};
+            camera_yaw_radians_ = 0.0f;
+            camera_pitch_radians_ = -0.3f;
+            camera_transform.local_rotation_radians =
+                rag::math::Vec3{camera_pitch_radians_, camera_yaw_radians_, 0.0f};
 
             rag::scene::CameraComponent& camera = scene_.AddCamera(camera_entity_);
             camera.vertical_fov_radians = rag::math::Pi / 3.0f;
@@ -230,9 +245,110 @@ namespace
                 scene_.EntityCount(),
                 " entities (",
                 RingCubeCount,
-                " ring cubes, 1 center cube, 1 camera, 1 directional light), ",
+                " ring cubes, 1 center cube, 1 ground, 1 camera, 1 directional light), ",
                 spinning_cubes_.size(),
                 " of the cubes spin.");
+        }
+
+        void UpdateCamera(
+            const rag::core::FrameTime& frame_time,
+            const rag::core::InputState& input)
+        {
+            rag::scene::TransformComponent* transform = scene_.GetTransform(camera_entity_);
+            if (transform == nullptr)
+            {
+                return;
+            }
+
+            bool transform_changed = false;
+            const rag::i32 mouse_x = input.MouseX();
+            const rag::i32 mouse_y = input.MouseY();
+            const bool mouse_look = input.IsMouseButtonDown(rag::core::MouseButton::Right);
+
+            if (mouse_look)
+            {
+                if (mouse_look_active_)
+                {
+                    const rag::i32 delta_x = mouse_x - previous_mouse_x_;
+                    const rag::i32 delta_y = mouse_y - previous_mouse_y_;
+
+                    camera_yaw_radians_ -= static_cast<rag::f32>(delta_x) * MouseSensitivity;
+                    camera_pitch_radians_ -= static_cast<rag::f32>(delta_y) * MouseSensitivity;
+                    camera_pitch_radians_ = std::clamp(
+                        camera_pitch_radians_,
+                        -MaximumPitchRadians,
+                        MaximumPitchRadians);
+                    transform_changed = delta_x != 0 || delta_y != 0;
+                }
+
+                mouse_look_active_ = true;
+            }
+            else
+            {
+                mouse_look_active_ = false;
+            }
+
+            previous_mouse_x_ = mouse_x;
+            previous_mouse_y_ = mouse_y;
+
+            const rag::f32 cos_pitch = std::cos(camera_pitch_radians_);
+            const rag::math::Vec3 forward = rag::math::Normalize(rag::math::Vec3{
+                -std::sin(camera_yaw_radians_) * cos_pitch,
+                std::sin(camera_pitch_radians_),
+                -std::cos(camera_yaw_radians_) * cos_pitch});
+            const rag::math::Vec3 right = rag::math::Normalize(rag::math::Vec3{
+                std::cos(camera_yaw_radians_),
+                0.0f,
+                -std::sin(camera_yaw_radians_)});
+            constexpr rag::math::Vec3 WorldUp{0.0f, 1.0f, 0.0f};
+
+            rag::math::Vec3 movement{};
+            if (input.IsKeyDown(rag::core::KeyCode::W))
+            {
+                movement = movement + forward;
+            }
+            if (input.IsKeyDown(rag::core::KeyCode::S))
+            {
+                movement = movement - forward;
+            }
+            if (input.IsKeyDown(rag::core::KeyCode::D))
+            {
+                movement = movement + right;
+            }
+            if (input.IsKeyDown(rag::core::KeyCode::A))
+            {
+                movement = movement - right;
+            }
+            if (input.IsKeyDown(rag::core::KeyCode::Space) ||
+                input.IsKeyDown(rag::core::KeyCode::E))
+            {
+                movement = movement + WorldUp;
+            }
+            if (input.IsKeyDown(rag::core::KeyCode::LeftControl) ||
+                input.IsKeyDown(rag::core::KeyCode::Q))
+            {
+                movement = movement - WorldUp;
+            }
+
+            if (rag::math::Length(movement) > 0.000001f)
+            {
+                const rag::f32 speed =
+                    input.IsKeyDown(rag::core::KeyCode::LeftShift)
+                        ? MoveSpeed * SprintMultiplier
+                        : MoveSpeed;
+                const rag::f32 distance =
+                    speed * static_cast<rag::f32>(frame_time.delta_seconds);
+                transform->local_position =
+                    transform->local_position + (rag::math::Normalize(movement) * distance);
+                transform_changed = true;
+            }
+
+            if (transform_changed)
+            {
+                transform->local_rotation_radians =
+                    rag::math::Vec3{camera_pitch_radians_, camera_yaw_radians_, 0.0f};
+                scene_.MarkTransformDirty(camera_entity_);
+            }
         }
 
         void AnimateScene(const rag::core::FrameTime& frame_time)
@@ -258,7 +374,16 @@ namespace
         rag::renderer::RenderWorld render_world_;
         rag::scene::EntityId camera_entity_{};
         std::vector<SpinningCube> spinning_cubes_;
+        static constexpr rag::f32 MoveSpeed = 4.5f;
+        static constexpr rag::f32 SprintMultiplier = 3.0f;
+        static constexpr rag::f32 MouseSensitivity = 0.0025f;
+        static constexpr rag::f32 MaximumPitchRadians = (rag::math::Pi * 0.5f) - 0.01f;
+        rag::f32 camera_yaw_radians_ = 0.0f;
+        rag::f32 camera_pitch_radians_ = 0.0f;
         rag::f64 time_since_title_update_ = 0.0;
+        rag::i32 previous_mouse_x_ = 0;
+        rag::i32 previous_mouse_y_ = 0;
+        bool mouse_look_active_ = false;
         bool smoke_test_ = false;
         bool requested_close_ = false;
 
