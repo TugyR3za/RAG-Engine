@@ -10,10 +10,11 @@ namespace rag::renderer::vk
     struct Vertex
     {
         std::array<f32, 3> position;
+        std::array<f32, 3> normal;
         std::array<f32, 3> color;
 
         [[nodiscard]] static VkVertexInputBindingDescription BindingDescription();
-        [[nodiscard]] static std::array<VkVertexInputAttributeDescription, 2> AttributeDescriptions();
+        [[nodiscard]] static std::array<VkVertexInputAttributeDescription, 3> AttributeDescriptions();
     };
 
     class VulkanVertexBuffer final

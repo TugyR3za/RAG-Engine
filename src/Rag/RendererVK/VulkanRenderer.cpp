@@ -20,25 +20,58 @@ namespace rag::renderer::vk
 {
     namespace
     {
-        constexpr std::array<Vertex, 8> CubeVertices{
-            Vertex{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.1f, 0.1f}},
-            Vertex{{0.5f, -0.5f, -0.5f}, {1.0f, 0.8f, 0.1f}},
-            Vertex{{0.5f, 0.5f, -0.5f}, {0.1f, 1.0f, 0.2f}},
-            Vertex{{-0.5f, 0.5f, -0.5f}, {0.1f, 0.4f, 1.0f}},
-            Vertex{{-0.5f, -0.5f, 0.5f}, {1.0f, 0.1f, 0.8f}},
-            Vertex{{0.5f, -0.5f, 0.5f}, {1.0f, 0.5f, 0.1f}},
-            Vertex{{0.5f, 0.5f, 0.5f}, {0.2f, 1.0f, 0.8f}},
-            Vertex{{-0.5f, 0.5f, 0.5f}, {0.5f, 0.2f, 1.0f}},
+        constexpr std::array<f32, 3> CubeColor{0.55f, 0.72f, 1.0f};
+
+        constexpr std::array<Vertex, 24> CubeVertices{
+            // Front (+Z)
+            Vertex{{-0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, CubeColor},
+            Vertex{{0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, CubeColor},
+            Vertex{{0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, CubeColor},
+            Vertex{{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, CubeColor},
+
+            // Back (-Z)
+            Vertex{{0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, CubeColor},
+            Vertex{{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, CubeColor},
+            Vertex{{-0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, CubeColor},
+            Vertex{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, CubeColor},
+
+            // Left (-X)
+            Vertex{{-0.5f, -0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}, CubeColor},
+            Vertex{{-0.5f, -0.5f, 0.5f}, {-1.0f, 0.0f, 0.0f}, CubeColor},
+            Vertex{{-0.5f, 0.5f, 0.5f}, {-1.0f, 0.0f, 0.0f}, CubeColor},
+            Vertex{{-0.5f, 0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}, CubeColor},
+
+            // Right (+X)
+            Vertex{{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, CubeColor},
+            Vertex{{0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, CubeColor},
+            Vertex{{0.5f, 0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, CubeColor},
+            Vertex{{0.5f, 0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, CubeColor},
+
+            // Top (+Y)
+            Vertex{{-0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, CubeColor},
+            Vertex{{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, CubeColor},
+            Vertex{{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, CubeColor},
+            Vertex{{-0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, CubeColor},
+
+            // Bottom (-Y)
+            Vertex{{-0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}, CubeColor},
+            Vertex{{0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}, CubeColor},
+            Vertex{{0.5f, -0.5f, 0.5f}, {0.0f, -1.0f, 0.0f}, CubeColor},
+            Vertex{{-0.5f, -0.5f, 0.5f}, {0.0f, -1.0f, 0.0f}, CubeColor},
         };
 
         constexpr std::array<u32, 36> CubeIndices{
+            0, 1, 2, 2, 3, 0,
             4, 5, 6, 6, 7, 4,
-            1, 0, 3, 3, 2, 1,
-            0, 4, 7, 7, 3, 0,
-            5, 1, 2, 2, 6, 5,
-            3, 7, 6, 6, 2, 3,
-            0, 1, 5, 5, 4, 0,
+            8, 9, 10, 10, 11, 8,
+            12, 13, 14, 14, 15, 12,
+            16, 17, 18, 18, 19, 16,
+            20, 21, 22, 22, 23, 20,
         };
+
+        constexpr math::Vec3 DefaultLightDirection{0.45f, -0.75f, -0.5f};
+        constexpr math::Vec3 DefaultLightColor{1.0f, 0.95f, 0.85f};
+        constexpr f32 DefaultLightIntensity = 1.1f;
     }
 
     class VulkanRenderer::Impl final
@@ -349,6 +382,30 @@ namespace rag::renderer::vk
                     aspect_ratio,
                     0.1f,
                     100.0f);
+            }
+
+            uniform_data.light_direction = math::Normalize(DefaultLightDirection);
+            uniform_data.light_color = DefaultLightColor;
+            uniform_data.light_intensity = DefaultLightIntensity;
+
+            if (render_world != nullptr)
+            {
+                for (const RenderLight& light : render_world->lights)
+                {
+                    if (light.type != RenderLightType::Directional)
+                    {
+                        continue;
+                    }
+
+                    const math::Vec3 normalized_direction = math::Normalize(light.direction);
+                    if (math::Length(normalized_direction) > 0.000001f)
+                    {
+                        uniform_data.light_direction = normalized_direction;
+                    }
+                    uniform_data.light_color = light.color;
+                    uniform_data.light_intensity = light.intensity;
+                    break;
+                }
             }
 
             // Engine projections target GL-style clip space; Vulkan clip-space Y points down.

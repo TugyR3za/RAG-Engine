@@ -11,6 +11,10 @@ namespace rag::renderer::vk
     {
         math::Mat4 view;
         math::Mat4 projection;
+        alignas(16) math::Vec3 light_direction;
+        f32 light_direction_padding = 0.0f;
+        alignas(16) math::Vec3 light_color;
+        f32 light_intensity = 1.0f;
     };
 
     class VulkanUniformResources final

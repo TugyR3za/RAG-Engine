@@ -172,7 +172,7 @@ namespace rag::renderer::vk
         };
 
         const VkVertexInputBindingDescription binding_description = Vertex::BindingDescription();
-        const std::array<VkVertexInputAttributeDescription, 2> attribute_descriptions =
+        const std::array<VkVertexInputAttributeDescription, 3> attribute_descriptions =
             Vertex::AttributeDescriptions();
 
         VkPipelineVertexInputStateCreateInfo vertex_input{};
@@ -277,7 +277,7 @@ namespace rag::renderer::vk
             &pipeline_));
 
         RAG_LOG_INFO(
-            "Created Vulkan graphics pipeline with camera UBO descriptors, a model push constant, and depth testing using shaders ",
+            "Created Vulkan graphics pipeline with camera/light UBO descriptors, a model push constant, and depth testing using shaders ",
             vertex_path.string(),
             " and ",
             fragment_path.string(),

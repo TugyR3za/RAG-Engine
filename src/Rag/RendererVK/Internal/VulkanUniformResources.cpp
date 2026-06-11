@@ -2,12 +2,19 @@
 
 #include "Rag/Core/Log.h"
 
+#include <cstddef>
 #include <cstring>
 
 namespace rag::renderer::vk
 {
     static_assert(sizeof(math::Mat4) == sizeof(f32) * 16);
-    static_assert(sizeof(UniformBufferObject) == sizeof(math::Mat4) * 2);
+    static_assert(sizeof(UniformBufferObject) == 160);
+    static_assert(offsetof(UniformBufferObject, view) == 0);
+    static_assert(offsetof(UniformBufferObject, projection) == 64);
+    static_assert(offsetof(UniformBufferObject, light_direction) == 128);
+    static_assert(offsetof(UniformBufferObject, light_direction_padding) == 140);
+    static_assert(offsetof(UniformBufferObject, light_color) == 144);
+    static_assert(offsetof(UniformBufferObject, light_intensity) == 156);
 
     VulkanUniformResources::VulkanUniformResources(VulkanDevice& device, u32 frames_in_flight)
         : device_(device)
@@ -74,7 +81,7 @@ namespace rag::renderer::vk
         uniform_binding.binding = 0;
         uniform_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         uniform_binding.descriptorCount = 1;
-        uniform_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        uniform_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
         VkDescriptorSetLayoutCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;

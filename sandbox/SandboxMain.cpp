@@ -216,12 +216,21 @@ namespace
             }
             scene_.SetActiveCamera(camera_entity_);
 
+            const rag::scene::EntityId light_entity = scene_.CreateEntity();
+            rag::scene::TransformComponent& light_transform = scene_.AddTransform(light_entity);
+            light_transform.local_rotation_radians = rag::math::Vec3{0.65f, 0.0f, 0.65f};
+
+            rag::scene::LightComponent& light = scene_.AddLight(light_entity);
+            light.type = rag::renderer::RenderLightType::Directional;
+            light.color = rag::math::Vec3{1.0f, 0.92f, 0.78f};
+            light.intensity = 1.25f;
+
             RAG_LOG_INFO(
                 "Built sandbox scene: ",
                 scene_.EntityCount(),
                 " entities (",
                 RingCubeCount,
-                " ring cubes, 1 center cube, 1 camera), ",
+                " ring cubes, 1 center cube, 1 camera, 1 directional light), ",
                 spinning_cubes_.size(),
                 " of the cubes spin.");
         }
