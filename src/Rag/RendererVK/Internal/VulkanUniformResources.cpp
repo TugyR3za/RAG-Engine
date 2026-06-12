@@ -9,7 +9,7 @@
 namespace rag::renderer::vk
 {
     static_assert(sizeof(math::Mat4) == sizeof(f32) * 16);
-    static_assert(sizeof(UniformBufferObject) == 240);
+    static_assert(sizeof(UniformBufferObject) == 256);
     static_assert(offsetof(UniformBufferObject, view) == 0);
     static_assert(offsetof(UniformBufferObject, projection) == 64);
     static_assert(offsetof(UniformBufferObject, light_space) == 128);
@@ -19,6 +19,10 @@ namespace rag::renderer::vk
     static_assert(offsetof(UniformBufferObject, light_intensity) == 220);
     static_assert(offsetof(UniformBufferObject, camera_position) == 224);
     static_assert(offsetof(UniformBufferObject, camera_position_padding) == 236);
+    static_assert(offsetof(UniformBufferObject, shadow_pcf_kernel_radius) == 240);
+    static_assert(offsetof(UniformBufferObject, shadow_ambient_floor) == 244);
+    static_assert(offsetof(UniformBufferObject, shadow_tuning_padding_0) == 248);
+    static_assert(offsetof(UniformBufferObject, shadow_tuning_padding_1) == 252);
 
     VulkanUniformResources::VulkanUniformResources(VulkanDevice& device, u32 frames_in_flight)
         : device_(device)

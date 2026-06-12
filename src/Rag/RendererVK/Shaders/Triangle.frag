@@ -17,6 +17,10 @@ layout(set = 0, binding = 0) uniform CameraUniforms
     float light_intensity;
     vec3 camera_position;
     float camera_position_padding;
+    int shadow_pcf_kernel_radius;
+    float shadow_ambient_floor;
+    float shadow_tuning_padding_0;
+    float shadow_tuning_padding_1;
 } camera;
 
 // Directional shadow map sampled through a depth-comparison sampler.
@@ -50,19 +54,21 @@ float ComputeLitFactor(vec3 normal, vec3 direction_to_light)
     float bias = max(kShadowMaxBias * (1.0 - n_dot_l), kShadowMinBias);
     float reference_depth = current_depth - bias;
 
-    // 3x3 PCF. Each comparison tap returns 0..1 (and is itself 2x2-filtered when
-    // the device supports linear depth filtering), so this softens shadow edges.
+    // Configurable PCF. Radius 1 is 3x3; radius 2 is 5x5. Each comparison tap
+    // returns 0..1 and may itself be linearly filtered by the depth sampler.
+    int kernel_radius = clamp(camera.shadow_pcf_kernel_radius, 0, 3);
     vec2 texel_size = 1.0 / vec2(textureSize(shadow_map, 0));
     float lit = 0.0;
-    for (int x = -1; x <= 1; ++x)
+    for (int x = -kernel_radius; x <= kernel_radius; ++x)
     {
-        for (int y = -1; y <= 1; ++y)
+        for (int y = -kernel_radius; y <= kernel_radius; ++y)
         {
             vec2 offset = vec2(float(x), float(y)) * texel_size;
             lit += texture(shadow_map, vec3(shadow_uv + offset, reference_depth));
         }
     }
-    return lit / 9.0;
+    int kernel_width = (kernel_radius * 2) + 1;
+    return lit / float(kernel_width * kernel_width);
 }
 
 void main()
@@ -80,8 +86,13 @@ void main()
     const vec3 diffuse = diffuse_factor * camera.light_color * camera.light_intensity;
     const vec3 specular = specular_factor * camera.light_color * camera.light_intensity;
 
-    // Shadowed fragments keep ambient but lose diffuse + specular, so shadows
-    // are dark but not pure black.
+    // Keep a configurable fraction of direct light in fully shadowed areas so
+    // shadows read as natural dark gray instead of near-black.
     const float lit = ComputeLitFactor(normal, direction_to_light);
-    output_color = vec4((vertex_color * (ambient + (lit * diffuse))) + (lit * specular), 1.0);
+    const float shadow_visibility =
+        mix(clamp(camera.shadow_ambient_floor, 0.0, 1.0), 1.0, lit);
+    output_color = vec4(
+        (vertex_color * (ambient + (shadow_visibility * diffuse))) +
+            (shadow_visibility * specular),
+        1.0);
 }

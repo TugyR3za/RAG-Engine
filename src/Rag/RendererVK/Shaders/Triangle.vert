@@ -20,6 +20,10 @@ layout(set = 0, binding = 0) uniform CameraUniforms
     float light_intensity;
     vec3 camera_position;
     float camera_position_padding;
+    int shadow_pcf_kernel_radius;
+    float shadow_ambient_floor;
+    float shadow_tuning_padding_0;
+    float shadow_tuning_padding_1;
 } camera;
 
 layout(push_constant) uniform ObjectPushConstants

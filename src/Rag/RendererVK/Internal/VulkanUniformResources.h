@@ -18,6 +18,10 @@ namespace rag::renderer::vk
         f32 light_intensity = 1.0f;
         alignas(16) math::Vec3 camera_position;
         f32 camera_position_padding = 0.0f;
+        i32 shadow_pcf_kernel_radius = 2;
+        f32 shadow_ambient_floor = 0.25f;
+        f32 shadow_tuning_padding_0 = 0.0f;
+        f32 shadow_tuning_padding_1 = 0.0f;
     };
 
     class VulkanUniformResources final

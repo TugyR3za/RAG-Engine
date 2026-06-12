@@ -80,14 +80,18 @@ namespace rag::renderer::vk
         constexpr math::Vec3 DefaultLightColor{1.0f, 0.95f, 0.85f};
         constexpr f32 DefaultLightIntensity = 1.1f;
 
-        // --- Directional shadow map tuning knobs --------------------------------
+        // --- Directional shadow quality knobs -----------------------------------
+        // Full width/height of the orthographic light frustum in world units.
+        // Keep this only large enough to cover the scene's shadow area of interest.
+        constexpr f32 ShadowFrustumSize = 14.0f;
+        // Radius 1 = 3x3 PCF, radius 2 = 5x5 PCF.
+        constexpr i32 ShadowPcfKernelRadius = 2;
+        // Minimum direct-light visibility in fully shadowed areas. Higher values
+        // make shadows lighter; 0.0 is fully dark and 1.0 disables shadows.
+        constexpr f32 ShadowAmbientFloor = 0.25f;
+
         // Shadow map resolution. Larger = crisper shadows, more memory/bandwidth.
         constexpr u32 ShadowMapSize = 2048;
-        // Half-width of the orthographic light frustum, in world units. It must
-        // cover the casters and the ground area where their shadows land. Smaller
-        // = higher effective resolution (and less bias needed); too small clips
-        // shadows at the edges.
-        constexpr f32 ShadowOrthoHalfExtent = 16.0f;
         // How far up-light the shadow "camera" sits from the scene center, plus
         // the near/far planes of its orthographic frustum along the light axis.
         constexpr f32 ShadowDistance = 30.0f;
@@ -151,8 +155,8 @@ namespace rag::renderer::vk
 
             const math::Mat4 light_view = LookAtRH(eye, SceneCenter, up);
             const math::Mat4 light_projection = math::OrthographicRH_ZO(
-                ShadowOrthoHalfExtent * 2.0f,
-                ShadowOrthoHalfExtent * 2.0f,
+                ShadowFrustumSize,
+                ShadowFrustumSize,
                 ShadowNearPlane,
                 ShadowFarPlane);
             return math::Multiply(light_projection, light_view);
@@ -196,6 +200,7 @@ namespace rag::renderer::vk
                 *device_,
                 desc_.frames_in_flight,
                 ShadowMapSize);
+            LogShadowCoverage();
             shadow_pipeline_ = std::make_unique<VulkanShadowPipeline>(
                 device_->Device(),
                 shadow_map_->RenderPass(),
@@ -546,6 +551,8 @@ namespace rag::renderer::vk
             uniform_data.light_direction = math::Normalize(DefaultLightDirection);
             uniform_data.light_color = DefaultLightColor;
             uniform_data.light_intensity = DefaultLightIntensity;
+            uniform_data.shadow_pcf_kernel_radius = ShadowPcfKernelRadius;
+            uniform_data.shadow_ambient_floor = ShadowAmbientFloor;
 
             if (render_world != nullptr)
             {
@@ -617,10 +624,58 @@ namespace rag::renderer::vk
                 "x",
                 stats_.swapchain_height,
                 ", images=",
-                stats_.swapchain_image_count);
+                stats_.swapchain_image_count,
+                ", shadow_bounds=[",
+                -ShadowFrustumSize * 0.5f,
+                ", ",
+                ShadowFrustumSize * 0.5f,
+                "]x[",
+                -ShadowFrustumSize * 0.5f,
+                ", ",
+                ShadowFrustumSize * 0.5f,
+                "], shadow_center=(",
+                SceneCenter.x,
+                ", ",
+                SceneCenter.y,
+                ", ",
+                SceneCenter.z,
+                ")");
 
             diagnostics_elapsed_seconds_ = 0.0;
             diagnostics_frame_count_ = 0;
+        }
+
+        static void LogShadowCoverage()
+        {
+            const f32 half_size = ShadowFrustumSize * 0.5f;
+            RAG_LOG_INFO(
+                "Directional shadow coverage: center=(",
+                SceneCenter.x,
+                ", ",
+                SceneCenter.y,
+                ", ",
+                SceneCenter.z,
+                "), light_xy_bounds=[",
+                -half_size,
+                ", ",
+                half_size,
+                "]x[",
+                -half_size,
+                ", ",
+                half_size,
+                "], near=",
+                ShadowNearPlane,
+                ", far=",
+                ShadowFarPlane,
+                ", map=",
+                ShadowMapSize,
+                "x",
+                ShadowMapSize,
+                ", pcf_radius=",
+                ShadowPcfKernelRadius,
+                ", shadow_ambient_floor=",
+                ShadowAmbientFloor,
+                ".");
         }
 
         RendererDesc desc_{};
