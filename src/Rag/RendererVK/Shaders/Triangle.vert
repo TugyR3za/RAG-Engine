@@ -7,11 +7,13 @@ layout(location = 2) in vec3 in_color;
 layout(location = 0) out vec3 vertex_color;
 layout(location = 1) out vec3 world_normal;
 layout(location = 2) out vec3 world_position;
+layout(location = 3) out vec4 light_space_position;
 
 layout(set = 0, binding = 0) uniform CameraUniforms
 {
     mat4 view;
     mat4 projection;
+    mat4 light_space;
     vec3 light_direction;
     float light_direction_padding;
     vec3 light_color;
@@ -32,4 +34,7 @@ void main()
     vertex_color = in_color;
     world_normal = normalize(mat3(object.model) * in_normal);
     world_position = position_world.xyz;
+    // Position in the light's clip space for the shadow lookup. The light uses an
+    // orthographic projection (w == 1), so this interpolates linearly.
+    light_space_position = camera.light_space * position_world;
 }

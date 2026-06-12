@@ -175,6 +175,15 @@ namespace
         {
             constexpr rag::u32 RingCubeCount = 8;
             constexpr rag::f32 RingRadius = 4.0f;
+            constexpr rag::f32 GroundSurfaceHeight = -0.5f;
+            constexpr rag::f32 UnitCubeHalfDiagonal = 0.8660254f;
+            constexpr rag::f32 GroundClearance = 0.1f;
+            constexpr rag::f32 RingCubeScale = 1.0f;
+            constexpr rag::f32 CenterCubeScale = 1.5f;
+            constexpr rag::f32 RingCubeCenterHeight =
+                GroundSurfaceHeight + (UnitCubeHalfDiagonal * RingCubeScale) + GroundClearance;
+            constexpr rag::f32 CenterCubeCenterHeight =
+                GroundSurfaceHeight + (UnitCubeHalfDiagonal * CenterCubeScale) + GroundClearance;
 
             for (rag::u32 index = 0; index < RingCubeCount; ++index)
             {
@@ -185,7 +194,7 @@ namespace
                 rag::scene::TransformComponent& transform = scene_.AddTransform(entity);
                 transform.local_position = rag::math::Vec3{
                     RingRadius * std::cos(angle),
-                    0.0f,
+                    RingCubeCenterHeight,
                     RingRadius * std::sin(angle)};
                 scene_.AddRenderable(entity);
 
@@ -200,8 +209,10 @@ namespace
 
             const rag::scene::EntityId center_cube = scene_.CreateEntity();
             rag::scene::TransformComponent& center_transform = scene_.AddTransform(center_cube);
-            center_transform.local_position = rag::math::Vec3{0.0f, 0.25f, 0.0f};
-            center_transform.local_scale = rag::math::Vec3{1.5f, 1.5f, 1.5f};
+            center_transform.local_position =
+                rag::math::Vec3{0.0f, CenterCubeCenterHeight, 0.0f};
+            center_transform.local_scale =
+                rag::math::Vec3{CenterCubeScale, CenterCubeScale, CenterCubeScale};
             scene_.AddRenderable(center_cube);
             spinning_cubes_.push_back(SpinningCube{center_cube, 0.9f, 0.5f});
 
@@ -375,7 +386,7 @@ namespace
         rag::scene::EntityId camera_entity_{};
         std::vector<SpinningCube> spinning_cubes_;
         static constexpr rag::f32 MoveSpeed = 4.5f;
-        static constexpr rag::f32 SprintMultiplier = 3.0f;
+        static constexpr rag::f32 SprintMultiplier = 4.0f;
         static constexpr rag::f32 MouseSensitivity = 0.0025f;
         static constexpr rag::f32 MaximumPitchRadians = (rag::math::Pi * 0.5f) - 0.01f;
         rag::f32 camera_yaw_radians_ = 0.0f;

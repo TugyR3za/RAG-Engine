@@ -1,8 +1,7 @@
-#include "Rag/RendererVK/Internal/VulkanGraphicsPipeline.h"
+#include "Rag/RendererVK/Internal/VulkanShadowDebugPipeline.h"
 
 #include "Rag/Core/Log.h"
 #include "Rag/RendererVK/Internal/VulkanShaderModule.h"
-#include "Rag/RendererVK/Internal/VulkanVertexBuffer.h"
 
 #include <array>
 #include <string_view>
@@ -11,11 +10,11 @@ namespace rag::renderer::vk
 {
     namespace
     {
-        constexpr std::string_view VertexShaderFilename = "triangle.vert.spv";
-        constexpr std::string_view FragmentShaderFilename = "triangle.frag.spv";
+        constexpr std::string_view DebugVertexShaderFilename = "shadow_debug.vert.spv";
+        constexpr std::string_view DebugFragmentShaderFilename = "shadow_debug.frag.spv";
     }
 
-    VulkanGraphicsPipeline::VulkanGraphicsPipeline(
+    VulkanShadowDebugPipeline::VulkanShadowDebugPipeline(
         VkDevice device,
         VkRenderPass render_pass,
         VkDescriptorSetLayout descriptor_set_layout)
@@ -32,12 +31,12 @@ namespace rag::renderer::vk
         }
     }
 
-    VulkanGraphicsPipeline::~VulkanGraphicsPipeline()
+    VulkanShadowDebugPipeline::~VulkanShadowDebugPipeline()
     {
         Cleanup();
     }
 
-    void VulkanGraphicsPipeline::Bind(VkCommandBuffer command_buffer, VkExtent2D extent) const
+    void VulkanShadowDebugPipeline::Bind(VkCommandBuffer command_buffer, VkExtent2D extent) const
     {
         vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_);
 
@@ -56,7 +55,7 @@ namespace rag::renderer::vk
         vkCmdSetScissor(command_buffer, 0, 1, &scissor);
     }
 
-    void VulkanGraphicsPipeline::BindDescriptorSet(
+    void VulkanShadowDebugPipeline::BindDescriptorSet(
         VkCommandBuffer command_buffer,
         VkDescriptorSet descriptor_set) const
     {
@@ -71,26 +70,17 @@ namespace rag::renderer::vk
             nullptr);
     }
 
-    void VulkanGraphicsPipeline::PushModelMatrix(
-        VkCommandBuffer command_buffer,
-        const math::Mat4& model) const
+    void VulkanShadowDebugPipeline::Draw(VkCommandBuffer command_buffer) const
     {
-        static_assert(sizeof(math::Mat4) == 64);
-        vkCmdPushConstants(
-            command_buffer,
-            layout_,
-            VK_SHADER_STAGE_VERTEX_BIT,
-            0,
-            sizeof(math::Mat4),
-            model.elements.data());
+        vkCmdDraw(command_buffer, 6, 1, 0, 0);
     }
 
-    void VulkanGraphicsPipeline::Create(
+    void VulkanShadowDebugPipeline::Create(
         VkRenderPass render_pass,
         VkDescriptorSetLayout descriptor_set_layout)
     {
-        const ScopedShaderModule vertex_module = LoadShaderModule(device_, VertexShaderFilename);
-        const ScopedShaderModule fragment_module = LoadShaderModule(device_, FragmentShaderFilename);
+        const ScopedShaderModule vertex_module = LoadShaderModule(device_, DebugVertexShaderFilename);
+        const ScopedShaderModule fragment_module = LoadShaderModule(device_, DebugFragmentShaderFilename);
 
         const VkPipelineShaderStageCreateInfo shader_stages[] = {
             {
@@ -107,16 +97,9 @@ namespace rag::renderer::vk
             },
         };
 
-        const VkVertexInputBindingDescription binding_description = Vertex::BindingDescription();
-        const std::array<VkVertexInputAttributeDescription, 3> attribute_descriptions =
-            Vertex::AttributeDescriptions();
-
+        // The quad is generated from gl_VertexIndex, so there is no vertex input.
         VkPipelineVertexInputStateCreateInfo vertex_input{};
         vertex_input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertex_input.vertexBindingDescriptionCount = 1;
-        vertex_input.pVertexBindingDescriptions = &binding_description;
-        vertex_input.vertexAttributeDescriptionCount = static_cast<u32>(attribute_descriptions.size());
-        vertex_input.pVertexAttributeDescriptions = attribute_descriptions.data();
 
         VkPipelineInputAssemblyStateCreateInfo input_assembly{};
         input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -143,11 +126,12 @@ namespace rag::renderer::vk
         multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
         multisampling.sampleShadingEnable = VK_FALSE;
 
+        // Overlay draws on top of the scene; ignore the depth buffer entirely.
         VkPipelineDepthStencilStateCreateInfo depth_stencil{};
         depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        depth_stencil.depthTestEnable = VK_TRUE;
-        depth_stencil.depthWriteEnable = VK_TRUE;
-        depth_stencil.depthCompareOp = VK_COMPARE_OP_LESS;
+        depth_stencil.depthTestEnable = VK_FALSE;
+        depth_stencil.depthWriteEnable = VK_FALSE;
+        depth_stencil.depthCompareOp = VK_COMPARE_OP_ALWAYS;
         depth_stencil.depthBoundsTestEnable = VK_FALSE;
         depth_stencil.stencilTestEnable = VK_FALSE;
 
@@ -175,17 +159,11 @@ namespace rag::renderer::vk
         dynamic_state.dynamicStateCount = static_cast<u32>(std::size(dynamic_states));
         dynamic_state.pDynamicStates = dynamic_states;
 
-        VkPushConstantRange push_constant_range{};
-        push_constant_range.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        push_constant_range.offset = 0;
-        push_constant_range.size = sizeof(math::Mat4);
-
         VkPipelineLayoutCreateInfo layout_info{};
         layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         layout_info.setLayoutCount = 1;
         layout_info.pSetLayouts = &descriptor_set_layout;
-        layout_info.pushConstantRangeCount = 1;
-        layout_info.pPushConstantRanges = &push_constant_range;
+        layout_info.pushConstantRangeCount = 0;
         RAG_VK_CHECK(vkCreatePipelineLayout(device_, &layout_info, nullptr, &layout_));
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
@@ -212,16 +190,10 @@ namespace rag::renderer::vk
             nullptr,
             &pipeline_));
 
-        RAG_LOG_INFO(
-            "Created Vulkan graphics pipeline with camera/light UBO + shadow-map descriptors, "
-            "a model push constant, and depth testing using shaders ",
-            VertexShaderFilename,
-            " and ",
-            FragmentShaderFilename,
-            ".");
+        RAG_LOG_INFO("Created Vulkan shadow-map debug overlay pipeline (RAG_SHADOW_DEBUG).");
     }
 
-    void VulkanGraphicsPipeline::Cleanup()
+    void VulkanShadowDebugPipeline::Cleanup()
     {
         if (pipeline_ != VK_NULL_HANDLE)
         {

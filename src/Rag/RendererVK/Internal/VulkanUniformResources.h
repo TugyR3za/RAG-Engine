@@ -11,6 +11,7 @@ namespace rag::renderer::vk
     {
         math::Mat4 view;
         math::Mat4 projection;
+        math::Mat4 light_space;
         alignas(16) math::Vec3 light_direction;
         f32 light_direction_padding = 0.0f;
         alignas(16) math::Vec3 light_color;
@@ -29,6 +30,16 @@ namespace rag::renderer::vk
         VulkanUniformResources& operator=(const VulkanUniformResources&) = delete;
 
         void Update(u32 frame_index, const UniformBufferObject& uniform_data);
+
+        // Points a frame's descriptor set at the shadow map: binding 1 is the
+        // depth-comparison sampler used by the main lighting pass, binding 2 is a
+        // plain sampler used only by the RAG_SHADOW_DEBUG overlay. The shadow map
+        // is fixed size, so this is written once at startup rather than per frame.
+        void BindShadowMap(
+            u32 frame_index,
+            VkImageView shadow_view,
+            VkSampler compare_sampler,
+            VkSampler depth_sampler);
 
         [[nodiscard]] VkDescriptorSetLayout DescriptorSetLayout() const;
         [[nodiscard]] VkDescriptorSet DescriptorSet(u32 frame_index) const;

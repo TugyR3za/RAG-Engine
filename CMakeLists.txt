@@ -9,6 +9,7 @@ project(RAGEngine
 option(RAG_BUILD_SANDBOX "Build the RAG Engine sandbox application" ON)
 option(RAG_BUILD_TESTS "Build RAG Engine test executables" ON)
 option(RAG_ENABLE_VULKAN "Build the Vulkan renderer backend" ON)
+option(RAG_SHADOW_DEBUG "Draw the directional shadow depth map as a debug overlay quad" OFF)
 
 include(cmake/RagCompilerOptions.cmake)
 include(cmake/RagVulkan.cmake)
@@ -90,6 +91,14 @@ if(RAG_ENABLE_VULKAN)
         src/Rag/RendererVK/Internal/VulkanIndexBuffer.h
         src/Rag/RendererVK/Internal/VulkanInstance.cpp
         src/Rag/RendererVK/Internal/VulkanInstance.h
+        src/Rag/RendererVK/Internal/VulkanShaderModule.cpp
+        src/Rag/RendererVK/Internal/VulkanShaderModule.h
+        src/Rag/RendererVK/Internal/VulkanShadowDebugPipeline.cpp
+        src/Rag/RendererVK/Internal/VulkanShadowDebugPipeline.h
+        src/Rag/RendererVK/Internal/VulkanShadowMap.cpp
+        src/Rag/RendererVK/Internal/VulkanShadowMap.h
+        src/Rag/RendererVK/Internal/VulkanShadowPipeline.cpp
+        src/Rag/RendererVK/Internal/VulkanShadowPipeline.h
         src/Rag/RendererVK/Internal/VulkanSurface.cpp
         src/Rag/RendererVK/Internal/VulkanSurface.h
         src/Rag/RendererVK/Internal/VulkanSwapchain.cpp
@@ -98,6 +107,9 @@ if(RAG_ENABLE_VULKAN)
         src/Rag/RendererVK/Internal/VulkanUniformResources.h
         src/Rag/RendererVK/Internal/VulkanVertexBuffer.cpp
         src/Rag/RendererVK/Internal/VulkanVertexBuffer.h
+        src/Rag/RendererVK/Shaders/ShadowDebug.frag
+        src/Rag/RendererVK/Shaders/ShadowDebug.vert
+        src/Rag/RendererVK/Shaders/ShadowDepth.vert
         src/Rag/RendererVK/Shaders/Triangle.frag
         src/Rag/RendererVK/Shaders/Triangle.vert
     )
@@ -107,34 +119,42 @@ if(RAG_ENABLE_VULKAN)
         PRIVATE
             VK_USE_PLATFORM_WIN32_KHR
             $<$<CONFIG:Debug>:RAG_ENABLE_VULKAN_VALIDATION=1>
+            $<$<BOOL:${RAG_SHADOW_DEBUG}>:RAG_SHADOW_DEBUG=1>
     )
     target_link_libraries(RagRendererVK PUBLIC RagRenderer PRIVATE Vulkan::Vulkan)
 
     set(RAG_VULKAN_SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/shaders")
-    set(RAG_VULKAN_VERTEX_SHADER "${CMAKE_CURRENT_SOURCE_DIR}/src/Rag/RendererVK/Shaders/Triangle.vert")
-    set(RAG_VULKAN_FRAGMENT_SHADER "${CMAKE_CURRENT_SOURCE_DIR}/src/Rag/RendererVK/Shaders/Triangle.frag")
-    set(RAG_VULKAN_VERTEX_SPV "${RAG_VULKAN_SHADER_OUTPUT_DIR}/triangle.vert.spv")
-    set(RAG_VULKAN_FRAGMENT_SPV "${RAG_VULKAN_SHADER_OUTPUT_DIR}/triangle.frag.spv")
 
-    add_custom_command(
-        OUTPUT
-            "${RAG_VULKAN_VERTEX_SPV}"
-            "${RAG_VULKAN_FRAGMENT_SPV}"
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${RAG_VULKAN_SHADER_OUTPUT_DIR}"
-        COMMAND "${RAG_GLSLANG_VALIDATOR_EXECUTABLE}" -V "${RAG_VULKAN_VERTEX_SHADER}" -o "${RAG_VULKAN_VERTEX_SPV}"
-        COMMAND "${RAG_GLSLANG_VALIDATOR_EXECUTABLE}" -V "${RAG_VULKAN_FRAGMENT_SHADER}" -o "${RAG_VULKAN_FRAGMENT_SPV}"
-        DEPENDS
-            "${RAG_VULKAN_VERTEX_SHADER}"
-            "${RAG_VULKAN_FRAGMENT_SHADER}"
-        COMMENT "Compiling RAG Engine rotating-cube Vulkan shaders"
-        VERBATIM
+    # "<source file>|<output spv name>" pairs. The output names are what the
+    # renderer looks up at runtime, so keep them in sync with the *.cpp filenames.
+    set(RAG_VULKAN_SHADER_DEFS
+        "Triangle.vert|triangle.vert.spv"
+        "Triangle.frag|triangle.frag.spv"
+        "ShadowDepth.vert|shadow_depth.vert.spv"
+        "ShadowDebug.vert|shadow_debug.vert.spv"
+        "ShadowDebug.frag|shadow_debug.frag.spv"
     )
 
-    add_custom_target(RagRendererVKShaders
-        DEPENDS
-            "${RAG_VULKAN_VERTEX_SPV}"
-            "${RAG_VULKAN_FRAGMENT_SPV}"
-    )
+    set(RAG_VULKAN_SHADER_SPV_FILES "")
+    foreach(shader_def IN LISTS RAG_VULKAN_SHADER_DEFS)
+        string(REPLACE "|" ";" shader_parts "${shader_def}")
+        list(GET shader_parts 0 shader_source_name)
+        list(GET shader_parts 1 shader_output_name)
+        set(shader_source "${CMAKE_CURRENT_SOURCE_DIR}/src/Rag/RendererVK/Shaders/${shader_source_name}")
+        set(shader_spv "${RAG_VULKAN_SHADER_OUTPUT_DIR}/${shader_output_name}")
+
+        add_custom_command(
+            OUTPUT "${shader_spv}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${RAG_VULKAN_SHADER_OUTPUT_DIR}"
+            COMMAND "${RAG_GLSLANG_VALIDATOR_EXECUTABLE}" -V "${shader_source}" -o "${shader_spv}"
+            DEPENDS "${shader_source}"
+            COMMENT "Compiling RAG Engine Vulkan shader ${shader_source_name}"
+            VERBATIM
+        )
+        list(APPEND RAG_VULKAN_SHADER_SPV_FILES "${shader_spv}")
+    endforeach()
+
+    add_custom_target(RagRendererVKShaders DEPENDS ${RAG_VULKAN_SHADER_SPV_FILES})
     add_dependencies(RagRendererVK RagRendererVKShaders)
 
     target_link_libraries(RagEngine INTERFACE RagRendererVK)
@@ -151,15 +171,21 @@ if(RAG_BUILD_SANDBOX)
             TARGET RagSandbox
             POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:RagSandbox>/shaders"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${RAG_VULKAN_VERTEX_SPV}"
-                "$<TARGET_FILE_DIR:RagSandbox>/shaders/triangle.vert.spv"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${RAG_VULKAN_FRAGMENT_SPV}"
-                "$<TARGET_FILE_DIR:RagSandbox>/shaders/triangle.frag.spv"
-            COMMENT "Copying RAG Engine Vulkan shaders next to RagSandbox"
+            COMMENT "Preparing RAG Engine shader directory next to RagSandbox"
             VERBATIM
         )
+        foreach(shader_spv IN LISTS RAG_VULKAN_SHADER_SPV_FILES)
+            get_filename_component(shader_spv_name "${shader_spv}" NAME)
+            add_custom_command(
+                TARGET RagSandbox
+                POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${shader_spv}"
+                    "$<TARGET_FILE_DIR:RagSandbox>/shaders/${shader_spv_name}"
+                COMMENT "Copying RAG Engine Vulkan shader ${shader_spv_name} next to RagSandbox"
+                VERBATIM
+            )
+        endforeach()
     endif()
 endif()
 

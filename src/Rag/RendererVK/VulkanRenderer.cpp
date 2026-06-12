@@ -6,13 +6,20 @@
 #include "Rag/RendererVK/Internal/VulkanGraphicsPipeline.h"
 #include "Rag/RendererVK/Internal/VulkanIndexBuffer.h"
 #include "Rag/RendererVK/Internal/VulkanInstance.h"
+#include "Rag/RendererVK/Internal/VulkanShadowMap.h"
+#include "Rag/RendererVK/Internal/VulkanShadowPipeline.h"
 #include "Rag/RendererVK/Internal/VulkanSurface.h"
 #include "Rag/RendererVK/Internal/VulkanSwapchain.h"
 #include "Rag/RendererVK/Internal/VulkanUniformResources.h"
 #include "Rag/RendererVK/Internal/VulkanVertexBuffer.h"
 
+#if defined(RAG_SHADOW_DEBUG)
+    #include "Rag/RendererVK/Internal/VulkanShadowDebugPipeline.h"
+#endif
+
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <limits>
 #include <vector>
 
@@ -72,6 +79,84 @@ namespace rag::renderer::vk
         constexpr math::Vec3 DefaultLightDirection{0.45f, -0.75f, -0.5f};
         constexpr math::Vec3 DefaultLightColor{1.0f, 0.95f, 0.85f};
         constexpr f32 DefaultLightIntensity = 1.1f;
+
+        // --- Directional shadow map tuning knobs --------------------------------
+        // Shadow map resolution. Larger = crisper shadows, more memory/bandwidth.
+        constexpr u32 ShadowMapSize = 2048;
+        // Half-width of the orthographic light frustum, in world units. It must
+        // cover the casters and the ground area where their shadows land. Smaller
+        // = higher effective resolution (and less bias needed); too small clips
+        // shadows at the edges.
+        constexpr f32 ShadowOrthoHalfExtent = 16.0f;
+        // How far up-light the shadow "camera" sits from the scene center, plus
+        // the near/far planes of its orthographic frustum along the light axis.
+        constexpr f32 ShadowDistance = 30.0f;
+        constexpr f32 ShadowNearPlane = 1.0f;
+        constexpr f32 ShadowFarPlane = 60.0f;
+        // Point the light frustum looks at; the sandbox scene is centered here.
+        constexpr math::Vec3 SceneCenter{0.0f, 0.0f, 0.0f};
+
+        [[nodiscard]] math::Vec3 Cross(math::Vec3 a, math::Vec3 b)
+        {
+            return math::Vec3{
+                (a.y * b.z) - (a.z * b.y),
+                (a.z * b.x) - (a.x * b.z),
+                (a.x * b.y) - (a.y * b.x)};
+        }
+
+        // Right-handed look-at view matrix (matches the engine's RH_ZO
+        // projections). Kept local to the renderer rather than added to Math.h.
+        [[nodiscard]] math::Mat4 LookAtRH(math::Vec3 eye, math::Vec3 center, math::Vec3 up)
+        {
+            const math::Vec3 forward = math::Normalize(center - eye);
+            const math::Vec3 right = math::Normalize(Cross(forward, up));
+            const math::Vec3 true_up = Cross(right, forward);
+
+            math::Mat4 result = math::Identity();
+            result(0, 0) = right.x;
+            result(0, 1) = right.y;
+            result(0, 2) = right.z;
+            result(1, 0) = true_up.x;
+            result(1, 1) = true_up.y;
+            result(1, 2) = true_up.z;
+            result(2, 0) = -forward.x;
+            result(2, 1) = -forward.y;
+            result(2, 2) = -forward.z;
+            result(0, 3) = -math::Dot(right, eye);
+            result(1, 3) = -math::Dot(true_up, eye);
+            result(2, 3) = math::Dot(forward, eye);
+            return result;
+        }
+
+        // Builds the light-space view-projection used to render and sample the
+        // shadow map. No Vulkan Y-flip is applied: the same matrix is used to
+        // write the shadow map and to look it up, so the convention is internally
+        // consistent (xy -> uv via *0.5 + 0.5, z already in [0, 1]).
+        [[nodiscard]] math::Mat4 ComputeLightSpaceMatrix(math::Vec3 light_direction)
+        {
+            math::Vec3 direction = math::Normalize(light_direction);
+            if (math::Length(direction) < 0.000001f)
+            {
+                direction = math::Normalize(DefaultLightDirection);
+            }
+
+            const math::Vec3 eye = SceneCenter - (direction * ShadowDistance);
+
+            // Avoid a degenerate basis when the light points (anti)parallel to up.
+            math::Vec3 up{0.0f, 1.0f, 0.0f};
+            if (std::abs(math::Dot(direction, up)) > 0.99f)
+            {
+                up = math::Vec3{0.0f, 0.0f, 1.0f};
+            }
+
+            const math::Mat4 light_view = LookAtRH(eye, SceneCenter, up);
+            const math::Mat4 light_projection = math::OrthographicRH_ZO(
+                ShadowOrthoHalfExtent * 2.0f,
+                ShadowOrthoHalfExtent * 2.0f,
+                ShadowNearPlane,
+                ShadowFarPlane);
+            return math::Multiply(light_projection, light_view);
+        }
     }
 
     class VulkanRenderer::Impl final
@@ -105,6 +190,36 @@ namespace rag::renderer::vk
                 device_->Device(),
                 swapchain_->RenderPass(),
                 uniform_resources_->DescriptorSetLayout());
+
+            // Shadow resources are independent of the swapchain and fixed size.
+            shadow_map_ = std::make_unique<VulkanShadowMap>(
+                *device_,
+                desc_.frames_in_flight,
+                ShadowMapSize);
+            shadow_pipeline_ = std::make_unique<VulkanShadowPipeline>(
+                device_->Device(),
+                shadow_map_->RenderPass(),
+                uniform_resources_->DescriptorSetLayout());
+
+            // Point every frame's descriptor set at its own shadow image once;
+            // the views never change, so this need not be redone per frame.
+            for (u32 frame = 0; frame < desc_.frames_in_flight; ++frame)
+            {
+                uniform_resources_->BindShadowMap(
+                    frame,
+                    shadow_map_->ImageView(frame),
+                    shadow_map_->CompareSampler(),
+                    shadow_map_->DepthSampler());
+            }
+
+#if defined(RAG_SHADOW_DEBUG)
+            shadow_debug_pipeline_ = std::make_unique<VulkanShadowDebugPipeline>(
+                device_->Device(),
+                swapchain_->RenderPass(),
+                uniform_resources_->DescriptorSetLayout());
+            RAG_LOG_INFO("RAG_SHADOW_DEBUG enabled: drawing the shadow depth map overlay in the top-left corner.");
+#endif
+
             vertex_buffer_ = std::make_unique<VulkanVertexBuffer>(*device_, CubeVertices);
             index_buffer_ = std::make_unique<VulkanIndexBuffer>(*device_, CubeIndices);
             frames_ = std::make_unique<VulkanFrameResources>(
@@ -294,34 +409,67 @@ namespace rag::renderer::vk
             begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
             RAG_VK_CHECK(vkBeginCommandBuffer(command_buffer, &begin_info));
-            swapchain_->BeginRenderPass(command_buffer, image_index, context.clear_color);
-            pipeline_->Bind(command_buffer, swapchain_->Extent());
-            pipeline_->BindDescriptorSet(
-                command_buffer,
-                uniform_resources_->DescriptorSet(frame_index));
+
+            const VkDescriptorSet descriptor_set = uniform_resources_->DescriptorSet(frame_index);
+
+            // Shadow pass: render scene depth from the light's point of view into
+            // this frame's shadow map. The render pass leaves it ready to sample.
+            shadow_map_->BeginPass(command_buffer, frame_index);
+            shadow_pipeline_->Bind(command_buffer, shadow_map_->Extent());
+            shadow_pipeline_->BindDescriptorSet(command_buffer, descriptor_set);
             vertex_buffer_->Bind(command_buffer);
             index_buffer_->Bind(command_buffer);
+            ForEachSceneModel(context, [&](const math::Mat4& model) {
+                shadow_pipeline_->PushModelMatrix(command_buffer, model);
+                vkCmdDrawIndexed(command_buffer, index_buffer_->IndexCount(), 1, 0, 0, 0);
+            });
+            shadow_map_->EndPass(command_buffer);
 
+            // Main pass: shade the scene, sampling the shadow map for occlusion.
+            swapchain_->BeginRenderPass(command_buffer, image_index, context.clear_color);
+            pipeline_->Bind(command_buffer, swapchain_->Extent());
+            pipeline_->BindDescriptorSet(command_buffer, descriptor_set);
+            vertex_buffer_->Bind(command_buffer);
+            index_buffer_->Bind(command_buffer);
+            ForEachSceneModel(context, [&](const math::Mat4& model) {
+                pipeline_->PushModelMatrix(command_buffer, model);
+                vkCmdDrawIndexed(command_buffer, index_buffer_->IndexCount(), 1, 0, 0, 0);
+            });
+
+#if defined(RAG_SHADOW_DEBUG)
+            shadow_debug_pipeline_->Bind(command_buffer, swapchain_->Extent());
+            shadow_debug_pipeline_->BindDescriptorSet(command_buffer, descriptor_set);
+            shadow_debug_pipeline_->Draw(command_buffer);
+#endif
+
+            swapchain_->EndRenderPass(command_buffer);
+            RAG_VK_CHECK(vkEndCommandBuffer(command_buffer));
+        }
+
+        // Visits every model matrix the frame should draw, so the shadow pass and
+        // the main pass always render the exact same geometry.
+        template <typename DrawModelFn>
+        void ForEachSceneModel(const RenderFrameContext& context, DrawModelFn&& draw_model) const
+        {
             if (UseRenderWorld(context.render_world))
             {
                 for (const RenderObject& object : context.render_world->objects)
                 {
-                    pipeline_->PushModelMatrix(command_buffer, object.world_transform);
-                    vkCmdDrawIndexed(command_buffer, index_buffer_->IndexCount(), 1, 0, 0, 0);
+                    draw_model(object.world_transform);
                 }
             }
             else
             {
-                const f32 rotation = static_cast<f32>(animation_elapsed_seconds_);
-                const math::Mat4 fallback_model = math::Multiply(
-                    math::RotationY(rotation * 0.7f),
-                    math::RotationX(rotation * 0.4f));
-                pipeline_->PushModelMatrix(command_buffer, fallback_model);
-                vkCmdDrawIndexed(command_buffer, index_buffer_->IndexCount(), 1, 0, 0, 0);
+                draw_model(FallbackModelMatrix());
             }
+        }
 
-            swapchain_->EndRenderPass(command_buffer);
-            RAG_VK_CHECK(vkEndCommandBuffer(command_buffer));
+        [[nodiscard]] math::Mat4 FallbackModelMatrix() const
+        {
+            const f32 rotation = static_cast<f32>(animation_elapsed_seconds_);
+            return math::Multiply(
+                math::RotationY(rotation * 0.7f),
+                math::RotationX(rotation * 0.4f));
         }
 
         bool RecreateSwapchain()
@@ -345,6 +493,15 @@ namespace rag::renderer::vk
                     device_->Device(),
                     swapchain_->RenderPass(),
                     uniform_resources_->DescriptorSetLayout());
+
+#if defined(RAG_SHADOW_DEBUG)
+                // The overlay pipeline is tied to the swapchain render pass; the
+                // shadow map itself is swapchain-independent and is left alone.
+                shadow_debug_pipeline_ = std::make_unique<VulkanShadowDebugPipeline>(
+                    device_->Device(),
+                    swapchain_->RenderPass(),
+                    uniform_resources_->DescriptorSetLayout());
+#endif
             }
 
             frames_->RecreateRenderFinishedSemaphores(swapchain_->ImageCount());
@@ -410,6 +567,11 @@ namespace rag::renderer::vk
                 }
             }
 
+            // Light-space view-projection for the shadow pass and the shadow
+            // lookup, derived from the final directional light direction. It is
+            // deliberately not Y-flipped (see ComputeLightSpaceMatrix).
+            uniform_data.light_space = ComputeLightSpaceMatrix(uniform_data.light_direction);
+
             // Engine projections target GL-style clip space; Vulkan clip-space Y points down.
             uniform_data.projection(1, 1) *= -1.0f;
 
@@ -468,6 +630,11 @@ namespace rag::renderer::vk
         std::unique_ptr<VulkanSwapchain> swapchain_;
         std::unique_ptr<VulkanUniformResources> uniform_resources_;
         std::unique_ptr<VulkanGraphicsPipeline> pipeline_;
+        std::unique_ptr<VulkanShadowMap> shadow_map_;
+        std::unique_ptr<VulkanShadowPipeline> shadow_pipeline_;
+#if defined(RAG_SHADOW_DEBUG)
+        std::unique_ptr<VulkanShadowDebugPipeline> shadow_debug_pipeline_;
+#endif
         std::unique_ptr<VulkanVertexBuffer> vertex_buffer_;
         std::unique_ptr<VulkanIndexBuffer> index_buffer_;
         std::unique_ptr<VulkanFrameResources> frames_;

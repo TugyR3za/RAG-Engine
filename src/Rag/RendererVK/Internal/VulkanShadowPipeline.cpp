@@ -1,4 +1,4 @@
-#include "Rag/RendererVK/Internal/VulkanGraphicsPipeline.h"
+#include "Rag/RendererVK/Internal/VulkanShadowPipeline.h"
 
 #include "Rag/Core/Log.h"
 #include "Rag/RendererVK/Internal/VulkanShaderModule.h"
@@ -11,19 +11,18 @@ namespace rag::renderer::vk
 {
     namespace
     {
-        constexpr std::string_view VertexShaderFilename = "triangle.vert.spv";
-        constexpr std::string_view FragmentShaderFilename = "triangle.frag.spv";
+        constexpr std::string_view ShadowVertexShaderFilename = "shadow_depth.vert.spv";
     }
 
-    VulkanGraphicsPipeline::VulkanGraphicsPipeline(
+    VulkanShadowPipeline::VulkanShadowPipeline(
         VkDevice device,
-        VkRenderPass render_pass,
+        VkRenderPass shadow_render_pass,
         VkDescriptorSetLayout descriptor_set_layout)
         : device_(device)
     {
         try
         {
-            Create(render_pass, descriptor_set_layout);
+            Create(shadow_render_pass, descriptor_set_layout);
         }
         catch (...)
         {
@@ -32,12 +31,12 @@ namespace rag::renderer::vk
         }
     }
 
-    VulkanGraphicsPipeline::~VulkanGraphicsPipeline()
+    VulkanShadowPipeline::~VulkanShadowPipeline()
     {
         Cleanup();
     }
 
-    void VulkanGraphicsPipeline::Bind(VkCommandBuffer command_buffer, VkExtent2D extent) const
+    void VulkanShadowPipeline::Bind(VkCommandBuffer command_buffer, VkExtent2D extent) const
     {
         vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_);
 
@@ -56,7 +55,7 @@ namespace rag::renderer::vk
         vkCmdSetScissor(command_buffer, 0, 1, &scissor);
     }
 
-    void VulkanGraphicsPipeline::BindDescriptorSet(
+    void VulkanShadowPipeline::BindDescriptorSet(
         VkCommandBuffer command_buffer,
         VkDescriptorSet descriptor_set) const
     {
@@ -71,7 +70,7 @@ namespace rag::renderer::vk
             nullptr);
     }
 
-    void VulkanGraphicsPipeline::PushModelMatrix(
+    void VulkanShadowPipeline::PushModelMatrix(
         VkCommandBuffer command_buffer,
         const math::Mat4& model) const
     {
@@ -85,28 +84,19 @@ namespace rag::renderer::vk
             model.elements.data());
     }
 
-    void VulkanGraphicsPipeline::Create(
-        VkRenderPass render_pass,
+    void VulkanShadowPipeline::Create(
+        VkRenderPass shadow_render_pass,
         VkDescriptorSetLayout descriptor_set_layout)
     {
-        const ScopedShaderModule vertex_module = LoadShaderModule(device_, VertexShaderFilename);
-        const ScopedShaderModule fragment_module = LoadShaderModule(device_, FragmentShaderFilename);
+        const ScopedShaderModule vertex_module = LoadShaderModule(device_, ShadowVertexShaderFilename);
 
-        const VkPipelineShaderStageCreateInfo shader_stages[] = {
-            {
-                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                .stage = VK_SHADER_STAGE_VERTEX_BIT,
-                .module = vertex_module.Get(),
-                .pName = "main",
-            },
-            {
-                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .module = fragment_module.Get(),
-                .pName = "main",
-            },
-        };
+        VkPipelineShaderStageCreateInfo vertex_stage{};
+        vertex_stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        vertex_stage.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        vertex_stage.module = vertex_module.Get();
+        vertex_stage.pName = "main";
 
+        // Reuse the scene vertex layout; only the position attribute is consumed.
         const VkVertexInputBindingDescription binding_description = Vertex::BindingDescription();
         const std::array<VkVertexInputAttributeDescription, 3> attribute_descriptions =
             Vertex::AttributeDescriptions();
@@ -133,6 +123,8 @@ namespace rag::renderer::vk
         rasterizer.depthClampEnable = VK_FALSE;
         rasterizer.rasterizerDiscardEnable = VK_FALSE;
         rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+        // No culling so thin geometry (the ground slab) still occludes correctly;
+        // acne is handled with a slope-scaled bias in the lit fragment shader.
         rasterizer.cullMode = VK_CULL_MODE_NONE;
         rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
         rasterizer.depthBiasEnable = VK_FALSE;
@@ -151,19 +143,12 @@ namespace rag::renderer::vk
         depth_stencil.depthBoundsTestEnable = VK_FALSE;
         depth_stencil.stencilTestEnable = VK_FALSE;
 
-        VkPipelineColorBlendAttachmentState color_blend_attachment{};
-        color_blend_attachment.blendEnable = VK_FALSE;
-        color_blend_attachment.colorWriteMask =
-            VK_COLOR_COMPONENT_R_BIT |
-            VK_COLOR_COMPONENT_G_BIT |
-            VK_COLOR_COMPONENT_B_BIT |
-            VK_COLOR_COMPONENT_A_BIT;
-
+        // Depth-only subpass: no color attachments, so no blend attachments.
         VkPipelineColorBlendStateCreateInfo color_blending{};
         color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         color_blending.logicOpEnable = VK_FALSE;
-        color_blending.attachmentCount = 1;
-        color_blending.pAttachments = &color_blend_attachment;
+        color_blending.attachmentCount = 0;
+        color_blending.pAttachments = nullptr;
 
         const VkDynamicState dynamic_states[] = {
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -190,8 +175,8 @@ namespace rag::renderer::vk
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipeline_info.stageCount = static_cast<u32>(std::size(shader_stages));
-        pipeline_info.pStages = shader_stages;
+        pipeline_info.stageCount = 1;
+        pipeline_info.pStages = &vertex_stage;
         pipeline_info.pVertexInputState = &vertex_input;
         pipeline_info.pInputAssemblyState = &input_assembly;
         pipeline_info.pViewportState = &viewport_state;
@@ -201,7 +186,7 @@ namespace rag::renderer::vk
         pipeline_info.pColorBlendState = &color_blending;
         pipeline_info.pDynamicState = &dynamic_state;
         pipeline_info.layout = layout_;
-        pipeline_info.renderPass = render_pass;
+        pipeline_info.renderPass = shadow_render_pass;
         pipeline_info.subpass = 0;
 
         RAG_VK_CHECK(vkCreateGraphicsPipelines(
@@ -212,16 +197,10 @@ namespace rag::renderer::vk
             nullptr,
             &pipeline_));
 
-        RAG_LOG_INFO(
-            "Created Vulkan graphics pipeline with camera/light UBO + shadow-map descriptors, "
-            "a model push constant, and depth testing using shaders ",
-            VertexShaderFilename,
-            " and ",
-            FragmentShaderFilename,
-            ".");
+        RAG_LOG_INFO("Created Vulkan depth-only shadow pipeline using shader ", ShadowVertexShaderFilename, ".");
     }
 
-    void VulkanGraphicsPipeline::Cleanup()
+    void VulkanShadowPipeline::Cleanup()
     {
         if (pipeline_ != VK_NULL_HANDLE)
         {

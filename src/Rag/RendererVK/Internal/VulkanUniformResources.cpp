@@ -2,21 +2,23 @@
 
 #include "Rag/Core/Log.h"
 
+#include <array>
 #include <cstddef>
 #include <cstring>
 
 namespace rag::renderer::vk
 {
     static_assert(sizeof(math::Mat4) == sizeof(f32) * 16);
-    static_assert(sizeof(UniformBufferObject) == 176);
+    static_assert(sizeof(UniformBufferObject) == 240);
     static_assert(offsetof(UniformBufferObject, view) == 0);
     static_assert(offsetof(UniformBufferObject, projection) == 64);
-    static_assert(offsetof(UniformBufferObject, light_direction) == 128);
-    static_assert(offsetof(UniformBufferObject, light_direction_padding) == 140);
-    static_assert(offsetof(UniformBufferObject, light_color) == 144);
-    static_assert(offsetof(UniformBufferObject, light_intensity) == 156);
-    static_assert(offsetof(UniformBufferObject, camera_position) == 160);
-    static_assert(offsetof(UniformBufferObject, camera_position_padding) == 172);
+    static_assert(offsetof(UniformBufferObject, light_space) == 128);
+    static_assert(offsetof(UniformBufferObject, light_direction) == 192);
+    static_assert(offsetof(UniformBufferObject, light_direction_padding) == 204);
+    static_assert(offsetof(UniformBufferObject, light_color) == 208);
+    static_assert(offsetof(UniformBufferObject, light_intensity) == 220);
+    static_assert(offsetof(UniformBufferObject, camera_position) == 224);
+    static_assert(offsetof(UniformBufferObject, camera_position_padding) == 236);
 
     VulkanUniformResources::VulkanUniformResources(VulkanDevice& device, u32 frames_in_flight)
         : device_(device)
@@ -62,6 +64,52 @@ namespace rag::renderer::vk
         std::memcpy(frames_[frame_index].mapped_memory, &uniform_data, sizeof(uniform_data));
     }
 
+    void VulkanUniformResources::BindShadowMap(
+        u32 frame_index,
+        VkImageView shadow_view,
+        VkSampler compare_sampler,
+        VkSampler depth_sampler)
+    {
+        if (frame_index >= frames_.size())
+        {
+            throw VulkanError("Vulkan shadow bind frame index is outside the per-frame descriptor array.");
+        }
+
+        const VkDescriptorSet descriptor_set = frames_[frame_index].descriptor_set;
+
+        VkDescriptorImageInfo compare_info{};
+        compare_info.sampler = compare_sampler;
+        compare_info.imageView = shadow_view;
+        compare_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        VkDescriptorImageInfo depth_info{};
+        depth_info.sampler = depth_sampler;
+        depth_info.imageView = shadow_view;
+        depth_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        std::array<VkWriteDescriptorSet, 2> writes{};
+        writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[0].dstSet = descriptor_set;
+        writes[0].dstBinding = 1;
+        writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writes[0].descriptorCount = 1;
+        writes[0].pImageInfo = &compare_info;
+
+        writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[1].dstSet = descriptor_set;
+        writes[1].dstBinding = 2;
+        writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writes[1].descriptorCount = 1;
+        writes[1].pImageInfo = &depth_info;
+
+        vkUpdateDescriptorSets(
+            device_.Device(),
+            static_cast<u32>(writes.size()),
+            writes.data(),
+            0,
+            nullptr);
+    }
+
     VkDescriptorSetLayout VulkanUniformResources::DescriptorSetLayout() const
     {
         return descriptor_set_layout_;
@@ -79,16 +127,33 @@ namespace rag::renderer::vk
 
     void VulkanUniformResources::CreateDescriptorSetLayout()
     {
-        VkDescriptorSetLayoutBinding uniform_binding{};
-        uniform_binding.binding = 0;
-        uniform_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        uniform_binding.descriptorCount = 1;
-        uniform_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        std::array<VkDescriptorSetLayoutBinding, 3> bindings{};
+
+        // binding 0: camera/light/light-space uniform block (read by both stages).
+        bindings[0].binding = 0;
+        bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        bindings[0].descriptorCount = 1;
+        bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        // binding 1: shadow map sampled through a depth-comparison sampler
+        // (sampler2DShadow) for the lit pass's PCF shadow test.
+        bindings[1].binding = 1;
+        bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        bindings[1].descriptorCount = 1;
+        bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        // binding 2: same shadow image through a plain sampler so the
+        // RAG_SHADOW_DEBUG overlay can read raw depth. Always declared so the
+        // layout is identical regardless of the debug toggle.
+        bindings[2].binding = 2;
+        bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        bindings[2].descriptorCount = 1;
+        bindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
         VkDescriptorSetLayoutCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        create_info.bindingCount = 1;
-        create_info.pBindings = &uniform_binding;
+        create_info.bindingCount = static_cast<u32>(bindings.size());
+        create_info.pBindings = bindings.data();
 
         RAG_VK_CHECK(vkCreateDescriptorSetLayout(
             device_.Device(),
@@ -133,15 +198,19 @@ namespace rag::renderer::vk
 
     void VulkanUniformResources::CreateDescriptorPool(u32 frames_in_flight)
     {
-        VkDescriptorPoolSize pool_size{};
-        pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        pool_size.descriptorCount = frames_in_flight;
+        std::array<VkDescriptorPoolSize, 2> pool_sizes{};
+        pool_sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        pool_sizes[0].descriptorCount = frames_in_flight;
+        // Two combined image samplers per frame: the comparison sampler for the
+        // lit pass and the plain sampler for the debug overlay.
+        pool_sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        pool_sizes[1].descriptorCount = frames_in_flight * 2;
 
         VkDescriptorPoolCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         create_info.maxSets = frames_in_flight;
-        create_info.poolSizeCount = 1;
-        create_info.pPoolSizes = &pool_size;
+        create_info.poolSizeCount = static_cast<u32>(pool_sizes.size());
+        create_info.pPoolSizes = pool_sizes.data();
 
         RAG_VK_CHECK(vkCreateDescriptorPool(
             device_.Device(),

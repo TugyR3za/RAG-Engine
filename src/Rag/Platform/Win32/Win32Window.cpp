@@ -155,6 +155,32 @@ namespace rag::platform
             }
         }
 
+        WPARAM ResolveModifierVirtualKey(WPARAM key, LPARAM key_data)
+        {
+            if (key == VK_SHIFT)
+            {
+                const UINT scan_code =
+                    static_cast<UINT>((static_cast<UINT_PTR>(key_data) >> 16u) & 0xffu);
+                return static_cast<WPARAM>(
+                    MapVirtualKeyW(scan_code, MAPVK_VSC_TO_VK_EX));
+            }
+
+            const bool extended =
+                (static_cast<UINT_PTR>(key_data) & (static_cast<UINT_PTR>(1) << 24u)) != 0;
+
+            if (key == VK_CONTROL)
+            {
+                return extended ? VK_RCONTROL : VK_LCONTROL;
+            }
+
+            if (key == VK_MENU)
+            {
+                return extended ? VK_RMENU : VK_LMENU;
+            }
+
+            return key;
+        }
+
         core::MouseButton TranslateMouseButton(UINT message, WPARAM w_param)
         {
             using core::MouseButton;
@@ -456,7 +482,9 @@ namespace rag::platform
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN:
         {
-            const core::KeyCode key = TranslateKey(w_param);
+            const core::KeyCode key = TranslateKey(ResolveModifierVirtualKey(
+                static_cast<WPARAM>(w_param),
+                static_cast<LPARAM>(l_param)));
             const bool repeat = (l_param & (1ll << 30)) != 0;
             if (event_callback_ && key != core::KeyCode::Unknown)
             {
@@ -468,7 +496,9 @@ namespace rag::platform
         case WM_KEYUP:
         case WM_SYSKEYUP:
         {
-            const core::KeyCode key = TranslateKey(w_param);
+            const core::KeyCode key = TranslateKey(ResolveModifierVirtualKey(
+                static_cast<WPARAM>(w_param),
+                static_cast<LPARAM>(l_param)));
             if (event_callback_ && key != core::KeyCode::Unknown)
             {
                 event_callback_(core::Event::KeyReleased(key));
