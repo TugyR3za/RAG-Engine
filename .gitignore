@@ -7,6 +7,8 @@ CMakeUserPresets.json
 *.suo
 *.log
 *.obj
+# Keep Wavefront .obj 3D model assets (the rule above targets MSVC object files).
+!models/*.obj
 *.pdb
 *.ilk
 *.exe

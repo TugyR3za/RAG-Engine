@@ -79,6 +79,8 @@ if(RAG_ENABLE_VULKAN)
     add_library(RagRendererVK STATIC
         src/Rag/RendererVK/VulkanRenderer.cpp
         src/Rag/RendererVK/VulkanRenderer.h
+        src/Rag/RendererVK/Internal/VulkanAssetPath.cpp
+        src/Rag/RendererVK/Internal/VulkanAssetPath.h
         src/Rag/RendererVK/Internal/VulkanCommon.cpp
         src/Rag/RendererVK/Internal/VulkanCommon.h
         src/Rag/RendererVK/Internal/VulkanDevice.cpp
@@ -91,6 +93,10 @@ if(RAG_ENABLE_VULKAN)
         src/Rag/RendererVK/Internal/VulkanIndexBuffer.h
         src/Rag/RendererVK/Internal/VulkanInstance.cpp
         src/Rag/RendererVK/Internal/VulkanInstance.h
+        src/Rag/RendererVK/Internal/VulkanMesh.cpp
+        src/Rag/RendererVK/Internal/VulkanMesh.h
+        src/Rag/RendererVK/Internal/VulkanMeshLoader.cpp
+        src/Rag/RendererVK/Internal/VulkanMeshLoader.h
         src/Rag/RendererVK/Internal/VulkanShaderModule.cpp
         src/Rag/RendererVK/Internal/VulkanShaderModule.h
         src/Rag/RendererVK/Internal/VulkanShadowDebugPipeline.cpp
@@ -114,6 +120,8 @@ if(RAG_ENABLE_VULKAN)
         src/Rag/RendererVK/Shaders/Triangle.vert
     )
     rag_configure_target(RagRendererVK)
+    # Vendored single-header libraries (tinyobjloader).
+    target_include_directories(RagRendererVK PRIVATE ${PROJECT_SOURCE_DIR}/third_party)
     target_compile_definitions(RagRendererVK
         PUBLIC RAG_ENABLE_VULKAN=1
         PRIVATE
@@ -186,6 +194,16 @@ if(RAG_BUILD_SANDBOX)
                 VERBATIM
             )
         endforeach()
+
+        add_custom_command(
+            TARGET RagSandbox
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_CURRENT_SOURCE_DIR}/models"
+                "$<TARGET_FILE_DIR:RagSandbox>/models"
+            COMMENT "Copying RAG Engine model assets next to RagSandbox"
+            VERBATIM
+        )
     endif()
 endif()
 

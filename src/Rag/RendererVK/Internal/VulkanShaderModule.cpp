@@ -1,76 +1,16 @@
 #include "Rag/RendererVK/Internal/VulkanShaderModule.h"
 
 #include "Rag/Core/Log.h"
+#include "Rag/RendererVK/Internal/VulkanAssetPath.h"
 
-#include <array>
 #include <filesystem>
 #include <fstream>
-#include <system_error>
 #include <vector>
 
 namespace rag::renderer::vk
 {
     namespace
     {
-        std::filesystem::path ExecutableDirectory()
-        {
-#if defined(RAG_PLATFORM_WINDOWS)
-            std::vector<wchar_t> buffer(512);
-
-            for (;;)
-            {
-                const DWORD length = GetModuleFileNameW(
-                    nullptr,
-                    buffer.data(),
-                    static_cast<DWORD>(buffer.size()));
-
-                if (length == 0)
-                {
-                    throw VulkanError("Failed to resolve the RAG Sandbox executable path.");
-                }
-
-                if (length < buffer.size())
-                {
-                    return std::filesystem::path(buffer.data(), buffer.data() + length).parent_path();
-                }
-
-                buffer.resize(buffer.size() * 2);
-            }
-#else
-            return std::filesystem::current_path();
-#endif
-        }
-
-        std::filesystem::path ResolveShaderPath(std::string_view filename)
-        {
-            const std::filesystem::path executable_directory = ExecutableDirectory();
-            const std::filesystem::path current_directory = std::filesystem::current_path();
-            const std::array candidates = {
-                executable_directory / "shaders" / filename,
-                current_directory / "shaders" / filename,
-                current_directory / filename,
-            };
-
-            std::error_code error;
-            for (const std::filesystem::path& candidate : candidates)
-            {
-                if (std::filesystem::is_regular_file(candidate, error))
-                {
-                    return candidate;
-                }
-                error.clear();
-            }
-
-            const std::string message =
-                "Failed to locate Vulkan shader '" +
-                std::string(filename) +
-                "'. Expected it at '" +
-                candidates.front().string() +
-                "'. Rebuild RagSandbox so CMake can compile and copy the SPIR-V files.";
-            RAG_LOG_ERROR(message);
-            throw VulkanError(message);
-        }
-
         std::vector<u32> LoadSpirv(const std::filesystem::path& path)
         {
             std::ifstream file(path, std::ios::ate | std::ios::binary);
@@ -125,7 +65,10 @@ namespace rag::renderer::vk
 
     ScopedShaderModule LoadShaderModule(VkDevice device, std::string_view spirv_filename)
     {
-        const std::filesystem::path path = ResolveShaderPath(spirv_filename);
+        const std::filesystem::path path = ResolveRuntimeAssetPath(
+            "shaders",
+            spirv_filename,
+            "Rebuild RagSandbox so CMake can compile and copy the SPIR-V files.");
         const std::vector<u32> code = LoadSpirv(path);
 
         VkShaderModuleCreateInfo create_info{};

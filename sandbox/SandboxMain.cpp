@@ -185,6 +185,16 @@ namespace
             constexpr rag::f32 CenterCubeCenterHeight =
                 GroundSurfaceHeight + (UnitCubeHalfDiagonal * CenterCubeScale) + GroundClearance;
 
+            // models/sphere.obj is a unit sphere; rest it just above the floor.
+            constexpr rag::f32 SphereRadius = 1.0f;
+            constexpr rag::f32 SphereCenterHeight =
+                GroundSurfaceHeight + SphereRadius + GroundClearance;
+
+            // Renderer mesh registry convention: slot 0 = built-in cube,
+            // slot 1 = the OBJ model loaded at startup.
+            constexpr rag::renderer::MeshHandle CubeMeshHandle{0, 0};
+            constexpr rag::renderer::MeshHandle SphereMeshHandle{1, 0};
+
             for (rag::u32 index = 0; index < RingCubeCount; ++index)
             {
                 const rag::f32 angle = (2.0f * rag::math::Pi * static_cast<rag::f32>(index)) /
@@ -196,7 +206,7 @@ namespace
                     RingRadius * std::cos(angle),
                     RingCubeCenterHeight,
                     RingRadius * std::sin(angle)};
-                scene_.AddRenderable(entity);
+                scene_.AddRenderable(entity).mesh = CubeMeshHandle;
 
                 if ((index % 2) == 0)
                 {
@@ -213,14 +223,25 @@ namespace
                 rag::math::Vec3{0.0f, CenterCubeCenterHeight, 0.0f};
             center_transform.local_scale =
                 rag::math::Vec3{CenterCubeScale, CenterCubeScale, CenterCubeScale};
-            scene_.AddRenderable(center_cube);
+            scene_.AddRenderable(center_cube).mesh = CubeMeshHandle;
             spinning_cubes_.push_back(SpinningCube{center_cube, 0.9f, 0.5f});
 
             const rag::scene::EntityId ground = scene_.CreateEntity();
             rag::scene::TransformComponent& ground_transform = scene_.AddTransform(ground);
             ground_transform.local_position = rag::math::Vec3{0.0f, -0.6f, 0.0f};
             ground_transform.local_scale = rag::math::Vec3{40.0f, 0.2f, 40.0f};
-            scene_.AddRenderable(ground);
+            scene_.AddRenderable(ground).mesh = CubeMeshHandle;
+
+            // One entity using the loaded OBJ mesh, off to the side of the ring
+            // on open floor so its shadow is clearly visible.
+            const rag::scene::EntityId sphere = scene_.CreateEntity();
+            rag::scene::TransformComponent& sphere_transform = scene_.AddTransform(sphere);
+            sphere_transform.local_position =
+                rag::math::Vec3{6.5f, SphereCenterHeight, 0.0f};
+            rag::scene::RenderableComponent& sphere_renderable = scene_.AddRenderable(sphere);
+            sphere_renderable.mesh = SphereMeshHandle;
+            sphere_renderable.local_bounds.extents =
+                rag::math::Vec3{SphereRadius, SphereRadius, SphereRadius};
 
             camera_entity_ = scene_.CreateEntity();
             rag::scene::TransformComponent& camera_transform = scene_.AddTransform(camera_entity_);
@@ -256,7 +277,7 @@ namespace
                 scene_.EntityCount(),
                 " entities (",
                 RingCubeCount,
-                " ring cubes, 1 center cube, 1 ground, 1 camera, 1 directional light), ",
+                " ring cubes, 1 center cube, 1 obj sphere, 1 ground, 1 camera, 1 directional light), ",
                 spinning_cubes_.size(),
                 " of the cubes spin.");
         }

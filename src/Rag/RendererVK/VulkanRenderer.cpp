@@ -4,14 +4,14 @@
 #include "Rag/RendererVK/Internal/VulkanDevice.h"
 #include "Rag/RendererVK/Internal/VulkanFrameResources.h"
 #include "Rag/RendererVK/Internal/VulkanGraphicsPipeline.h"
-#include "Rag/RendererVK/Internal/VulkanIndexBuffer.h"
 #include "Rag/RendererVK/Internal/VulkanInstance.h"
+#include "Rag/RendererVK/Internal/VulkanMesh.h"
+#include "Rag/RendererVK/Internal/VulkanMeshLoader.h"
 #include "Rag/RendererVK/Internal/VulkanShadowMap.h"
 #include "Rag/RendererVK/Internal/VulkanShadowPipeline.h"
 #include "Rag/RendererVK/Internal/VulkanSurface.h"
 #include "Rag/RendererVK/Internal/VulkanSwapchain.h"
 #include "Rag/RendererVK/Internal/VulkanUniformResources.h"
-#include "Rag/RendererVK/Internal/VulkanVertexBuffer.h"
 
 #if defined(RAG_SHADOW_DEBUG)
     #include "Rag/RendererVK/Internal/VulkanShadowDebugPipeline.h"
@@ -21,6 +21,7 @@
 #include <chrono>
 #include <cmath>
 #include <limits>
+#include <string_view>
 #include <vector>
 
 namespace rag::renderer::vk
@@ -79,6 +80,14 @@ namespace rag::renderer::vk
         constexpr math::Vec3 DefaultLightDirection{0.45f, -0.75f, -0.5f};
         constexpr math::Vec3 DefaultLightColor{1.0f, 0.95f, 0.85f};
         constexpr f32 DefaultLightIntensity = 1.1f;
+
+        // Mesh registry convention shared with the sandbox scene: slot 0 is the
+        // built-in cube, slot 1 the OBJ model loaded at startup. Invalid or
+        // out-of-range MeshHandles fall back to the cube.
+        constexpr u32 CubeMeshIndex = 0;
+        constexpr std::string_view ModelMeshFilename = "sphere.obj";
+        // Uniform base color for loaded models; .obj files carry no vertex color.
+        constexpr std::array<f32, 3> ModelBaseColor{0.80f, 0.80f, 0.80f};
 
         // --- Directional shadow quality knobs -----------------------------------
         // Full width/height of the orthographic light frustum in world units.
@@ -225,8 +234,29 @@ namespace rag::renderer::vk
             RAG_LOG_INFO("RAG_SHADOW_DEBUG enabled: drawing the shadow depth map overlay in the top-left corner.");
 #endif
 
-            vertex_buffer_ = std::make_unique<VulkanVertexBuffer>(*device_, CubeVertices);
-            index_buffer_ = std::make_unique<VulkanIndexBuffer>(*device_, CubeIndices);
+            // Mesh slot 0: the built-in cube every existing entity uses.
+            meshes_.push_back(std::make_unique<VulkanMesh>(*device_, CubeVertices, CubeIndices));
+
+            // Mesh slot 1: the OBJ model. A load failure is logged but not
+            // fatal; handles pointing at the missing slot draw the cube instead.
+            try
+            {
+                const ObjMeshData model_data = LoadObjMesh(ModelMeshFilename, ModelBaseColor);
+                meshes_.push_back(std::make_unique<VulkanMesh>(
+                    *device_,
+                    model_data.vertices,
+                    model_data.indices));
+            }
+            catch (const std::exception& exception)
+            {
+                RAG_LOG_ERROR(
+                    "Failed to load OBJ model '",
+                    ModelMeshFilename,
+                    "': ",
+                    exception.what(),
+                    " Objects referencing it will fall back to the built-in cube mesh.");
+            }
+
             frames_ = std::make_unique<VulkanFrameResources>(
                 device_->Device(),
                 device_->Families().graphics_family.value(),
@@ -422,11 +452,15 @@ namespace rag::renderer::vk
             shadow_map_->BeginPass(command_buffer, frame_index);
             shadow_pipeline_->Bind(command_buffer, shadow_map_->Extent());
             shadow_pipeline_->BindDescriptorSet(command_buffer, descriptor_set);
-            vertex_buffer_->Bind(command_buffer);
-            index_buffer_->Bind(command_buffer);
-            ForEachSceneModel(context, [&](const math::Mat4& model) {
+            u32 shadow_bound_mesh = std::numeric_limits<u32>::max();
+            ForEachSceneModel(context, [&](const math::Mat4& model, u32 mesh_index) {
+                if (mesh_index != shadow_bound_mesh)
+                {
+                    meshes_[mesh_index]->Bind(command_buffer);
+                    shadow_bound_mesh = mesh_index;
+                }
                 shadow_pipeline_->PushModelMatrix(command_buffer, model);
-                vkCmdDrawIndexed(command_buffer, index_buffer_->IndexCount(), 1, 0, 0, 0);
+                vkCmdDrawIndexed(command_buffer, meshes_[mesh_index]->IndexCount(), 1, 0, 0, 0);
             });
             shadow_map_->EndPass(command_buffer);
 
@@ -434,11 +468,15 @@ namespace rag::renderer::vk
             swapchain_->BeginRenderPass(command_buffer, image_index, context.clear_color);
             pipeline_->Bind(command_buffer, swapchain_->Extent());
             pipeline_->BindDescriptorSet(command_buffer, descriptor_set);
-            vertex_buffer_->Bind(command_buffer);
-            index_buffer_->Bind(command_buffer);
-            ForEachSceneModel(context, [&](const math::Mat4& model) {
+            u32 main_bound_mesh = std::numeric_limits<u32>::max();
+            ForEachSceneModel(context, [&](const math::Mat4& model, u32 mesh_index) {
+                if (mesh_index != main_bound_mesh)
+                {
+                    meshes_[mesh_index]->Bind(command_buffer);
+                    main_bound_mesh = mesh_index;
+                }
                 pipeline_->PushModelMatrix(command_buffer, model);
-                vkCmdDrawIndexed(command_buffer, index_buffer_->IndexCount(), 1, 0, 0, 0);
+                vkCmdDrawIndexed(command_buffer, meshes_[mesh_index]->IndexCount(), 1, 0, 0, 0);
             });
 
 #if defined(RAG_SHADOW_DEBUG)
@@ -451,8 +489,8 @@ namespace rag::renderer::vk
             RAG_VK_CHECK(vkEndCommandBuffer(command_buffer));
         }
 
-        // Visits every model matrix the frame should draw, so the shadow pass and
-        // the main pass always render the exact same geometry.
+        // Visits every (model matrix, mesh index) pair the frame should draw, so
+        // the shadow pass and the main pass always render the exact same geometry.
         template <typename DrawModelFn>
         void ForEachSceneModel(const RenderFrameContext& context, DrawModelFn&& draw_model) const
         {
@@ -460,13 +498,26 @@ namespace rag::renderer::vk
             {
                 for (const RenderObject& object : context.render_world->objects)
                 {
-                    draw_model(object.world_transform);
+                    draw_model(object.world_transform, ResolveMeshIndex(object.mesh));
                 }
             }
             else
             {
-                draw_model(FallbackModelMatrix());
+                draw_model(FallbackModelMatrix(), CubeMeshIndex);
             }
+        }
+
+        // Maps a scene MeshHandle onto the renderer's mesh registry. Invalid or
+        // out-of-range handles draw the built-in cube so a bad handle (or a
+        // model that failed to load) never breaks the frame.
+        [[nodiscard]] u32 ResolveMeshIndex(MeshHandle handle) const
+        {
+            if (!handle.IsValid() || handle.index >= meshes_.size())
+            {
+                return CubeMeshIndex;
+            }
+
+            return handle.index;
         }
 
         [[nodiscard]] math::Mat4 FallbackModelMatrix() const
@@ -690,8 +741,7 @@ namespace rag::renderer::vk
 #if defined(RAG_SHADOW_DEBUG)
         std::unique_ptr<VulkanShadowDebugPipeline> shadow_debug_pipeline_;
 #endif
-        std::unique_ptr<VulkanVertexBuffer> vertex_buffer_;
-        std::unique_ptr<VulkanIndexBuffer> index_buffer_;
+        std::vector<std::unique_ptr<VulkanMesh>> meshes_;
         std::unique_ptr<VulkanFrameResources> frames_;
         std::vector<VkFence> image_in_flight_;
         RendererStats stats_{};
