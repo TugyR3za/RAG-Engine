@@ -4,6 +4,7 @@ layout(location = 0) in vec3 vertex_color;
 layout(location = 1) in vec3 world_normal;
 layout(location = 2) in vec3 world_position;
 layout(location = 3) in vec4 light_space_position;
+layout(location = 4) in vec2 texture_uv;
 layout(location = 0) out vec4 output_color;
 
 layout(set = 0, binding = 0) uniform CameraUniforms
@@ -25,6 +26,7 @@ layout(set = 0, binding = 0) uniform CameraUniforms
 
 // Directional shadow map sampled through a depth-comparison sampler.
 layout(set = 0, binding = 1) uniform sampler2DShadow shadow_map;
+layout(set = 0, binding = 3) uniform sampler2D color_texture;
 
 // Depth bias (in light clip-space depth units) used to fight shadow acne.
 // Increase if you see acne (self-shadowing stripes); decrease if shadows
@@ -85,6 +87,7 @@ void main()
     const vec3 ambient = vec3(0.1);
     const vec3 diffuse = diffuse_factor * camera.light_color * camera.light_intensity;
     const vec3 specular = specular_factor * camera.light_color * camera.light_intensity;
+    const vec3 albedo = texture(color_texture, texture_uv).rgb;
 
     // Keep a configurable fraction of direct light in fully shadowed areas so
     // shadows read as natural dark gray instead of near-black.
@@ -92,7 +95,7 @@ void main()
     const float shadow_visibility =
         mix(clamp(camera.shadow_ambient_floor, 0.0, 1.0), 1.0, lit);
     output_color = vec4(
-        (vertex_color * (ambient + (shadow_visibility * diffuse))) +
+        (albedo * (ambient + (shadow_visibility * diffuse))) +
             (shadow_visibility * specular),
         1.0);
 }

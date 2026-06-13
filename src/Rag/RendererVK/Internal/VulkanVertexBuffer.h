@@ -12,9 +12,10 @@ namespace rag::renderer::vk
         std::array<f32, 3> position;
         std::array<f32, 3> normal;
         std::array<f32, 3> color;
+        std::array<f32, 2> texcoord;
 
         [[nodiscard]] static VkVertexInputBindingDescription BindingDescription();
-        [[nodiscard]] static std::array<VkVertexInputAttributeDescription, 3> AttributeDescriptions();
+        [[nodiscard]] static std::array<VkVertexInputAttributeDescription, 4> AttributeDescriptions();
     };
 
     class VulkanVertexBuffer final

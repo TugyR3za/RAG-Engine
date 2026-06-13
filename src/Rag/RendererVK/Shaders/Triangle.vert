@@ -3,11 +3,13 @@
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in vec3 in_normal;
 layout(location = 2) in vec3 in_color;
+layout(location = 3) in vec2 in_texcoord;
 
 layout(location = 0) out vec3 vertex_color;
 layout(location = 1) out vec3 world_normal;
 layout(location = 2) out vec3 world_position;
 layout(location = 3) out vec4 light_space_position;
+layout(location = 4) out vec2 texture_uv;
 
 layout(set = 0, binding = 0) uniform CameraUniforms
 {
@@ -41,4 +43,5 @@ void main()
     // Position in the light's clip space for the shadow lookup. The light uses an
     // orthographic projection (w == 1), so this interpolates linearly.
     light_space_position = camera.light_space * position_world;
+    texture_uv = in_texcoord;
 }

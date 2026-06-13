@@ -96,17 +96,18 @@ namespace rag::renderer::vk
         vertex_stage.module = vertex_module.Get();
         vertex_stage.pName = "main";
 
-        // Reuse the scene vertex layout; only the position attribute is consumed.
+        // Reuse the scene vertex stride, but expose only position because the
+        // depth-only shader does not consume normal, color, or texture coordinates.
         const VkVertexInputBindingDescription binding_description = Vertex::BindingDescription();
-        const std::array<VkVertexInputAttributeDescription, 3> attribute_descriptions =
-            Vertex::AttributeDescriptions();
+        const VkVertexInputAttributeDescription position_attribute =
+            Vertex::AttributeDescriptions()[0];
 
         VkPipelineVertexInputStateCreateInfo vertex_input{};
         vertex_input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         vertex_input.vertexBindingDescriptionCount = 1;
         vertex_input.pVertexBindingDescriptions = &binding_description;
-        vertex_input.vertexAttributeDescriptionCount = static_cast<u32>(attribute_descriptions.size());
-        vertex_input.pVertexAttributeDescriptions = attribute_descriptions.data();
+        vertex_input.vertexAttributeDescriptionCount = 1;
+        vertex_input.pVertexAttributeDescriptions = &position_attribute;
 
         VkPipelineInputAssemblyStateCreateInfo input_assembly{};
         input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;

@@ -1,10 +1,8 @@
 #version 450
 
 // Depth-only shadow pass: project scene geometry into the directional light's
-// clip space. Only the position attribute is used; normal/color are ignored.
+// clip space. Only the position attribute is needed.
 layout(location = 0) in vec3 in_position;
-layout(location = 1) in vec3 in_normal;
-layout(location = 2) in vec3 in_color;
 
 layout(set = 0, binding = 0) uniform CameraUniforms
 {

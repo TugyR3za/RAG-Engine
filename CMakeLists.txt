@@ -109,6 +109,8 @@ if(RAG_ENABLE_VULKAN)
         src/Rag/RendererVK/Internal/VulkanSurface.h
         src/Rag/RendererVK/Internal/VulkanSwapchain.cpp
         src/Rag/RendererVK/Internal/VulkanSwapchain.h
+        src/Rag/RendererVK/Internal/VulkanTexture.cpp
+        src/Rag/RendererVK/Internal/VulkanTexture.h
         src/Rag/RendererVK/Internal/VulkanUniformResources.cpp
         src/Rag/RendererVK/Internal/VulkanUniformResources.h
         src/Rag/RendererVK/Internal/VulkanVertexBuffer.cpp
@@ -120,7 +122,7 @@ if(RAG_ENABLE_VULKAN)
         src/Rag/RendererVK/Shaders/Triangle.vert
     )
     rag_configure_target(RagRendererVK)
-    # Vendored single-header libraries (tinyobjloader).
+    # Vendored single-header libraries (tinyobjloader and stb_image).
     target_include_directories(RagRendererVK PRIVATE ${PROJECT_SOURCE_DIR}/third_party)
     target_compile_definitions(RagRendererVK
         PUBLIC RAG_ENABLE_VULKAN=1
@@ -202,6 +204,16 @@ if(RAG_BUILD_SANDBOX)
                 "${CMAKE_CURRENT_SOURCE_DIR}/models"
                 "$<TARGET_FILE_DIR:RagSandbox>/models"
             COMMENT "Copying RAG Engine model assets next to RagSandbox"
+            VERBATIM
+        )
+
+        add_custom_command(
+            TARGET RagSandbox
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+                "$<TARGET_FILE_DIR:RagSandbox>/assets"
+            COMMENT "Copying RAG Engine texture assets next to RagSandbox"
             VERBATIM
         )
     endif()

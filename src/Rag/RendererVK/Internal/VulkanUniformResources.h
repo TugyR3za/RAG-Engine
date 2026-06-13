@@ -44,6 +44,10 @@ namespace rag::renderer::vk
             VkImageView shadow_view,
             VkSampler compare_sampler,
             VkSampler depth_sampler);
+        void BindTexture(
+            u32 frame_index,
+            VkImageView texture_view,
+            VkSampler texture_sampler);
 
         [[nodiscard]] VkDescriptorSetLayout DescriptorSetLayout() const;
         [[nodiscard]] VkDescriptorSet DescriptorSet(u32 frame_index) const;

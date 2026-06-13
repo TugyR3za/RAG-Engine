@@ -15,6 +15,7 @@
     #pragma warning(pop)
 #endif
 
+#include <algorithm>
 #include <bit>
 #include <cmath>
 #include <cstddef>
@@ -25,11 +26,13 @@ namespace rag::renderer::vk
 {
     namespace
     {
-        // Exact-match dedup key: the bit patterns of position + normal. Color
-        // is uniform across the mesh, so it never distinguishes vertices.
+        constexpr f32 Pi = 3.14159265358979323846f;
+
+        // Exact-match dedup key: the bit patterns of position + normal + UV.
+        // Color is uniform across the mesh, so it never distinguishes vertices.
         struct VertexKey
         {
-            std::array<u32, 6> bits{};
+            std::array<u32, 8> bits{};
 
             bool operator==(const VertexKey&) const = default;
         };
@@ -38,7 +41,7 @@ namespace rag::renderer::vk
         {
             [[nodiscard]] std::size_t operator()(const VertexKey& key) const
             {
-                // FNV-1a over the six 32-bit words.
+                // FNV-1a over the eight 32-bit words.
                 std::size_t hash = 14695981039346656037ull;
                 for (const u32 word : key.bits)
                 {
@@ -51,7 +54,8 @@ namespace rag::renderer::vk
 
         [[nodiscard]] VertexKey MakeVertexKey(
             const std::array<f32, 3>& position,
-            const std::array<f32, 3>& normal)
+            const std::array<f32, 3>& normal,
+            const std::array<f32, 2>& texcoord)
         {
             return VertexKey{{
                 std::bit_cast<u32>(position[0]),
@@ -59,7 +63,27 @@ namespace rag::renderer::vk
                 std::bit_cast<u32>(position[2]),
                 std::bit_cast<u32>(normal[0]),
                 std::bit_cast<u32>(normal[1]),
-                std::bit_cast<u32>(normal[2])}};
+                std::bit_cast<u32>(normal[2]),
+                std::bit_cast<u32>(texcoord[0]),
+                std::bit_cast<u32>(texcoord[1])}};
+        }
+
+        [[nodiscard]] std::array<f32, 2> SphericalTexcoord(
+            const std::array<f32, 3>& position)
+        {
+            const f32 length = std::sqrt(
+                (position[0] * position[0]) +
+                (position[1] * position[1]) +
+                (position[2] * position[2]));
+            if (length <= 0.000001f)
+            {
+                return {0.5f, 0.5f};
+            }
+
+            const f32 normalized_y = std::clamp(position[1] / length, -1.0f, 1.0f);
+            return {
+                (std::atan2(position[2], position[0]) / (2.0f * Pi)) + 0.5f,
+                std::acos(normalized_y) / Pi};
         }
 
         [[nodiscard]] std::array<f32, 3> FaceNormal(
@@ -125,6 +149,7 @@ namespace rag::renderer::vk
 
         const std::size_t position_count = attrib.vertices.size() / 3;
         const std::size_t normal_count = attrib.normals.size() / 3;
+        const std::size_t texcoord_count = attrib.texcoords.size() / 2;
 
         std::size_t corner_count = 0;
         for (const tinyobj::shape_t& shape : shapes)
@@ -146,6 +171,7 @@ namespace rag::renderer::vk
         unique_vertices.reserve(corner_count);
 
         std::size_t corners_with_file_normals = 0;
+        std::size_t corners_with_file_texcoords = 0;
 
         for (const tinyobj::shape_t& shape : shapes)
         {
@@ -170,25 +196,69 @@ namespace rag::renderer::vk
 
                 const std::array<f32, 3> face_normal = FaceNormal(positions[0], positions[1], positions[2]);
 
+                std::array<std::array<f32, 3>, 3> normals{};
+                std::array<std::array<f32, 2>, 3> texcoords{};
+                std::array<bool, 3> generated_texcoords{};
+
                 for (std::size_t i = 0; i < 3; ++i)
                 {
                     const int normal_index = shape_indices[corner + i].normal_index;
-                    std::array<f32, 3> normal = face_normal;
+                    normals[i] = face_normal;
                     if (normal_index >= 0 && static_cast<std::size_t>(normal_index) < normal_count)
                     {
-                        normal = {
+                        normals[i] = {
                             attrib.normals[(3 * static_cast<std::size_t>(normal_index)) + 0],
                             attrib.normals[(3 * static_cast<std::size_t>(normal_index)) + 1],
                             attrib.normals[(3 * static_cast<std::size_t>(normal_index)) + 2]};
                         ++corners_with_file_normals;
                     }
 
-                    const VertexKey key = MakeVertexKey(positions[i], normal);
+                    const int texcoord_index = shape_indices[corner + i].texcoord_index;
+                    if (texcoord_index >= 0 &&
+                        static_cast<std::size_t>(texcoord_index) < texcoord_count)
+                    {
+                        texcoords[i] = {
+                            attrib.texcoords[(2 * static_cast<std::size_t>(texcoord_index)) + 0],
+                            attrib.texcoords[(2 * static_cast<std::size_t>(texcoord_index)) + 1]};
+                        ++corners_with_file_texcoords;
+                    }
+                    else
+                    {
+                        texcoords[i] = SphericalTexcoord(positions[i]);
+                        generated_texcoords[i] = true;
+                    }
+                }
+
+                // Duplicate seam vertices with U > 1 so interpolation follows
+                // the short wrapped path instead of smearing across the sphere.
+                if (generated_texcoords[0] && generated_texcoords[1] && generated_texcoords[2])
+                {
+                    const f32 minimum_u = std::min({texcoords[0][0], texcoords[1][0], texcoords[2][0]});
+                    const f32 maximum_u = std::max({texcoords[0][0], texcoords[1][0], texcoords[2][0]});
+                    if ((maximum_u - minimum_u) > 0.5f)
+                    {
+                        for (std::array<f32, 2>& texcoord : texcoords)
+                        {
+                            if (texcoord[0] < 0.5f)
+                            {
+                                texcoord[0] += 1.0f;
+                            }
+                        }
+                    }
+                }
+
+                for (std::size_t i = 0; i < 3; ++i)
+                {
+                    const VertexKey key = MakeVertexKey(positions[i], normals[i], texcoords[i]);
                     const auto [entry, inserted] =
                         unique_vertices.try_emplace(key, static_cast<u32>(data.vertices.size()));
                     if (inserted)
                     {
-                        data.vertices.push_back(Vertex{positions[i], normal, base_color});
+                        data.vertices.push_back(Vertex{
+                            positions[i],
+                            normals[i],
+                            base_color,
+                            texcoords[i]});
                     }
                     data.indices.push_back(entry->second);
                 }
@@ -196,6 +266,7 @@ namespace rag::renderer::vk
         }
 
         data.normals_from_file = corners_with_file_normals == corner_count;
+        data.texcoords_from_file = corners_with_file_texcoords == corner_count;
 
         std::string normals_description;
         if (data.normals_from_file)
@@ -216,6 +287,25 @@ namespace rag::renderer::vk
                 " corners from file, rest generated flat per-face)";
         }
 
+        std::string texcoords_description;
+        if (data.texcoords_from_file)
+        {
+            texcoords_description = "loaded from file";
+        }
+        else if (corners_with_file_texcoords == 0)
+        {
+            texcoords_description = "generated spherical";
+        }
+        else
+        {
+            texcoords_description =
+                "mixed (" +
+                std::to_string(corners_with_file_texcoords) +
+                " of " +
+                std::to_string(corner_count) +
+                " corners from file, rest generated spherical)";
+        }
+
         RAG_LOG_INFO(
             "Loaded OBJ model '",
             obj_filename,
@@ -225,6 +315,8 @@ namespace rag::renderer::vk
             data.indices.size(),
             ", normals=",
             normals_description,
+            ", texcoords=",
+            texcoords_description,
             ", deduplicated from ",
             corner_count,
             " face corners.");

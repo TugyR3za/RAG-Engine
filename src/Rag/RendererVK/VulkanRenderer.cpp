@@ -11,6 +11,7 @@
 #include "Rag/RendererVK/Internal/VulkanShadowPipeline.h"
 #include "Rag/RendererVK/Internal/VulkanSurface.h"
 #include "Rag/RendererVK/Internal/VulkanSwapchain.h"
+#include "Rag/RendererVK/Internal/VulkanTexture.h"
 #include "Rag/RendererVK/Internal/VulkanUniformResources.h"
 
 #if defined(RAG_SHADOW_DEBUG)
@@ -32,40 +33,40 @@ namespace rag::renderer::vk
 
         constexpr std::array<Vertex, 24> CubeVertices{
             // Front (+Z)
-            Vertex{{-0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, CubeColor},
-            Vertex{{0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, CubeColor},
-            Vertex{{0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, CubeColor},
-            Vertex{{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, CubeColor},
+            Vertex{{-0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, CubeColor, {0.0f, 0.0f}},
+            Vertex{{0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, CubeColor, {1.0f, 0.0f}},
+            Vertex{{0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, CubeColor, {1.0f, 1.0f}},
+            Vertex{{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, CubeColor, {0.0f, 1.0f}},
 
             // Back (-Z)
-            Vertex{{0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, CubeColor},
-            Vertex{{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, CubeColor},
-            Vertex{{-0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, CubeColor},
-            Vertex{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, CubeColor},
+            Vertex{{0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, CubeColor, {0.0f, 0.0f}},
+            Vertex{{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, CubeColor, {1.0f, 0.0f}},
+            Vertex{{-0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, CubeColor, {1.0f, 1.0f}},
+            Vertex{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, CubeColor, {0.0f, 1.0f}},
 
             // Left (-X)
-            Vertex{{-0.5f, -0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}, CubeColor},
-            Vertex{{-0.5f, -0.5f, 0.5f}, {-1.0f, 0.0f, 0.0f}, CubeColor},
-            Vertex{{-0.5f, 0.5f, 0.5f}, {-1.0f, 0.0f, 0.0f}, CubeColor},
-            Vertex{{-0.5f, 0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}, CubeColor},
+            Vertex{{-0.5f, -0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}, CubeColor, {0.0f, 0.0f}},
+            Vertex{{-0.5f, -0.5f, 0.5f}, {-1.0f, 0.0f, 0.0f}, CubeColor, {1.0f, 0.0f}},
+            Vertex{{-0.5f, 0.5f, 0.5f}, {-1.0f, 0.0f, 0.0f}, CubeColor, {1.0f, 1.0f}},
+            Vertex{{-0.5f, 0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}, CubeColor, {0.0f, 1.0f}},
 
             // Right (+X)
-            Vertex{{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, CubeColor},
-            Vertex{{0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, CubeColor},
-            Vertex{{0.5f, 0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, CubeColor},
-            Vertex{{0.5f, 0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, CubeColor},
+            Vertex{{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, CubeColor, {0.0f, 0.0f}},
+            Vertex{{0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, CubeColor, {1.0f, 0.0f}},
+            Vertex{{0.5f, 0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, CubeColor, {1.0f, 1.0f}},
+            Vertex{{0.5f, 0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, CubeColor, {0.0f, 1.0f}},
 
             // Top (+Y)
-            Vertex{{-0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, CubeColor},
-            Vertex{{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, CubeColor},
-            Vertex{{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, CubeColor},
-            Vertex{{-0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, CubeColor},
+            Vertex{{-0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, CubeColor, {0.0f, 0.0f}},
+            Vertex{{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, CubeColor, {1.0f, 0.0f}},
+            Vertex{{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, CubeColor, {1.0f, 1.0f}},
+            Vertex{{-0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, CubeColor, {0.0f, 1.0f}},
 
             // Bottom (-Y)
-            Vertex{{-0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}, CubeColor},
-            Vertex{{0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}, CubeColor},
-            Vertex{{0.5f, -0.5f, 0.5f}, {0.0f, -1.0f, 0.0f}, CubeColor},
-            Vertex{{-0.5f, -0.5f, 0.5f}, {0.0f, -1.0f, 0.0f}, CubeColor},
+            Vertex{{-0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}, CubeColor, {0.0f, 0.0f}},
+            Vertex{{0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}, CubeColor, {1.0f, 0.0f}},
+            Vertex{{0.5f, -0.5f, 0.5f}, {0.0f, -1.0f, 0.0f}, CubeColor, {1.0f, 1.0f}},
+            Vertex{{-0.5f, -0.5f, 0.5f}, {0.0f, -1.0f, 0.0f}, CubeColor, {0.0f, 1.0f}},
         };
 
         constexpr std::array<u32, 36> CubeIndices{
@@ -85,9 +86,23 @@ namespace rag::renderer::vk
         // built-in cube, slot 1 the OBJ model loaded at startup. Invalid or
         // out-of-range MeshHandles fall back to the cube.
         constexpr u32 CubeMeshIndex = 0;
+        constexpr u32 GroundMeshIndex = 2;
         constexpr std::string_view ModelMeshFilename = "sphere.obj";
+        constexpr std::string_view ColorTextureFilename = "texture.png";
+        constexpr f32 GroundTextureTileCount = 8.0f;
         // Uniform base color for loaded models; .obj files carry no vertex color.
-        constexpr std::array<f32, 3> ModelBaseColor{0.80f, 0.80f, 0.80f};
+        constexpr std::array<f32, 3> ModelBaseColor{1.0f, 1.0f, 1.0f};
+
+        [[nodiscard]] std::array<Vertex, CubeVertices.size()> BuildGroundVertices()
+        {
+            std::array<Vertex, CubeVertices.size()> vertices = CubeVertices;
+            for (Vertex& vertex : vertices)
+            {
+                vertex.texcoord[0] *= GroundTextureTileCount;
+                vertex.texcoord[1] *= GroundTextureTileCount;
+            }
+            return vertices;
+        }
 
         // --- Directional shadow quality knobs -----------------------------------
         // Full width/height of the orthographic light frustum in world units.
@@ -199,6 +214,9 @@ namespace rag::renderer::vk
             uniform_resources_ = std::make_unique<VulkanUniformResources>(
                 *device_,
                 desc_.frames_in_flight);
+            texture_ = std::make_unique<VulkanTexture>(
+                *device_,
+                ColorTextureFilename);
             pipeline_ = std::make_unique<VulkanGraphicsPipeline>(
                 device_->Device(),
                 swapchain_->RenderPass(),
@@ -224,6 +242,10 @@ namespace rag::renderer::vk
                     shadow_map_->ImageView(frame),
                     shadow_map_->CompareSampler(),
                     shadow_map_->DepthSampler());
+                uniform_resources_->BindTexture(
+                    frame,
+                    texture_->ImageView(),
+                    texture_->Sampler());
             }
 
 #if defined(RAG_SHADOW_DEBUG)
@@ -255,7 +277,20 @@ namespace rag::renderer::vk
                     "': ",
                     exception.what(),
                     " Objects referencing it will fall back to the built-in cube mesh.");
+                meshes_.push_back(nullptr);
             }
+
+            // Mesh slot 2: same cube geometry with repeated UVs for the floor.
+            if (meshes_.size() != GroundMeshIndex)
+            {
+                throw VulkanError("Vulkan mesh registry ground slot is inconsistent.");
+            }
+            const std::array<Vertex, CubeVertices.size()> ground_vertices =
+                BuildGroundVertices();
+            meshes_.push_back(std::make_unique<VulkanMesh>(
+                *device_,
+                ground_vertices,
+                CubeIndices));
 
             frames_ = std::make_unique<VulkanFrameResources>(
                 device_->Device(),
@@ -512,7 +547,9 @@ namespace rag::renderer::vk
         // model that failed to load) never breaks the frame.
         [[nodiscard]] u32 ResolveMeshIndex(MeshHandle handle) const
         {
-            if (!handle.IsValid() || handle.index >= meshes_.size())
+            if (!handle.IsValid() ||
+                handle.index >= meshes_.size() ||
+                meshes_[handle.index] == nullptr)
             {
                 return CubeMeshIndex;
             }
@@ -735,6 +772,7 @@ namespace rag::renderer::vk
         std::unique_ptr<VulkanDevice> device_;
         std::unique_ptr<VulkanSwapchain> swapchain_;
         std::unique_ptr<VulkanUniformResources> uniform_resources_;
+        std::unique_ptr<VulkanTexture> texture_;
         std::unique_ptr<VulkanGraphicsPipeline> pipeline_;
         std::unique_ptr<VulkanShadowMap> shadow_map_;
         std::unique_ptr<VulkanShadowPipeline> shadow_pipeline_;

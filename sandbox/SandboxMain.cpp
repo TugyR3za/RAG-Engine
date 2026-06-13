@@ -191,9 +191,10 @@ namespace
                 GroundSurfaceHeight + SphereRadius + GroundClearance;
 
             // Renderer mesh registry convention: slot 0 = built-in cube,
-            // slot 1 = the OBJ model loaded at startup.
+            // slot 1 = the OBJ model, slot 2 = tiled-UV ground cube.
             constexpr rag::renderer::MeshHandle CubeMeshHandle{0, 0};
             constexpr rag::renderer::MeshHandle SphereMeshHandle{1, 0};
+            constexpr rag::renderer::MeshHandle GroundMeshHandle{2, 0};
 
             for (rag::u32 index = 0; index < RingCubeCount; ++index)
             {
@@ -230,7 +231,7 @@ namespace
             rag::scene::TransformComponent& ground_transform = scene_.AddTransform(ground);
             ground_transform.local_position = rag::math::Vec3{0.0f, -0.6f, 0.0f};
             ground_transform.local_scale = rag::math::Vec3{40.0f, 0.2f, 40.0f};
-            scene_.AddRenderable(ground).mesh = CubeMeshHandle;
+            scene_.AddRenderable(ground).mesh = GroundMeshHandle;
 
             // One entity using the loaded OBJ mesh, off to the side of the ring
             // on open floor so its shadow is clearly visible.

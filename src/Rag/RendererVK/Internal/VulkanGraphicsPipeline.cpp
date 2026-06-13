@@ -108,7 +108,7 @@ namespace rag::renderer::vk
         };
 
         const VkVertexInputBindingDescription binding_description = Vertex::BindingDescription();
-        const std::array<VkVertexInputAttributeDescription, 3> attribute_descriptions =
+        const std::array<VkVertexInputAttributeDescription, 4> attribute_descriptions =
             Vertex::AttributeDescriptions();
 
         VkPipelineVertexInputStateCreateInfo vertex_input{};

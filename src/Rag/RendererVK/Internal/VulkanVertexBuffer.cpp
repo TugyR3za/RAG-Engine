@@ -8,7 +8,7 @@
 
 namespace rag::renderer::vk
 {
-    static_assert(sizeof(Vertex) == sizeof(f32) * 9);
+    static_assert(sizeof(Vertex) == sizeof(f32) * 11);
 
     VkVertexInputBindingDescription Vertex::BindingDescription()
     {
@@ -19,9 +19,9 @@ namespace rag::renderer::vk
         return description;
     }
 
-    std::array<VkVertexInputAttributeDescription, 3> Vertex::AttributeDescriptions()
+    std::array<VkVertexInputAttributeDescription, 4> Vertex::AttributeDescriptions()
     {
-        std::array<VkVertexInputAttributeDescription, 3> descriptions{};
+        std::array<VkVertexInputAttributeDescription, 4> descriptions{};
 
         descriptions[0].binding = 0;
         descriptions[0].location = 0;
@@ -37,6 +37,11 @@ namespace rag::renderer::vk
         descriptions[2].location = 2;
         descriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
         descriptions[2].offset = static_cast<u32>(offsetof(Vertex, color));
+
+        descriptions[3].binding = 0;
+        descriptions[3].location = 3;
+        descriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
+        descriptions[3].offset = static_cast<u32>(offsetof(Vertex, texcoord));
 
         return descriptions;
     }
