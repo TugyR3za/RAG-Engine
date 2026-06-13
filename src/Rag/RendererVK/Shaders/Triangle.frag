@@ -26,7 +26,7 @@ layout(set = 0, binding = 0) uniform CameraUniforms
 
 // Directional shadow map sampled through a depth-comparison sampler.
 layout(set = 0, binding = 1) uniform sampler2DShadow shadow_map;
-layout(set = 0, binding = 3) uniform sampler2D color_texture;
+layout(set = 1, binding = 0) uniform sampler2D color_texture;
 
 // Depth bias (in light clip-space depth units) used to fight shadow acne.
 // Increase if you see acne (self-shadowing stripes); decrease if shadows

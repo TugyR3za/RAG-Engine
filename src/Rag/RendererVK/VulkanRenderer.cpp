@@ -3,6 +3,7 @@
 #include "Rag/Core/Log.h"
 #include "Rag/RendererVK/Internal/VulkanDevice.h"
 #include "Rag/RendererVK/Internal/VulkanFrameResources.h"
+#include "Rag/RendererVK/Internal/VulkanGltfLoader.h"
 #include "Rag/RendererVK/Internal/VulkanGraphicsPipeline.h"
 #include "Rag/RendererVK/Internal/VulkanInstance.h"
 #include "Rag/RendererVK/Internal/VulkanMesh.h"
@@ -12,6 +13,7 @@
 #include "Rag/RendererVK/Internal/VulkanSurface.h"
 #include "Rag/RendererVK/Internal/VulkanSwapchain.h"
 #include "Rag/RendererVK/Internal/VulkanTexture.h"
+#include "Rag/RendererVK/Internal/VulkanTextureDescriptors.h"
 #include "Rag/RendererVK/Internal/VulkanUniformResources.h"
 
 #if defined(RAG_SHADOW_DEBUG)
@@ -22,6 +24,7 @@
 #include <chrono>
 #include <cmath>
 #include <limits>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -87,7 +90,11 @@ namespace rag::renderer::vk
         // out-of-range MeshHandles fall back to the cube.
         constexpr u32 CubeMeshIndex = 0;
         constexpr u32 GroundMeshIndex = 2;
+        constexpr u32 DuckMeshIndex = 3;
+        constexpr u32 CheckerTextureIndex = 0;
+        constexpr u32 DuckTextureIndex = 1;
         constexpr std::string_view ModelMeshFilename = "sphere.obj";
+        constexpr std::string_view GltfModelFilename = "Duck.glb";
         constexpr std::string_view ColorTextureFilename = "texture.png";
         constexpr f32 GroundTextureTileCount = 8.0f;
         // Uniform base color for loaded models; .obj files carry no vertex color.
@@ -214,13 +221,50 @@ namespace rag::renderer::vk
             uniform_resources_ = std::make_unique<VulkanUniformResources>(
                 *device_,
                 desc_.frames_in_flight);
-            texture_ = std::make_unique<VulkanTexture>(
+
+            // Texture slot 0 is the shared checker used by built-in and OBJ
+            // meshes. The duck's embedded base-color image becomes slot 1.
+            textures_.push_back(std::make_unique<VulkanTexture>(
                 *device_,
-                ColorTextureFilename);
+                ColorTextureFilename));
+
+            std::optional<GltfMeshData> duck_data;
+            try
+            {
+                duck_data.emplace(LoadGltfMesh(GltfModelFilename, ModelBaseColor));
+                textures_.push_back(std::make_unique<VulkanTexture>(
+                    *device_,
+                    "models/Duck.glb embedded baseColorTexture",
+                    duck_data->texture_width,
+                    duck_data->texture_height,
+                    duck_data->base_color_pixels));
+            }
+            catch (const std::exception& exception)
+            {
+                duck_data.reset();
+                RAG_LOG_ERROR(
+                    "Failed to load glTF model '",
+                    GltfModelFilename,
+                    "' with its base-color texture: ",
+                    exception.what(),
+                    " Objects referencing it will fall back to the built-in cube mesh.");
+            }
+
+            std::vector<VulkanTexture*> texture_views;
+            texture_views.reserve(textures_.size());
+            for (const std::unique_ptr<VulkanTexture>& texture : textures_)
+            {
+                texture_views.push_back(texture.get());
+            }
+            texture_descriptors_ = std::make_unique<VulkanTextureDescriptors>(
+                *device_,
+                texture_views);
+
             pipeline_ = std::make_unique<VulkanGraphicsPipeline>(
                 device_->Device(),
                 swapchain_->RenderPass(),
-                uniform_resources_->DescriptorSetLayout());
+                uniform_resources_->DescriptorSetLayout(),
+                texture_descriptors_->DescriptorSetLayout());
 
             // Shadow resources are independent of the swapchain and fixed size.
             shadow_map_ = std::make_unique<VulkanShadowMap>(
@@ -242,10 +286,6 @@ namespace rag::renderer::vk
                     shadow_map_->ImageView(frame),
                     shadow_map_->CompareSampler(),
                     shadow_map_->DepthSampler());
-                uniform_resources_->BindTexture(
-                    frame,
-                    texture_->ImageView(),
-                    texture_->Sampler());
             }
 
 #if defined(RAG_SHADOW_DEBUG)
@@ -258,6 +298,7 @@ namespace rag::renderer::vk
 
             // Mesh slot 0: the built-in cube every existing entity uses.
             meshes_.push_back(std::make_unique<VulkanMesh>(*device_, CubeVertices, CubeIndices));
+            mesh_texture_indices_.push_back(CheckerTextureIndex);
 
             // Mesh slot 1: the OBJ model. A load failure is logged but not
             // fatal; handles pointing at the missing slot draw the cube instead.
@@ -268,6 +309,7 @@ namespace rag::renderer::vk
                     *device_,
                     model_data.vertices,
                     model_data.indices));
+                mesh_texture_indices_.push_back(CheckerTextureIndex);
             }
             catch (const std::exception& exception)
             {
@@ -278,6 +320,7 @@ namespace rag::renderer::vk
                     exception.what(),
                     " Objects referencing it will fall back to the built-in cube mesh.");
                 meshes_.push_back(nullptr);
+                mesh_texture_indices_.push_back(CheckerTextureIndex);
             }
 
             // Mesh slot 2: same cube geometry with repeated UVs for the floor.
@@ -291,6 +334,27 @@ namespace rag::renderer::vk
                 *device_,
                 ground_vertices,
                 CubeIndices));
+            mesh_texture_indices_.push_back(CheckerTextureIndex);
+
+            // Mesh slot 3: first primitive from Duck.glb. Its node transform is
+            // already baked into the uploaded vertices by the glTF loader.
+            if (meshes_.size() != DuckMeshIndex)
+            {
+                throw VulkanError("Vulkan mesh registry duck slot is inconsistent.");
+            }
+            if (duck_data.has_value() && textures_.size() > DuckTextureIndex)
+            {
+                meshes_.push_back(std::make_unique<VulkanMesh>(
+                    *device_,
+                    duck_data->vertices,
+                    duck_data->indices));
+                mesh_texture_indices_.push_back(DuckTextureIndex);
+            }
+            else
+            {
+                meshes_.push_back(nullptr);
+                mesh_texture_indices_.push_back(CheckerTextureIndex);
+            }
 
             frames_ = std::make_unique<VulkanFrameResources>(
                 device_->Device(),
@@ -502,13 +566,22 @@ namespace rag::renderer::vk
             // Main pass: shade the scene, sampling the shadow map for occlusion.
             swapchain_->BeginRenderPass(command_buffer, image_index, context.clear_color);
             pipeline_->Bind(command_buffer, swapchain_->Extent());
-            pipeline_->BindDescriptorSet(command_buffer, descriptor_set);
             u32 main_bound_mesh = std::numeric_limits<u32>::max();
+            u32 main_bound_texture = std::numeric_limits<u32>::max();
             ForEachSceneModel(context, [&](const math::Mat4& model, u32 mesh_index) {
                 if (mesh_index != main_bound_mesh)
                 {
                     meshes_[mesh_index]->Bind(command_buffer);
                     main_bound_mesh = mesh_index;
+                }
+                const u32 texture_index = mesh_texture_indices_[mesh_index];
+                if (texture_index != main_bound_texture)
+                {
+                    pipeline_->BindDescriptorSets(
+                        command_buffer,
+                        descriptor_set,
+                        texture_descriptors_->DescriptorSet(texture_index));
+                    main_bound_texture = texture_index;
                 }
                 pipeline_->PushModelMatrix(command_buffer, model);
                 vkCmdDrawIndexed(command_buffer, meshes_[mesh_index]->IndexCount(), 1, 0, 0, 0);
@@ -585,7 +658,8 @@ namespace rag::renderer::vk
                 pipeline_ = std::make_unique<VulkanGraphicsPipeline>(
                     device_->Device(),
                     swapchain_->RenderPass(),
-                    uniform_resources_->DescriptorSetLayout());
+                    uniform_resources_->DescriptorSetLayout(),
+                    texture_descriptors_->DescriptorSetLayout());
 
 #if defined(RAG_SHADOW_DEBUG)
                 // The overlay pipeline is tied to the swapchain render pass; the
@@ -772,7 +846,8 @@ namespace rag::renderer::vk
         std::unique_ptr<VulkanDevice> device_;
         std::unique_ptr<VulkanSwapchain> swapchain_;
         std::unique_ptr<VulkanUniformResources> uniform_resources_;
-        std::unique_ptr<VulkanTexture> texture_;
+        std::vector<std::unique_ptr<VulkanTexture>> textures_;
+        std::unique_ptr<VulkanTextureDescriptors> texture_descriptors_;
         std::unique_ptr<VulkanGraphicsPipeline> pipeline_;
         std::unique_ptr<VulkanShadowMap> shadow_map_;
         std::unique_ptr<VulkanShadowPipeline> shadow_pipeline_;
@@ -780,6 +855,7 @@ namespace rag::renderer::vk
         std::unique_ptr<VulkanShadowDebugPipeline> shadow_debug_pipeline_;
 #endif
         std::vector<std::unique_ptr<VulkanMesh>> meshes_;
+        std::vector<u32> mesh_texture_indices_;
         std::unique_ptr<VulkanFrameResources> frames_;
         std::vector<VkFence> image_in_flight_;
         RendererStats stats_{};

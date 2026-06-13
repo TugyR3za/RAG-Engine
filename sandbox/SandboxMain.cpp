@@ -189,12 +189,16 @@ namespace
             constexpr rag::f32 SphereRadius = 1.0f;
             constexpr rag::f32 SphereCenterHeight =
                 GroundSurfaceHeight + SphereRadius + GroundClearance;
+            // Duck.glb's root node applies a 0.01 scale. Its geometry starts
+            // roughly 0.1 units above local Y=0, so this rests it on the floor.
+            constexpr rag::f32 DuckGroundOffset = -0.6f;
 
             // Renderer mesh registry convention: slot 0 = built-in cube,
-            // slot 1 = the OBJ model, slot 2 = tiled-UV ground cube.
+            // slot 1 = OBJ sphere, slot 2 = tiled-UV ground, slot 3 = glTF duck.
             constexpr rag::renderer::MeshHandle CubeMeshHandle{0, 0};
             constexpr rag::renderer::MeshHandle SphereMeshHandle{1, 0};
             constexpr rag::renderer::MeshHandle GroundMeshHandle{2, 0};
+            constexpr rag::renderer::MeshHandle DuckMeshHandle{3, 0};
 
             for (rag::u32 index = 0; index < RingCubeCount; ++index)
             {
@@ -244,6 +248,14 @@ namespace
             sphere_renderable.local_bounds.extents =
                 rag::math::Vec3{SphereRadius, SphereRadius, SphereRadius};
 
+            const rag::scene::EntityId duck = scene_.CreateEntity();
+            rag::scene::TransformComponent& duck_transform = scene_.AddTransform(duck);
+            duck_transform.local_position =
+                rag::math::Vec3{-6.5f, DuckGroundOffset, 0.0f};
+            rag::scene::RenderableComponent& duck_renderable = scene_.AddRenderable(duck);
+            duck_renderable.mesh = DuckMeshHandle;
+            duck_renderable.local_bounds.extents = rag::math::Vec3{1.0f, 1.0f, 1.0f};
+
             camera_entity_ = scene_.CreateEntity();
             rag::scene::TransformComponent& camera_transform = scene_.AddTransform(camera_entity_);
             camera_transform.local_position = rag::math::Vec3{0.0f, 3.0f, 9.0f};
@@ -278,7 +290,8 @@ namespace
                 scene_.EntityCount(),
                 " entities (",
                 RingCubeCount,
-                " ring cubes, 1 center cube, 1 obj sphere, 1 ground, 1 camera, 1 directional light), ",
+                " ring cubes, 1 center cube, 1 obj sphere, 1 glTF duck, "
+                "1 ground, 1 camera, 1 directional light), ",
                 spinning_cubes_.size(),
                 " of the cubes spin.");
         }

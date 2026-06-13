@@ -18,12 +18,16 @@ namespace rag::renderer::vk
     VulkanGraphicsPipeline::VulkanGraphicsPipeline(
         VkDevice device,
         VkRenderPass render_pass,
-        VkDescriptorSetLayout descriptor_set_layout)
+        VkDescriptorSetLayout frame_descriptor_set_layout,
+        VkDescriptorSetLayout texture_descriptor_set_layout)
         : device_(device)
     {
         try
         {
-            Create(render_pass, descriptor_set_layout);
+            Create(
+                render_pass,
+                frame_descriptor_set_layout,
+                texture_descriptor_set_layout);
         }
         catch (...)
         {
@@ -56,17 +60,21 @@ namespace rag::renderer::vk
         vkCmdSetScissor(command_buffer, 0, 1, &scissor);
     }
 
-    void VulkanGraphicsPipeline::BindDescriptorSet(
+    void VulkanGraphicsPipeline::BindDescriptorSets(
         VkCommandBuffer command_buffer,
-        VkDescriptorSet descriptor_set) const
+        VkDescriptorSet frame_descriptor_set,
+        VkDescriptorSet texture_descriptor_set) const
     {
+        const std::array descriptor_sets{
+            frame_descriptor_set,
+            texture_descriptor_set};
         vkCmdBindDescriptorSets(
             command_buffer,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             layout_,
             0,
-            1,
-            &descriptor_set,
+            static_cast<u32>(descriptor_sets.size()),
+            descriptor_sets.data(),
             0,
             nullptr);
     }
@@ -87,7 +95,8 @@ namespace rag::renderer::vk
 
     void VulkanGraphicsPipeline::Create(
         VkRenderPass render_pass,
-        VkDescriptorSetLayout descriptor_set_layout)
+        VkDescriptorSetLayout frame_descriptor_set_layout,
+        VkDescriptorSetLayout texture_descriptor_set_layout)
     {
         const ScopedShaderModule vertex_module = LoadShaderModule(device_, VertexShaderFilename);
         const ScopedShaderModule fragment_module = LoadShaderModule(device_, FragmentShaderFilename);
@@ -182,8 +191,11 @@ namespace rag::renderer::vk
 
         VkPipelineLayoutCreateInfo layout_info{};
         layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        layout_info.setLayoutCount = 1;
-        layout_info.pSetLayouts = &descriptor_set_layout;
+        const std::array descriptor_set_layouts{
+            frame_descriptor_set_layout,
+            texture_descriptor_set_layout};
+        layout_info.setLayoutCount = static_cast<u32>(descriptor_set_layouts.size());
+        layout_info.pSetLayouts = descriptor_set_layouts.data();
         layout_info.pushConstantRangeCount = 1;
         layout_info.pPushConstantRanges = &push_constant_range;
         RAG_VK_CHECK(vkCreatePipelineLayout(device_, &layout_info, nullptr, &layout_));
@@ -213,8 +225,8 @@ namespace rag::renderer::vk
             &pipeline_));
 
         RAG_LOG_INFO(
-            "Created Vulkan graphics pipeline with camera/light UBO + shadow-map descriptors, "
-            "a model push constant, and depth testing using shaders ",
+            "Created Vulkan graphics pipeline with frame descriptors in set 0, "
+            "per-texture descriptors in set 1, a model push constant, and depth testing using shaders ",
             VertexShaderFilename,
             " and ",
             FragmentShaderFilename,

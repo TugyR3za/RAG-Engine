@@ -2,6 +2,7 @@
 
 #include "Rag/RendererVK/Internal/VulkanDevice.h"
 
+#include <span>
 #include <string_view>
 
 namespace rag::renderer::vk
@@ -12,6 +13,12 @@ namespace rag::renderer::vk
     {
     public:
         VulkanTexture(VulkanDevice& device, std::string_view filename);
+        VulkanTexture(
+            VulkanDevice& device,
+            std::string_view debug_name,
+            u32 width,
+            u32 height,
+            std::span<const u8> rgba_pixels);
         ~VulkanTexture();
 
         VulkanTexture(const VulkanTexture&) = delete;
@@ -28,6 +35,7 @@ namespace rag::renderer::vk
         void UploadPixels(const void* pixels, VkDeviceSize byte_count);
         void CreateImageView();
         void CreateSampler();
+        void Initialize(std::span<const u8> rgba_pixels);
         void Cleanup();
 
         VulkanDevice& device_;

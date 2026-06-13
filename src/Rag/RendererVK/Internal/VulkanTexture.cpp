@@ -6,7 +6,6 @@
 #if defined(_MSC_VER)
     #pragma warning(push, 0)
 #endif
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #if defined(_MSC_VER)
     #pragma warning(pop)
@@ -106,22 +105,48 @@ namespace rag::renderer::vk
         width_ = static_cast<u32>(image_width);
         height_ = static_cast<u32>(image_height);
 
-        try
-        {
-            CreateImage();
-            UploadPixels(pixels.get(), static_cast<VkDeviceSize>(byte_count));
-            CreateImageView();
-            CreateSampler();
-        }
-        catch (...)
-        {
-            Cleanup();
-            throw;
-        }
+        Initialize(std::span<const u8>(
+            pixels.get(),
+            static_cast<std::size_t>(byte_count)));
 
         RAG_LOG_INFO(
             "Loaded texture: assets/",
             filename,
+            ", ",
+            width_,
+            "x",
+            height_,
+            ", RGBA8 sRGB (VK_FORMAT_R8G8B8A8_SRGB), staged and uploaded to GPU.");
+    }
+
+    VulkanTexture::VulkanTexture(
+        VulkanDevice& device,
+        std::string_view debug_name,
+        u32 width,
+        u32 height,
+        std::span<const u8> rgba_pixels)
+        : device_(device),
+          width_(width),
+          height_(height)
+    {
+        if (width_ == 0 || height_ == 0)
+        {
+            throw VulkanError("Decoded texture '" + std::string(debug_name) + "' has invalid dimensions.");
+        }
+
+        const u64 expected_byte_count =
+            static_cast<u64>(width_) * static_cast<u64>(height_) * 4u;
+        if (expected_byte_count != rgba_pixels.size())
+        {
+            throw VulkanError(
+                "Decoded texture '" + std::string(debug_name) +
+                "' byte count does not match its RGBA8 dimensions.");
+        }
+
+        Initialize(rgba_pixels);
+        RAG_LOG_INFO(
+            "Loaded texture: ",
+            debug_name,
             ", ",
             width_,
             "x",
@@ -157,6 +182,24 @@ namespace rag::renderer::vk
     VkFormat VulkanTexture::Format() const
     {
         return format_;
+    }
+
+    void VulkanTexture::Initialize(std::span<const u8> rgba_pixels)
+    {
+        try
+        {
+            CreateImage();
+            UploadPixels(
+                rgba_pixels.data(),
+                static_cast<VkDeviceSize>(rgba_pixels.size()));
+            CreateImageView();
+            CreateSampler();
+        }
+        catch (...)
+        {
+            Cleanup();
+            throw;
+        }
     }
 
     void VulkanTexture::CreateImage()

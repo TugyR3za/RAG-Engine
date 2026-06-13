@@ -87,6 +87,8 @@ if(RAG_ENABLE_VULKAN)
         src/Rag/RendererVK/Internal/VulkanDevice.h
         src/Rag/RendererVK/Internal/VulkanFrameResources.cpp
         src/Rag/RendererVK/Internal/VulkanFrameResources.h
+        src/Rag/RendererVK/Internal/VulkanGltfLoader.cpp
+        src/Rag/RendererVK/Internal/VulkanGltfLoader.h
         src/Rag/RendererVK/Internal/VulkanGraphicsPipeline.cpp
         src/Rag/RendererVK/Internal/VulkanGraphicsPipeline.h
         src/Rag/RendererVK/Internal/VulkanIndexBuffer.cpp
@@ -107,10 +109,13 @@ if(RAG_ENABLE_VULKAN)
         src/Rag/RendererVK/Internal/VulkanShadowPipeline.h
         src/Rag/RendererVK/Internal/VulkanSurface.cpp
         src/Rag/RendererVK/Internal/VulkanSurface.h
+        src/Rag/RendererVK/Internal/VulkanStbImage.cpp
         src/Rag/RendererVK/Internal/VulkanSwapchain.cpp
         src/Rag/RendererVK/Internal/VulkanSwapchain.h
         src/Rag/RendererVK/Internal/VulkanTexture.cpp
         src/Rag/RendererVK/Internal/VulkanTexture.h
+        src/Rag/RendererVK/Internal/VulkanTextureDescriptors.cpp
+        src/Rag/RendererVK/Internal/VulkanTextureDescriptors.h
         src/Rag/RendererVK/Internal/VulkanUniformResources.cpp
         src/Rag/RendererVK/Internal/VulkanUniformResources.h
         src/Rag/RendererVK/Internal/VulkanVertexBuffer.cpp
@@ -122,7 +127,7 @@ if(RAG_ENABLE_VULKAN)
         src/Rag/RendererVK/Shaders/Triangle.vert
     )
     rag_configure_target(RagRendererVK)
-    # Vendored single-header libraries (tinyobjloader and stb_image).
+    # Vendored single-header libraries (tinyobjloader, tinygltf, JSON, stb_image).
     target_include_directories(RagRendererVK PRIVATE ${PROJECT_SOURCE_DIR}/third_party)
     target_compile_definitions(RagRendererVK
         PUBLIC RAG_ENABLE_VULKAN=1

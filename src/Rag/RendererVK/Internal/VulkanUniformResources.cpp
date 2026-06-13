@@ -114,37 +114,6 @@ namespace rag::renderer::vk
             nullptr);
     }
 
-    void VulkanUniformResources::BindTexture(
-        u32 frame_index,
-        VkImageView texture_view,
-        VkSampler texture_sampler)
-    {
-        if (frame_index >= frames_.size())
-        {
-            throw VulkanError("Vulkan texture bind frame index is outside the per-frame descriptor array.");
-        }
-
-        VkDescriptorImageInfo texture_info{};
-        texture_info.sampler = texture_sampler;
-        texture_info.imageView = texture_view;
-        texture_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-        VkWriteDescriptorSet descriptor_write{};
-        descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptor_write.dstSet = frames_[frame_index].descriptor_set;
-        descriptor_write.dstBinding = 3;
-        descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptor_write.descriptorCount = 1;
-        descriptor_write.pImageInfo = &texture_info;
-
-        vkUpdateDescriptorSets(
-            device_.Device(),
-            1,
-            &descriptor_write,
-            0,
-            nullptr);
-    }
-
     VkDescriptorSetLayout VulkanUniformResources::DescriptorSetLayout() const
     {
         return descriptor_set_layout_;
@@ -162,7 +131,7 @@ namespace rag::renderer::vk
 
     void VulkanUniformResources::CreateDescriptorSetLayout()
     {
-        std::array<VkDescriptorSetLayoutBinding, 4> bindings{};
+        std::array<VkDescriptorSetLayoutBinding, 3> bindings{};
 
         // binding 0: camera/light/light-space uniform block (read by both stages).
         bindings[0].binding = 0;
@@ -184,12 +153,6 @@ namespace rag::renderer::vk
         bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         bindings[2].descriptorCount = 1;
         bindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        // binding 3: shared color texture sampled by the main lighting pass.
-        bindings[3].binding = 3;
-        bindings[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        bindings[3].descriptorCount = 1;
-        bindings[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
         VkDescriptorSetLayoutCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -242,10 +205,10 @@ namespace rag::renderer::vk
         std::array<VkDescriptorPoolSize, 2> pool_sizes{};
         pool_sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         pool_sizes[0].descriptorCount = frames_in_flight;
-        // Three combined image samplers per frame: shadow comparison, raw shadow
-        // debug sampling, and the shared color texture.
+        // Two shadow-map views per frame: comparison sampling for lighting and
+        // raw depth sampling for the optional debug overlay.
         pool_sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        pool_sizes[1].descriptorCount = frames_in_flight * 3;
+        pool_sizes[1].descriptorCount = frames_in_flight * 2;
 
         VkDescriptorPoolCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
