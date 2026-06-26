@@ -18,6 +18,12 @@ namespace rag::scene
         math::Vec3 local_rotation_radians{};
         math::Vec3 local_scale{1.0f, 1.0f, 1.0f};
 
+        // When use_quaternion_rotation is true the transform's rotation is taken
+        // from local_rotation_quat instead of local_rotation_radians. Physics
+        // drives bodies this way to avoid Euler gimbal lock on tumbling objects.
+        math::Quat local_rotation_quat{};
+        bool use_quaternion_rotation = false;
+
         math::Mat4 local_matrix = math::Identity();
         math::Mat4 world_matrix = math::Identity();
 

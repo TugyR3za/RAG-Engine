@@ -2,13 +2,21 @@ build/
 out/
 .vs/
 .vscode/
+.claude/
+.agents/
+.codex/
 CMakeUserPresets.json
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
 *.user
 *.suo
 *.log
 *.obj
 # Keep Wavefront .obj 3D model assets (the rule above targets MSVC object files).
 !models/*.obj
+*.spv
 *.pdb
 *.ilk
 *.exe

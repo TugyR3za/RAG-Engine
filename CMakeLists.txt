@@ -9,6 +9,7 @@ project(RAGEngine
 option(RAG_BUILD_SANDBOX "Build the RAG Engine sandbox application" ON)
 option(RAG_BUILD_TESTS "Build RAG Engine test executables" ON)
 option(RAG_ENABLE_VULKAN "Build the Vulkan renderer backend" ON)
+option(RAG_ENABLE_PHYSICS "Build the Jolt-backed physics module" ON)
 option(RAG_SHADOW_DEBUG "Draw the directional shadow depth map as a debug overlay quad" OFF)
 
 include(cmake/RagCompilerOptions.cmake)
@@ -70,8 +71,49 @@ add_library(RagScene STATIC
 rag_configure_target(RagScene)
 target_link_libraries(RagScene PUBLIC RagCore RagRenderer)
 
+if(RAG_ENABLE_PHYSICS)
+    include(FetchContent)
+
+    # Jolt defaults to the static MSVC runtime and also builds its samples,
+    # viewer, tests and tools. Force the dynamic runtime so it matches the rest
+    # of the engine (which uses the default /MD[d]) and disable the extra
+    # targets so the first build only pays for the core Jolt library.
+    set(USE_STATIC_MSVC_RUNTIME_LIBRARY OFF CACHE BOOL "" FORCE)
+    set(INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "" FORCE)
+    set(TARGET_UNIT_TESTS OFF CACHE BOOL "" FORCE)
+    set(TARGET_HELLO_WORLD OFF CACHE BOOL "" FORCE)
+    set(TARGET_PERFORMANCE_TEST OFF CACHE BOOL "" FORCE)
+    set(TARGET_SAMPLES OFF CACHE BOOL "" FORCE)
+    set(TARGET_VIEWER OFF CACHE BOOL "" FORCE)
+
+    # Pinned to a specific release tag (never HEAD) so future pulls are stable.
+    FetchContent_Declare(
+        JoltPhysics
+        GIT_REPOSITORY https://github.com/jrouwe/JoltPhysics.git
+        GIT_TAG v5.5.0
+        GIT_SHALLOW TRUE
+        SOURCE_SUBDIR Build
+    )
+    FetchContent_MakeAvailable(JoltPhysics)
+
+    add_library(RagPhysics STATIC
+        src/Rag/Physics/PhysicsTypes.h
+        src/Rag/Physics/PhysicsWorld.cpp
+        src/Rag/Physics/PhysicsWorld.h
+    )
+    rag_configure_target(RagPhysics)
+    # RagPhysics depends downward on RagCore only. Jolt is linked PRIVATE so its
+    # headers never leak past PhysicsWorld.cpp.
+    target_link_libraries(RagPhysics PUBLIC RagCore PRIVATE Jolt)
+    target_compile_definitions(RagPhysics PUBLIC RAG_ENABLE_PHYSICS=1)
+endif()
+
 add_library(RagEngine INTERFACE)
 target_link_libraries(RagEngine INTERFACE RagRuntime RagRenderer RagScene)
+
+if(RAG_ENABLE_PHYSICS)
+    target_link_libraries(RagEngine INTERFACE RagPhysics)
+endif()
 
 if(RAG_ENABLE_VULKAN)
     rag_find_vulkan()

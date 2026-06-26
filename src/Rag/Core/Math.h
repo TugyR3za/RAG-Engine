@@ -24,6 +24,16 @@ namespace rag::math
         f32 w = 0.0f;
     };
 
+    // Rotation quaternion (x, y, z, w); identity by default. Matches the
+    // component order used by physics back-ends such as Jolt.
+    struct Quat
+    {
+        f32 x = 0.0f;
+        f32 y = 0.0f;
+        f32 z = 0.0f;
+        f32 w = 1.0f;
+    };
+
     struct Mat4
     {
         std::array<f32, 16> elements{};
@@ -165,6 +175,41 @@ namespace rag::math
     [[nodiscard]] inline Mat4 ComposeTransform(Vec3 position, Vec3 rotation_radians, Vec3 scale)
     {
         return Multiply(Multiply(Translation(position), RotationEulerXYZ(rotation_radians)), Scale(scale));
+    }
+
+    // Builds a rotation matrix from a quaternion (column-vector convention,
+    // v' = R * v). The quaternion is normalized defensively so simulation drift
+    // never shears the resulting basis.
+    [[nodiscard]] inline Mat4 QuatToMat4(Quat q)
+    {
+        const f32 length_squared = (q.x * q.x) + (q.y * q.y) + (q.z * q.z) + (q.w * q.w);
+        if (length_squared <= 0.000001f)
+        {
+            return Identity();
+        }
+
+        const f32 inverse = 1.0f / std::sqrt(length_squared);
+        const f32 x = q.x * inverse;
+        const f32 y = q.y * inverse;
+        const f32 z = q.z * inverse;
+        const f32 w = q.w * inverse;
+
+        Mat4 result = Identity();
+        result(0, 0) = 1.0f - (2.0f * ((y * y) + (z * z)));
+        result(0, 1) = 2.0f * ((x * y) - (w * z));
+        result(0, 2) = 2.0f * ((x * z) + (w * y));
+        result(1, 0) = 2.0f * ((x * y) + (w * z));
+        result(1, 1) = 1.0f - (2.0f * ((x * x) + (z * z)));
+        result(1, 2) = 2.0f * ((y * z) - (w * x));
+        result(2, 0) = 2.0f * ((x * z) - (w * y));
+        result(2, 1) = 2.0f * ((y * z) + (w * x));
+        result(2, 2) = 1.0f - (2.0f * ((x * x) + (y * y)));
+        return result;
+    }
+
+    [[nodiscard]] inline Mat4 ComposeTransform(Vec3 position, Quat rotation, Vec3 scale)
+    {
+        return Multiply(Multiply(Translation(position), QuatToMat4(rotation)), Scale(scale));
     }
 
     [[nodiscard]] inline Vec3 ExtractTranslation(const Mat4& matrix)

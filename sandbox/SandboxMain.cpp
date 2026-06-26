@@ -4,6 +4,10 @@
 #include "Rag/Core/Math.h"
 #include "Rag/Scene/Scene.h"
 
+#if defined(RAG_ENABLE_PHYSICS)
+    #include "Rag/Physics/PhysicsWorld.h"
+#endif
+
 #if defined(RAG_ENABLE_VULKAN)
     #include "Rag/RendererVK/VulkanRenderer.h"
 #endif
@@ -31,6 +35,7 @@ namespace
             RAG_LOG_INFO(
                 "Free-fly camera: WASD move, Space/E up, Left Ctrl/Q down, "
                 "hold Right Mouse to look, Left Shift to sprint.");
+            InitializePhysics();
             BuildScene();
 
             if (smoke_test_)
@@ -109,7 +114,7 @@ namespace
             }
 
             UpdateCamera(frame_time, input);
-            AnimateScene(frame_time);
+            StepPhysics(frame_time);
             scene_.Update();
             scene_.ExtractRenderWorld(render_world_);
 
@@ -161,36 +166,68 @@ namespace
                 renderer_.reset();
             }
 #endif
+
+#if defined(RAG_ENABLE_PHYSICS)
+            physics_.Shutdown();
+#endif
         }
 
     private:
-        struct SpinningCube
+#if defined(RAG_ENABLE_PHYSICS)
+        // Links a dynamic Jolt body to the scene entity it drives.
+        struct PhysicsBody
         {
             rag::scene::EntityId entity{};
-            rag::f32 yaw_radians_per_second = 0.0f;
-            rag::f32 pitch_radians_per_second = 0.0f;
+            rag::physics::BodyHandle body{};
         };
+
+        void InitializePhysics()
+        {
+            rag::physics::PhysicsWorldDesc desc{};
+            desc.gravity = rag::math::Vec3{0.0f, -9.81f, 0.0f};
+            desc.fixed_timestep_seconds = 1.0f / 60.0f;
+            desc.max_frame_delta_seconds = 0.033f;
+
+            physics_ready_ = physics_.Initialize(desc);
+            if (!physics_ready_)
+            {
+                RAG_LOG_ERROR("Physics initialization failed; scene objects will not be simulated.");
+            }
+        }
+#else
+        void InitializePhysics() {}
+#endif
 
         void BuildScene()
         {
             constexpr rag::u32 RingCubeCount = 8;
             constexpr rag::f32 RingRadius = 4.0f;
-            constexpr rag::f32 GroundSurfaceHeight = -0.5f;
-            constexpr rag::f32 UnitCubeHalfDiagonal = 0.8660254f;
-            constexpr rag::f32 GroundClearance = 0.1f;
             constexpr rag::f32 RingCubeScale = 1.0f;
             constexpr rag::f32 CenterCubeScale = 1.5f;
-            constexpr rag::f32 RingCubeCenterHeight =
-                GroundSurfaceHeight + (UnitCubeHalfDiagonal * RingCubeScale) + GroundClearance;
-            constexpr rag::f32 CenterCubeCenterHeight =
-                GroundSurfaceHeight + (UnitCubeHalfDiagonal * CenterCubeScale) + GroundClearance;
 
-            // models/sphere.obj is a unit sphere; rest it just above the floor.
-            constexpr rag::f32 SphereRadius = 1.0f;
-            constexpr rag::f32 SphereCenterHeight =
-                GroundSurfaceHeight + SphereRadius + GroundClearance;
+            // A unit cube spans +/-0.5, so the physics half-extent is half the
+            // visual scale on each axis.
+            constexpr rag::f32 RingCubeHalfExtent = 0.5f * RingCubeScale;
+            constexpr rag::f32 CenterCubeHalfExtent = 0.5f * CenterCubeScale;
+            constexpr rag::f32 SphereRadius = 1.0f; // models/sphere.obj is a unit sphere.
+
+            // Dynamic bodies start elevated so they visibly fall and settle on
+            // the floor at startup. Tweak these to change the drop heights.
+            constexpr rag::f32 RingCubeStartHeight = 7.0f;
+            constexpr rag::f32 RingCubeStartStagger = 0.6f; // raises each successive cube
+            constexpr rag::f32 CenterCubeStartHeight = 12.0f;
+            constexpr rag::f32 SphereStartHeight = 9.0f;
+
+            // The static ground collider matches the visual ground plane: a unit
+            // cube mesh scaled to (40, 0.2, 40) centred at y=-0.6, giving a top
+            // surface at y=-0.5.
+            constexpr rag::math::Vec3 GroundCenter{0.0f, -0.6f, 0.0f};
+            constexpr rag::math::Vec3 GroundScale{40.0f, 0.2f, 40.0f};
+            constexpr rag::math::Vec3 GroundHalfExtents{20.0f, 0.1f, 20.0f};
+
             // Duck.glb's root node applies a 0.01 scale. Its geometry starts
             // roughly 0.1 units above local Y=0, so this rests it on the floor.
+            // The duck is left static (not simulated) to keep things simple.
             constexpr rag::f32 DuckGroundOffset = -0.6f;
 
             // Renderer mesh registry convention: slot 0 = built-in cube,
@@ -205,48 +242,49 @@ namespace
                 const rag::f32 angle = (2.0f * rag::math::Pi * static_cast<rag::f32>(index)) /
                                        static_cast<rag::f32>(RingCubeCount);
 
-                const rag::scene::EntityId entity = scene_.CreateEntity();
-                rag::scene::TransformComponent& transform = scene_.AddTransform(entity);
-                transform.local_position = rag::math::Vec3{
+                const rag::math::Vec3 start_position{
                     RingRadius * std::cos(angle),
-                    RingCubeCenterHeight,
+                    RingCubeStartHeight + (RingCubeStartStagger * static_cast<rag::f32>(index)),
                     RingRadius * std::sin(angle)};
-                scene_.AddRenderable(entity).mesh = CubeMeshHandle;
 
-                if ((index % 2) == 0)
-                {
-                    spinning_cubes_.push_back(SpinningCube{
-                        entity,
-                        0.6f + (0.15f * static_cast<rag::f32>(index)),
-                        0.25f});
-                }
+                const rag::scene::EntityId entity = scene_.CreateEntity();
+                scene_.AddTransform(entity).local_position = start_position;
+                scene_.AddRenderable(entity).mesh = CubeMeshHandle;
+                SpawnDynamicBox(
+                    entity,
+                    start_position,
+                    rag::math::Vec3{RingCubeHalfExtent, RingCubeHalfExtent, RingCubeHalfExtent});
             }
 
+            const rag::math::Vec3 center_start{0.0f, CenterCubeStartHeight, 0.0f};
             const rag::scene::EntityId center_cube = scene_.CreateEntity();
             rag::scene::TransformComponent& center_transform = scene_.AddTransform(center_cube);
-            center_transform.local_position =
-                rag::math::Vec3{0.0f, CenterCubeCenterHeight, 0.0f};
+            center_transform.local_position = center_start;
             center_transform.local_scale =
                 rag::math::Vec3{CenterCubeScale, CenterCubeScale, CenterCubeScale};
             scene_.AddRenderable(center_cube).mesh = CubeMeshHandle;
-            spinning_cubes_.push_back(SpinningCube{center_cube, 0.9f, 0.5f});
+            SpawnDynamicBox(
+                center_cube,
+                center_start,
+                rag::math::Vec3{CenterCubeHalfExtent, CenterCubeHalfExtent, CenterCubeHalfExtent});
 
             const rag::scene::EntityId ground = scene_.CreateEntity();
             rag::scene::TransformComponent& ground_transform = scene_.AddTransform(ground);
-            ground_transform.local_position = rag::math::Vec3{0.0f, -0.6f, 0.0f};
-            ground_transform.local_scale = rag::math::Vec3{40.0f, 0.2f, 40.0f};
+            ground_transform.local_position = GroundCenter;
+            ground_transform.local_scale = GroundScale;
             scene_.AddRenderable(ground).mesh = GroundMeshHandle;
+            SpawnStaticBox(GroundCenter, GroundHalfExtents);
 
-            // One entity using the loaded OBJ mesh, off to the side of the ring
-            // on open floor so its shadow is clearly visible.
+            // The OBJ sphere drops onto open floor off to the side of the ring so
+            // its shadow stays clearly visible as it falls and lands.
+            const rag::math::Vec3 sphere_start{6.5f, SphereStartHeight, 0.0f};
             const rag::scene::EntityId sphere = scene_.CreateEntity();
-            rag::scene::TransformComponent& sphere_transform = scene_.AddTransform(sphere);
-            sphere_transform.local_position =
-                rag::math::Vec3{6.5f, SphereCenterHeight, 0.0f};
+            scene_.AddTransform(sphere).local_position = sphere_start;
             rag::scene::RenderableComponent& sphere_renderable = scene_.AddRenderable(sphere);
             sphere_renderable.mesh = SphereMeshHandle;
             sphere_renderable.local_bounds.extents =
                 rag::math::Vec3{SphereRadius, SphereRadius, SphereRadius};
+            SpawnDynamicSphere(sphere, sphere_start, SphereRadius);
 
             const rag::scene::EntityId duck = scene_.CreateEntity();
             rag::scene::TransformComponent& duck_transform = scene_.AddTransform(duck);
@@ -292,9 +330,103 @@ namespace
                 RingCubeCount,
                 " ring cubes, 1 center cube, 1 obj sphere, 1 glTF duck, "
                 "1 ground, 1 camera, 1 directional light), ",
-                spinning_cubes_.size(),
-                " of the cubes spin.");
+                DynamicBodyCount(),
+                " dynamic bodies falling under gravity.");
         }
+
+#if defined(RAG_ENABLE_PHYSICS)
+        void SpawnDynamicBox(
+            rag::scene::EntityId entity,
+            const rag::math::Vec3& position,
+            const rag::math::Vec3& half_extents)
+        {
+            if (!physics_ready_)
+            {
+                return;
+            }
+
+            const rag::physics::BodyHandle body = physics_.CreateDynamicBox(position, half_extents);
+            if (!body.IsValid())
+            {
+                return;
+            }
+
+            physics_bodies_.push_back(PhysicsBody{entity, body});
+            if (rag::scene::TransformComponent* transform = scene_.GetTransform(entity))
+            {
+                transform->use_quaternion_rotation = true;
+            }
+        }
+
+        void SpawnDynamicSphere(
+            rag::scene::EntityId entity,
+            const rag::math::Vec3& position,
+            rag::f32 radius)
+        {
+            if (!physics_ready_)
+            {
+                return;
+            }
+
+            const rag::physics::BodyHandle body = physics_.CreateDynamicSphere(position, radius);
+            if (!body.IsValid())
+            {
+                return;
+            }
+
+            physics_bodies_.push_back(PhysicsBody{entity, body});
+            if (rag::scene::TransformComponent* transform = scene_.GetTransform(entity))
+            {
+                transform->use_quaternion_rotation = true;
+            }
+        }
+
+        void SpawnStaticBox(const rag::math::Vec3& position, const rag::math::Vec3& half_extents)
+        {
+            if (physics_ready_)
+            {
+                (void)physics_.CreateStaticBox(position, half_extents);
+            }
+        }
+
+        [[nodiscard]] std::size_t DynamicBodyCount() const
+        {
+            return physics_bodies_.size();
+        }
+
+        void StepPhysics(const rag::core::FrameTime& frame_time)
+        {
+            if (!physics_ready_)
+            {
+                return;
+            }
+
+            physics_.Step(static_cast<rag::f32>(frame_time.delta_seconds));
+
+            // Write each simulated body's pose back onto its scene transform so
+            // the renderer draws every object where physics put it.
+            for (const PhysicsBody& physics_body : physics_bodies_)
+            {
+                rag::scene::TransformComponent* transform = scene_.GetTransform(physics_body.entity);
+                if (transform == nullptr)
+                {
+                    continue;
+                }
+
+                const rag::physics::BodyState state = physics_.GetBodyState(physics_body.body);
+                transform->local_position = state.position;
+                transform->local_rotation_quat = state.rotation;
+                transform->use_quaternion_rotation = true;
+                scene_.MarkTransformDirty(physics_body.entity);
+            }
+        }
+#else
+        void SpawnDynamicBox(rag::scene::EntityId, const rag::math::Vec3&, const rag::math::Vec3&) {}
+        void SpawnDynamicSphere(rag::scene::EntityId, const rag::math::Vec3&, rag::f32) {}
+        void SpawnStaticBox(const rag::math::Vec3&, const rag::math::Vec3&) {}
+        [[nodiscard]] std::size_t DynamicBodyCount() const { return 0; }
+        void StepPhysics(const rag::core::FrameTime&) {}
+#endif
 
         void UpdateCamera(
             const rag::core::FrameTime& frame_time,
@@ -397,29 +529,17 @@ namespace
             }
         }
 
-        void AnimateScene(const rag::core::FrameTime& frame_time)
-        {
-            const rag::f32 delta_seconds = static_cast<rag::f32>(frame_time.delta_seconds);
-
-            for (const SpinningCube& cube : spinning_cubes_)
-            {
-                rag::scene::TransformComponent* transform = scene_.GetTransform(cube.entity);
-                if (transform == nullptr)
-                {
-                    continue;
-                }
-
-                transform->local_rotation_radians.y += cube.yaw_radians_per_second * delta_seconds;
-                transform->local_rotation_radians.x += cube.pitch_radians_per_second * delta_seconds;
-                scene_.MarkTransformDirty(cube.entity);
-            }
-        }
-
         rag::platform::IWindow* window_ = nullptr;
         rag::scene::Scene scene_;
         rag::renderer::RenderWorld render_world_;
         rag::scene::EntityId camera_entity_{};
-        std::vector<SpinningCube> spinning_cubes_;
+
+#if defined(RAG_ENABLE_PHYSICS)
+        rag::physics::PhysicsWorld physics_;
+        std::vector<PhysicsBody> physics_bodies_;
+        bool physics_ready_ = false;
+#endif
+
         static constexpr rag::f32 MoveSpeed = 4.5f;
         static constexpr rag::f32 SprintMultiplier = 4.0f;
         static constexpr rag::f32 MouseSensitivity = 0.0025f;

@@ -468,10 +468,15 @@ namespace rag::scene
             return;
         }
 
-        transform->local_matrix = math::ComposeTransform(
-            transform->local_position,
-            transform->local_rotation_radians,
-            transform->local_scale);
+        transform->local_matrix = transform->use_quaternion_rotation
+            ? math::ComposeTransform(
+                  transform->local_position,
+                  transform->local_rotation_quat,
+                  transform->local_scale)
+            : math::ComposeTransform(
+                  transform->local_position,
+                  transform->local_rotation_radians,
+                  transform->local_scale);
         transform->world_matrix = math::Multiply(parent_world, transform->local_matrix);
         transform->dirty = false;
 
