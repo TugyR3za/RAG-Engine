@@ -25,6 +25,7 @@ namespace rag::platform
 
         [[nodiscard]] bool ShouldClose() const override;
         [[nodiscard]] bool IsFullscreen() const override;
+        [[nodiscard]] bool IsWindowMinimized() const override;
         [[nodiscard]] u32 Width() const override;
         [[nodiscard]] u32 Height() const override;
         [[nodiscard]] NativeWindowHandle GetNativeHandle() const override;
@@ -44,6 +45,7 @@ namespace rag::platform
         i32 windowed_bottom_ = 0;
         bool should_close_ = false;
         bool fullscreen_ = false;
+        bool minimized_ = false;
         WindowEventCallback event_callback_;
         NativeMessageHook native_message_hook_;
     };

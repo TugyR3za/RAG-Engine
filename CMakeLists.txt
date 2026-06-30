@@ -11,6 +11,7 @@ option(RAG_BUILD_TESTS "Build RAG Engine test executables" ON)
 option(RAG_ENABLE_VULKAN "Build the Vulkan renderer backend" ON)
 option(RAG_ENABLE_PHYSICS "Build the Jolt-backed physics module" ON)
 option(RAG_ENABLE_IMGUI "Build the Dear ImGui editor overlay (requires the Vulkan backend)" ON)
+option(RAG_EDITOR "Compile the in-engine editor UI (dockspace, panels, menu bar) into the sandbox; OFF ships the bare game" ON)
 option(RAG_SHADOW_DEBUG "Draw the directional shadow depth map as a debug overlay quad" OFF)
 
 include(cmake/RagCompilerOptions.cmake)
@@ -122,12 +123,15 @@ if(RAG_ENABLE_VULKAN)
     # Dear ImGui ships no CMake of its own, so its core plus the official Win32
     # and Vulkan backends are compiled into a small static library here. Pinned
     # to a specific release tag (never HEAD) so future pulls stay reproducible.
+    # The '-docking' tag is the docking-branch counterpart of the same release;
+    # it provides DockSpace and ImGuiConfigFlags_DockingEnable, which the plain
+    # release tag does not provide.
     if(RAG_ENABLE_IMGUI)
         include(FetchContent)
         FetchContent_Declare(
             imgui
             GIT_REPOSITORY https://github.com/ocornut/imgui.git
-            GIT_TAG v1.91.8
+            GIT_TAG v1.92.7-docking
             GIT_SHALLOW TRUE
         )
         FetchContent_MakeAvailable(imgui)
@@ -270,6 +274,14 @@ if(RAG_BUILD_SANDBOX)
     add_executable(RagSandbox sandbox/SandboxMain.cpp)
     rag_configure_target(RagSandbox)
     target_link_libraries(RagSandbox PRIVATE RagEngine)
+
+    # The editor UI (dockspace, panels, menu bar) is a developer-only layer built
+    # on the ImGui overlay. Defining RAG_EDITOR only when ImGui is also enabled
+    # keeps "RAG_EDITOR implies ImGui present" true in the code; with it off the
+    # sandbox compiles to the bare game with no editor code at all.
+    if(RAG_EDITOR AND RAG_ENABLE_IMGUI AND RAG_ENABLE_VULKAN)
+        target_compile_definitions(RagSandbox PRIVATE RAG_EDITOR=1)
+    endif()
 
     if(RAG_ENABLE_VULKAN)
         add_dependencies(RagSandbox RagRendererVKShaders)

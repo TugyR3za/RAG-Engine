@@ -408,6 +408,11 @@ namespace rag::platform
         return fullscreen_;
     }
 
+    bool Win32Window::IsWindowMinimized() const
+    {
+        return minimized_;
+    }
+
     u32 Win32Window::Width() const
     {
         return width_;
@@ -486,11 +491,11 @@ namespace rag::platform
         {
             width_ = static_cast<u32>(LOWORD(l_param));
             height_ = static_cast<u32>(HIWORD(l_param));
-            const bool minimized = w_param == SIZE_MINIMIZED;
+            minimized_ = w_param == SIZE_MINIMIZED;
 
             if (event_callback_)
             {
-                event_callback_(core::Event::WindowResize(width_, height_, minimized));
+                event_callback_(core::Event::WindowResize(width_, height_, minimized_));
             }
 
             result = 0;

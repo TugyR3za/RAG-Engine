@@ -48,6 +48,7 @@ namespace rag::platform
 
         [[nodiscard]] virtual bool ShouldClose() const = 0;
         [[nodiscard]] virtual bool IsFullscreen() const = 0;
+        [[nodiscard]] virtual bool IsWindowMinimized() const = 0;
         [[nodiscard]] virtual u32 Width() const = 0;
         [[nodiscard]] virtual u32 Height() const = 0;
         [[nodiscard]] virtual NativeWindowHandle GetNativeHandle() const = 0;

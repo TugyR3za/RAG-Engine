@@ -8,6 +8,10 @@
 #include <imgui_impl_vulkan.h>
 #include <imgui_impl_win32.h>
 
+#if !defined(IMGUI_HAS_DOCK)
+    #error RAG Engine editor requires the Dear ImGui docking branch.
+#endif
+
 // imgui_impl_win32.h intentionally hides this declaration behind '#if 0' so the
 // header doesn't drag in <windows.h>; the backend expects each consumer to
 // forward declare it, exactly as the official example_win32_vulkan does.
@@ -24,6 +28,23 @@ namespace rag::renderer::vk
                 RAG_LOG_ERROR("Dear ImGui Vulkan backend error: ", VkResultToString(result));
             }
         }
+
+        int ImGuiCreateWin32VulkanSurface(
+            ImGuiViewport* viewport,
+            ImU64 instance,
+            const void* allocator,
+            ImU64* out_surface)
+        {
+            VkWin32SurfaceCreateInfoKHR create_info{};
+            create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+            create_info.hwnd = static_cast<HWND>(viewport->PlatformHandleRaw);
+            create_info.hinstance = GetModuleHandleW(nullptr);
+            return static_cast<int>(vkCreateWin32SurfaceKHR(
+                reinterpret_cast<VkInstance>(instance),
+                &create_info,
+                static_cast<const VkAllocationCallbacks*>(allocator),
+                reinterpret_cast<VkSurfaceKHR*>(out_surface)));
+        }
     }
 
     VulkanImGuiLayer::VulkanImGuiLayer(const VulkanImGuiInit& init)
@@ -37,28 +58,38 @@ namespace rag::renderer::vk
         ImGuiIO& io = ImGui::GetIO();
         io.IniFilename = nullptr; // don't write an imgui.ini next to the exe
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        // Viewports are intentionally left off: they would spawn extra OS windows
+        // and need Vulkan platform-window plumbing we do not want here.
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         ImGui::StyleColorsDark();
 
         ImGui_ImplWin32_Init(init.window_handle);
+        ImGui::GetPlatformIO().Platform_CreateVkSurface = ImGuiCreateWin32VulkanSurface;
 
         CreateDescriptorPool();
 
         ImGui_ImplVulkan_InitInfo info{};
+        info.ApiVersion = VK_API_VERSION_1_2;
         info.Instance = init.instance;
         info.PhysicalDevice = init.physical_device;
         info.Device = init.device;
         info.QueueFamily = init.graphics_queue_family;
         info.Queue = init.graphics_queue;
         info.DescriptorPool = descriptor_pool_;
-        info.RenderPass = init.render_pass;
-        info.Subpass = 0;
         info.MinImageCount = init.min_image_count;
         info.ImageCount = init.image_count;
-        info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+        info.PipelineInfoMain.RenderPass = init.render_pass;
+        info.PipelineInfoMain.Subpass = 0;
+        info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
         info.CheckVkResultFn = ImGuiCheckVkResult;
         ImGui_ImplVulkan_Init(&info);
 
-        RAG_LOG_INFO("Dear ImGui ", IMGUI_VERSION, " initialized, Win32 + Vulkan backends active");
+        RAG_LOG_INFO(
+            "Dear ImGui ",
+            IMGUI_VERSION,
+            " docking build initialized; DockingEnable=",
+            (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) != 0 ? "true" : "false",
+            ", Win32 + Vulkan backends active");
     }
 
     VulkanImGuiLayer::~VulkanImGuiLayer()

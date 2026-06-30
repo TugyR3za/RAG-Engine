@@ -16,6 +16,19 @@
     #include <imgui.h>
 #endif
 
+#if defined(RAG_EDITOR)
+    // DockBuilder (the one-time default-layout helper) lives in the internal
+    // header. RAG_EDITOR is only defined when RAG_ENABLE_IMGUI is on, so imgui.h
+    // above is always available first. Silence the third-party header's /W4 noise.
+    #if defined(_MSC_VER)
+        #pragma warning(push, 0)
+    #endif
+    #include <imgui_internal.h>
+    #if defined(_MSC_VER)
+        #pragma warning(pop)
+    #endif
+#endif
+
 #include <algorithm>
 #include <cmath>
 #include <exception>
@@ -117,6 +130,16 @@ namespace
                 window_->SetFullscreen(!window_->IsFullscreen());
             }
 
+#if defined(RAG_EDITOR)
+            // F1 flips between "editing" (dockspace + panels visible) and "playing"
+            // (bare game, no UI) at runtime without restarting.
+            if (input.WasKeyPressed(rag::core::KeyCode::F1))
+            {
+                editor_mode_ = !editor_mode_;
+                RAG_LOG_INFO("Editor mode ", editor_mode_ ? "ON" : "OFF");
+            }
+#endif
+
             bool ui_wants_mouse = false;
             bool ui_wants_keyboard = false;
 #if defined(RAG_ENABLE_IMGUI)
@@ -143,8 +166,14 @@ namespace
                 rag::renderer::RenderFrameContext render_context{};
                 render_context.clear_color = {0.02f, 0.02f, 0.06f, 1.0f};
                 render_context.render_world = &render_world_;
-#if defined(RAG_ENABLE_IMGUI)
-                render_context.on_build_ui = [this]() { BuildEditorUi(); };
+#if defined(RAG_EDITOR)
+                // Only hand the renderer a UI builder while editor mode is on; when
+                // it is off the overlay frame stays empty and the renderer draws the
+                // game alone. (RAG_EDITOR implies RAG_ENABLE_IMGUI.)
+                if (editor_mode_)
+                {
+                    render_context.on_build_ui = [this]() { BuildEditorUi(); };
+                }
 #endif
                 renderer_->RenderFrame(render_context);
             }
@@ -495,57 +524,136 @@ namespace
             }
         }
 
-#if defined(RAG_ENABLE_IMGUI)
-        // Builds the single debug/control panel. Invoked by the renderer between
-        // ImGui's NewFrame and Render via RenderFrameContext::on_build_ui.
+#if defined(RAG_EDITOR)
+        // Builds the whole editor for the frame: a full-window dockspace host (with
+        // the main menu bar and a pass-through central node so the 3D scene shows
+        // through) plus the dockable panels. Invoked by the renderer between ImGui's
+        // NewFrame and Render via RenderFrameContext::on_build_ui, only while editor
+        // mode is on.
         void BuildEditorUi()
         {
-            ImGui::SetNextWindowSize(ImVec2(340.0f, 0.0f), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowPos(ImVec2(16.0f, 16.0f), ImGuiCond_FirstUseEver);
-            if (!ImGui::Begin("RAG Engine Debug"))
+            BuildMainMenuBar();
+            BuildDockspace();
+
+            if (show_debug_panel_)
             {
-                ImGui::End();
+                BuildDebugPanel();
+            }
+        }
+
+        // DockSpaceOverViewport creates the full-client borderless host window.
+        // Its pass-through central node remains empty, so the scene rendered
+        // underneath stays visible while editor panels dock around the edges.
+        void BuildDockspace()
+        {
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            const ImGuiID dockspace_id = ImGui::GetID("RagEditorDockSpace");
+            constexpr ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
+            ImGui::DockSpaceOverViewport(dockspace_id, viewport, dockspace_flags);
+
+            // Build the default arrangement once (or after "Layout > Reset Layout").
+            // We persist no imgui.ini, so this is what gives a docked panel on first
+            // run instead of a floating one.
+            if (!dock_layout_initialized_)
+            {
+                dock_layout_initialized_ = true;
+                BuildDefaultDockLayout(dockspace_id, viewport->WorkSize);
+            }
+        }
+
+        // Lays out the default docking arrangement: the debug panel docked to the
+        // right, the central node left empty for the 3D viewport. The user may
+        // re-dock freely afterwards.
+        void BuildDefaultDockLayout(ImGuiID dockspace_id, const ImVec2& size)
+        {
+            ImGui::DockBuilderRemoveNode(dockspace_id);
+            ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+            ImGui::DockBuilderSetNodeSize(dockspace_id, size);
+
+            // SplitNode reassigns the "remaining" id through the out-param, so keep
+            // the original root id intact for DockBuilderFinish.
+            ImGuiID central = dockspace_id;
+            const ImGuiID right_node =
+                ImGui::DockBuilderSplitNode(central, ImGuiDir_Right, 0.26f, nullptr, &central);
+            ImGui::DockBuilderDockWindow("RAG Engine Debug", right_node);
+
+            ImGui::DockBuilderFinish(dockspace_id);
+        }
+
+        // The top menu bar. Actions are minimal but real: View toggles the panel and
+        // editor mode; Layout rebuilds the default dock arrangement.
+        void BuildMainMenuBar()
+        {
+            if (!ImGui::BeginMainMenuBar())
+            {
                 return;
             }
 
-            const ImGuiIO& io = ImGui::GetIO();
-            rag::renderer::RendererStats stats{};
-#if defined(RAG_ENABLE_VULKAN)
-            if (renderer_ != nullptr)
+            if (ImGui::BeginMenu("View"))
             {
-                stats = renderer_->GetStats();
+                ImGui::MenuItem("Debug Panel", nullptr, &show_debug_panel_);
+                ImGui::Separator();
+                ImGui::MenuItem("Editor Mode", "F1", &editor_mode_);
+                ImGui::EndMenu();
             }
+
+            if (ImGui::BeginMenu("Layout"))
+            {
+                if (ImGui::MenuItem("Reset Layout"))
+                {
+                    dock_layout_initialized_ = false; // rebuilt next frame
+                    show_debug_panel_ = true;
+                }
+                ImGui::EndMenu();
+            }
+
+            ImGui::EndMainMenuBar();
+        }
+
+        // The dockable debug panel: the stats plus the live light, gravity and
+        // reset controls that previously floated as a single overlay window.
+        void BuildDebugPanel()
+        {
+            if (ImGui::Begin("RAG Engine Debug", &show_debug_panel_))
+            {
+                const ImGuiIO& io = ImGui::GetIO();
+                rag::renderer::RendererStats stats{};
+#if defined(RAG_ENABLE_VULKAN)
+                if (renderer_ != nullptr)
+                {
+                    stats = renderer_->GetStats();
+                }
 #endif
 
-            ImGui::SeparatorText("Stats");
-            ImGui::Text("FPS: %.1f", static_cast<double>(io.Framerate));
-            ImGui::Text("Frame: %.2f ms", stats.last_frame_ms);
-            ImGui::Text("Objects: %d", static_cast<int>(render_world_.objects.size()));
-            ImGui::Text(
-                "GPU: %s",
-                stats.active_gpu_name.empty() ? "(unknown)" : stats.active_gpu_name.c_str());
+                ImGui::SeparatorText("Stats");
+                ImGui::Text("FPS: %.1f", static_cast<double>(io.Framerate));
+                ImGui::Text("Frame: %.2f ms", stats.last_frame_ms);
+                ImGui::Text("Objects: %d", static_cast<int>(render_world_.objects.size()));
+                ImGui::Text(
+                    "GPU: %s",
+                    stats.active_gpu_name.empty() ? "(unknown)" : stats.active_gpu_name.c_str());
 
-            ImGui::SeparatorText("Directional Light");
-            ImGui::SliderFloat("Pitch (X, rad)", &light_euler_.x, -rag::math::Pi, rag::math::Pi);
-            ImGui::SliderFloat("Yaw (Y, rad)", &light_euler_.y, -rag::math::Pi, rag::math::Pi);
-            ImGui::SliderFloat("Roll (Z, rad)", &light_euler_.z, -rag::math::Pi, rag::math::Pi);
-            ImGui::ColorEdit3("Color", &light_color_.x);
-            ImGui::SliderFloat("Intensity", &light_intensity_, 0.0f, 5.0f);
+                ImGui::SeparatorText("Directional Light");
+                ImGui::SliderFloat("Pitch (X, rad)", &light_euler_.x, -rag::math::Pi, rag::math::Pi);
+                ImGui::SliderFloat("Yaw (Y, rad)", &light_euler_.y, -rag::math::Pi, rag::math::Pi);
+                ImGui::SliderFloat("Roll (Z, rad)", &light_euler_.z, -rag::math::Pi, rag::math::Pi);
+                ImGui::ColorEdit3("Color", &light_color_.x);
+                ImGui::SliderFloat("Intensity", &light_intensity_, 0.0f, 5.0f);
 
 #if defined(RAG_ENABLE_PHYSICS)
-            ImGui::SeparatorText("Physics");
-            if (ImGui::SliderFloat("Gravity Y", &physics_gravity_y_, -30.0f, 10.0f))
-            {
-                ApplyGravity();
-            }
-            if (ImGui::Button("Reset bodies"))
-            {
-                ResetPhysicsBodies();
-            }
-            ImGui::SameLine();
-            ImGui::Text("(%d dynamic)", static_cast<int>(DynamicBodyCount()));
+                ImGui::SeparatorText("Physics");
+                if (ImGui::SliderFloat("Gravity Y", &physics_gravity_y_, -30.0f, 10.0f))
+                {
+                    ApplyGravity();
+                }
+                if (ImGui::Button("Reset bodies"))
+                {
+                    ResetPhysicsBodies();
+                }
+                ImGui::SameLine();
+                ImGui::Text("(%d dynamic)", static_cast<int>(DynamicBodyCount()));
 #endif
-
+            }
             ImGui::End();
         }
 #endif
@@ -665,6 +773,15 @@ namespace
         rag::scene::Scene scene_;
         rag::renderer::RenderWorld render_world_;
         rag::scene::EntityId camera_entity_{};
+
+#if defined(RAG_EDITOR)
+        // Editor (developer-only) state. editor_mode_ defaults on for the sandbox
+        // and is flipped at runtime with F1; with it off the engine renders only
+        // the game. The other two flags drive the dockspace/panel UI.
+        bool editor_mode_ = true;
+        bool show_debug_panel_ = true;
+        bool dock_layout_initialized_ = false;
+#endif
 
         // Directional-light state owned by the editor panel and pushed onto the
         // scene each frame by SyncLightFromUi().

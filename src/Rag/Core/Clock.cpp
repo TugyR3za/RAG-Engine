@@ -14,6 +14,11 @@ namespace rag::core
         frame_index_ = 0;
     }
 
+    void Clock::ResyncDelta()
+    {
+        previous_time_ = NativeClock::now();
+    }
+
     FrameTime Clock::Tick()
     {
         const auto now = NativeClock::now();

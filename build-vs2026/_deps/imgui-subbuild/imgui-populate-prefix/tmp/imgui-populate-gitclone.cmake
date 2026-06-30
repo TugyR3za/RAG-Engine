@@ -52,13 +52,13 @@ endif()
 
 execute_process(
   COMMAND "C:/Program Files/Git/cmd/git.exe"
-          checkout "v1.91.8" --
+          checkout "v1.92.7-docking" --
   WORKING_DIRECTORY "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imgui-src"
   RESULT_VARIABLE error_code
   ${maybe_show_command}
 )
 if(error_code)
-  message(FATAL_ERROR "Failed to checkout tag: 'v1.91.8'")
+  message(FATAL_ERROR "Failed to checkout tag: 'v1.92.7-docking'")
 endif()
 
 set(init_submodules TRUE)

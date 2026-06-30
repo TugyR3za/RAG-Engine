@@ -19,6 +19,7 @@ namespace rag::core
         Clock();
 
         void Reset();
+        void ResyncDelta();
         FrameTime Tick();
 
     private:

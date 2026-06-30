@@ -3,6 +3,8 @@
 #include "Rag/Core/Assert.h"
 #include "Rag/Core/Log.h"
 
+#include <chrono>
+#include <thread>
 #include <utility>
 
 namespace rag::core
@@ -42,10 +44,39 @@ namespace rag::core
             RequestClose();
         }
 
+        bool window_suspended = false;
         while (running_ && !window_->ShouldClose())
         {
             input_.BeginFrame();
             window_->PollEvents();
+
+            if (!running_ || window_->ShouldClose())
+            {
+                break;
+            }
+
+            const bool should_suspend =
+                window_->IsWindowMinimized() ||
+                window_->Width() == 0 ||
+                window_->Height() == 0;
+            if (should_suspend)
+            {
+                if (!window_suspended)
+                {
+                    RAG_LOG_INFO("Window rendering suspended while minimized or zero-sized.");
+                    window_suspended = true;
+                }
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(16));
+                clock_.ResyncDelta();
+                continue;
+            }
+
+            if (window_suspended)
+            {
+                RAG_LOG_INFO("Window rendering resumed.");
+                window_suspended = false;
+            }
 
             const FrameTime frame_time = clock_.Tick();
             client_.OnUpdate(frame_time, input_);
