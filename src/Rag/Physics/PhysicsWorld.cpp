@@ -479,4 +479,36 @@ namespace rag::physics
             rotation.GetW()};
         return state;
     }
+
+    void PhysicsWorld::SetGravity(const math::Vec3& gravity)
+    {
+        if (!IsInitialized())
+        {
+            return;
+        }
+
+        impl_->desc.gravity = gravity;
+        impl_->physics_system.SetGravity(JPH::Vec3(gravity.x, gravity.y, gravity.z));
+    }
+
+    void PhysicsWorld::ResetDynamicBody(
+        BodyHandle handle,
+        const math::Vec3& position,
+        const math::Quat& rotation)
+    {
+        if (!IsInitialized() || !handle.IsValid())
+        {
+            return;
+        }
+
+        const JPH::BodyID id(handle.id);
+        JPH::BodyInterface& body_interface = impl_->physics_system.GetBodyInterface();
+        body_interface.SetPositionAndRotation(
+            id,
+            JPH::RVec3(position.x, position.y, position.z),
+            JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w),
+            JPH::EActivation::Activate);
+        body_interface.SetLinearAndAngularVelocity(id, JPH::Vec3::sZero(), JPH::Vec3::sZero());
+        body_interface.ActivateBody(id);
+    }
 }

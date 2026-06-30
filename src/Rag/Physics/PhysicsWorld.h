@@ -59,6 +59,13 @@ namespace rag::physics
         // Reads a body's current world transform back out of the simulation.
         [[nodiscard]] BodyState GetBodyState(BodyHandle handle) const;
 
+        // Updates world gravity live (used by the editor's gravity slider).
+        void SetGravity(const math::Vec3& gravity);
+
+        // Teleports a dynamic body back to a pose, clears its velocity, and
+        // re-activates it (used by the editor's "reset bodies" button).
+        void ResetDynamicBody(BodyHandle handle, const math::Vec3& position, const math::Quat& rotation);
+
     private:
         struct Impl;
         std::unique_ptr<Impl> impl_;

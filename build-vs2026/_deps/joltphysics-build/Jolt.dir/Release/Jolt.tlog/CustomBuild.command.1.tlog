@@ -1,0 +1,10 @@
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\JOLTPHYSICS-SRC\BUILD\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Users/naime/OneDrive/Desktop/RAG Engine" "-BC:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026" --check-stamp-file "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/joltphysics-build/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

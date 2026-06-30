@@ -1,0 +1,78 @@
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\CMAKEFILES\3D72ADCBBBDBF0C349EADACE0C4D90C5\SHADOW_DEBUG.FRAG.SPV.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders"
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe -V "C:/Users/naime/OneDrive/Desktop/RAG Engine/src/Rag/RendererVK/Shaders/ShadowDebug.frag" -o "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/shadow_debug.frag.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\CMAKEFILES\3D72ADCBBBDBF0C349EADACE0C4D90C5\SHADOW_DEBUG.VERT.SPV.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders"
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe -V "C:/Users/naime/OneDrive/Desktop/RAG Engine/src/Rag/RendererVK/Shaders/ShadowDebug.vert" -o "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/shadow_debug.vert.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\CMAKEFILES\3D72ADCBBBDBF0C349EADACE0C4D90C5\SHADOW_DEPTH.VERT.SPV.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders"
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe -V "C:/Users/naime/OneDrive/Desktop/RAG Engine/src/Rag/RendererVK/Shaders/ShadowDepth.vert" -o "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/shadow_depth.vert.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\CMAKEFILES\3D72ADCBBBDBF0C349EADACE0C4D90C5\TRIANGLE.FRAG.SPV.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders"
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe -V "C:/Users/naime/OneDrive/Desktop/RAG Engine/src/Rag/RendererVK/Shaders/Triangle.frag" -o "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/triangle.frag.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\CMAKEFILES\3D72ADCBBBDBF0C349EADACE0C4D90C5\TRIANGLE.VERT.SPV.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders"
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe -V "C:/Users/naime/OneDrive/Desktop/RAG Engine/src/Rag/RendererVK/Shaders/Triangle.vert" -o "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/triangle.vert.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\CMAKEFILES\D343D397DF881873B6DFC6B46C0C8D68\RAGRENDERERVKSHADERS.RULE
+setlocal
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Users/naime/OneDrive/Desktop/RAG Engine" "-BC:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026" --check-stamp-file "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

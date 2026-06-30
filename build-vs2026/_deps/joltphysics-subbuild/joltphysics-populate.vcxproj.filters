@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\joltphysics-subbuild\CMakeFiles\8190d34553a7cd4fa3a1051a37188928\joltphysics-populate-mkdir.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\joltphysics-subbuild\CMakeFiles\8190d34553a7cd4fa3a1051a37188928\joltphysics-populate-download.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\joltphysics-subbuild\CMakeFiles\8190d34553a7cd4fa3a1051a37188928\joltphysics-populate-update.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\joltphysics-subbuild\CMakeFiles\8190d34553a7cd4fa3a1051a37188928\joltphysics-populate-patch.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\joltphysics-subbuild\CMakeFiles\8190d34553a7cd4fa3a1051a37188928\joltphysics-populate-configure.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\joltphysics-subbuild\CMakeFiles\8190d34553a7cd4fa3a1051a37188928\joltphysics-populate-build.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\joltphysics-subbuild\CMakeFiles\8190d34553a7cd4fa3a1051a37188928\joltphysics-populate-install.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\joltphysics-subbuild\CMakeFiles\8190d34553a7cd4fa3a1051a37188928\joltphysics-populate-test.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\joltphysics-subbuild\CMakeFiles\439495abd4f7a5aa355404d2de183831\joltphysics-populate-complete.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\joltphysics-subbuild\CMakeFiles\3354910f82703d569ff84b51ed09a8a0\joltphysics-populate.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\joltphysics-subbuild\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\joltphysics-subbuild\CMakeFiles\joltphysics-populate" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{597AE66E-69AA-3461-B6AD-361323CF0662}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -12,6 +12,10 @@
     #include "Rag/RendererVK/VulkanRenderer.h"
 #endif
 
+#if defined(RAG_ENABLE_IMGUI)
+    #include <imgui.h>
+#endif
+
 #include <algorithm>
 #include <cmath>
 #include <exception>
@@ -113,8 +117,23 @@ namespace
                 window_->SetFullscreen(!window_->IsFullscreen());
             }
 
-            UpdateCamera(frame_time, input);
+            bool ui_wants_mouse = false;
+            bool ui_wants_keyboard = false;
+#if defined(RAG_ENABLE_IMGUI)
+            // While ImGui is interacting (hovering a window, dragging a slider or
+            // typing) it reports that it wants the mouse/keyboard; the free-fly
+            // camera then ignores that input so the UI and the view don't fight.
+            if (ImGui::GetCurrentContext() != nullptr)
+            {
+                const ImGuiIO& io = ImGui::GetIO();
+                ui_wants_mouse = io.WantCaptureMouse;
+                ui_wants_keyboard = io.WantCaptureKeyboard;
+            }
+#endif
+
+            UpdateCamera(frame_time, input, ui_wants_mouse, ui_wants_keyboard);
             StepPhysics(frame_time);
+            SyncLightFromUi();
             scene_.Update();
             scene_.ExtractRenderWorld(render_world_);
 
@@ -124,6 +143,9 @@ namespace
                 rag::renderer::RenderFrameContext render_context{};
                 render_context.clear_color = {0.02f, 0.02f, 0.06f, 1.0f};
                 render_context.render_world = &render_world_;
+#if defined(RAG_ENABLE_IMGUI)
+                render_context.on_build_ui = [this]() { BuildEditorUi(); };
+#endif
                 renderer_->RenderFrame(render_context);
             }
 #endif
@@ -174,11 +196,13 @@ namespace
 
     private:
 #if defined(RAG_ENABLE_PHYSICS)
-        // Links a dynamic Jolt body to the scene entity it drives.
+        // Links a dynamic Jolt body to the scene entity it drives, remembering
+        // its spawn position so the editor's reset button can drop it again.
         struct PhysicsBody
         {
             rag::scene::EntityId entity{};
             rag::physics::BodyHandle body{};
+            rag::math::Vec3 start_position{};
         };
 
         void InitializePhysics()
@@ -314,14 +338,17 @@ namespace
             }
             scene_.SetActiveCamera(camera_entity_);
 
-            const rag::scene::EntityId light_entity = scene_.CreateEntity();
-            rag::scene::TransformComponent& light_transform = scene_.AddTransform(light_entity);
-            light_transform.local_rotation_radians = rag::math::Vec3{0.65f, 0.0f, 0.65f};
+            // The directional light is kept editable from the debug panel: its
+            // rotation, color and intensity live in members the UI mutates and
+            // SyncLightFromUi() pushes onto the scene each frame.
+            light_entity_ = scene_.CreateEntity();
+            rag::scene::TransformComponent& light_transform = scene_.AddTransform(light_entity_);
+            light_transform.local_rotation_radians = light_euler_;
 
-            rag::scene::LightComponent& light = scene_.AddLight(light_entity);
+            rag::scene::LightComponent& light = scene_.AddLight(light_entity_);
             light.type = rag::renderer::RenderLightType::Directional;
-            light.color = rag::math::Vec3{1.0f, 0.92f, 0.78f};
-            light.intensity = 1.25f;
+            light.color = light_color_;
+            light.intensity = light_intensity_;
 
             RAG_LOG_INFO(
                 "Built sandbox scene: ",
@@ -351,7 +378,7 @@ namespace
                 return;
             }
 
-            physics_bodies_.push_back(PhysicsBody{entity, body});
+            physics_bodies_.push_back(PhysicsBody{entity, body, position});
             if (rag::scene::TransformComponent* transform = scene_.GetTransform(entity))
             {
                 transform->use_quaternion_rotation = true;
@@ -374,7 +401,7 @@ namespace
                 return;
             }
 
-            physics_bodies_.push_back(PhysicsBody{entity, body});
+            physics_bodies_.push_back(PhysicsBody{entity, body, position});
             if (rag::scene::TransformComponent* transform = scene_.GetTransform(entity))
             {
                 transform->use_quaternion_rotation = true;
@@ -420,6 +447,30 @@ namespace
                 scene_.MarkTransformDirty(physics_body.entity);
             }
         }
+
+        // Pushes the editor's gravity slider value into the live Jolt world.
+        void ApplyGravity()
+        {
+            if (physics_ready_)
+            {
+                physics_.SetGravity(rag::math::Vec3{0.0f, physics_gravity_y_, 0.0f});
+            }
+        }
+
+        // Drops every dynamic body back to its spawn position so they fall again.
+        void ResetPhysicsBodies()
+        {
+            if (!physics_ready_)
+            {
+                return;
+            }
+
+            for (const PhysicsBody& physics_body : physics_bodies_)
+            {
+                physics_.ResetDynamicBody(physics_body.body, physics_body.start_position, rag::math::Quat{});
+            }
+            RAG_LOG_INFO("Physics bodies reset to their start positions.");
+        }
 #else
         void SpawnDynamicBox(rag::scene::EntityId, const rag::math::Vec3&, const rag::math::Vec3&) {}
         void SpawnDynamicSphere(rag::scene::EntityId, const rag::math::Vec3&, rag::f32) {}
@@ -428,9 +479,80 @@ namespace
         void StepPhysics(const rag::core::FrameTime&) {}
 #endif
 
+        // Pushes the editor-controlled light state onto the scene each frame. It
+        // is independent of physics and the renderer, so it runs unconditionally.
+        void SyncLightFromUi()
+        {
+            if (rag::scene::LightComponent* light = scene_.GetLight(light_entity_))
+            {
+                light->color = light_color_;
+                light->intensity = light_intensity_;
+            }
+            if (rag::scene::TransformComponent* transform = scene_.GetTransform(light_entity_))
+            {
+                transform->local_rotation_radians = light_euler_;
+                scene_.MarkTransformDirty(light_entity_);
+            }
+        }
+
+#if defined(RAG_ENABLE_IMGUI)
+        // Builds the single debug/control panel. Invoked by the renderer between
+        // ImGui's NewFrame and Render via RenderFrameContext::on_build_ui.
+        void BuildEditorUi()
+        {
+            ImGui::SetNextWindowSize(ImVec2(340.0f, 0.0f), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowPos(ImVec2(16.0f, 16.0f), ImGuiCond_FirstUseEver);
+            if (!ImGui::Begin("RAG Engine Debug"))
+            {
+                ImGui::End();
+                return;
+            }
+
+            const ImGuiIO& io = ImGui::GetIO();
+            rag::renderer::RendererStats stats{};
+#if defined(RAG_ENABLE_VULKAN)
+            if (renderer_ != nullptr)
+            {
+                stats = renderer_->GetStats();
+            }
+#endif
+
+            ImGui::SeparatorText("Stats");
+            ImGui::Text("FPS: %.1f", static_cast<double>(io.Framerate));
+            ImGui::Text("Frame: %.2f ms", stats.last_frame_ms);
+            ImGui::Text("Objects: %d", static_cast<int>(render_world_.objects.size()));
+            ImGui::Text(
+                "GPU: %s",
+                stats.active_gpu_name.empty() ? "(unknown)" : stats.active_gpu_name.c_str());
+
+            ImGui::SeparatorText("Directional Light");
+            ImGui::SliderFloat3("Rotation (rad)", &light_euler_.x, -3.14159265f, 3.14159265f);
+            ImGui::ColorEdit3("Color", &light_color_.x);
+            ImGui::SliderFloat("Intensity", &light_intensity_, 0.0f, 5.0f);
+
+#if defined(RAG_ENABLE_PHYSICS)
+            ImGui::SeparatorText("Physics");
+            if (ImGui::SliderFloat("Gravity Y", &physics_gravity_y_, -30.0f, 10.0f))
+            {
+                ApplyGravity();
+            }
+            if (ImGui::Button("Reset bodies"))
+            {
+                ResetPhysicsBodies();
+            }
+            ImGui::SameLine();
+            ImGui::Text("(%d dynamic)", static_cast<int>(DynamicBodyCount()));
+#endif
+
+            ImGui::End();
+        }
+#endif
+
         void UpdateCamera(
             const rag::core::FrameTime& frame_time,
-            const rag::core::InputState& input)
+            const rag::core::InputState& input,
+            bool ui_wants_mouse,
+            bool ui_wants_keyboard)
         {
             rag::scene::TransformComponent* transform = scene_.GetTransform(camera_entity_);
             if (transform == nullptr)
@@ -441,7 +563,10 @@ namespace
             bool transform_changed = false;
             const rag::i32 mouse_x = input.MouseX();
             const rag::i32 mouse_y = input.MouseY();
-            const bool mouse_look = input.IsMouseButtonDown(rag::core::MouseButton::Right);
+            // When ImGui owns the mouse, don't drag the view; previous_mouse_* are
+            // still refreshed below so the camera doesn't jump on the next look.
+            const bool mouse_look =
+                !ui_wants_mouse && input.IsMouseButtonDown(rag::core::MouseButton::Right);
 
             if (mouse_look)
             {
@@ -481,31 +606,36 @@ namespace
             constexpr rag::math::Vec3 WorldUp{0.0f, 1.0f, 0.0f};
 
             rag::math::Vec3 movement{};
-            if (input.IsKeyDown(rag::core::KeyCode::W))
+            // Skip WASD/up/down while ImGui is using the keyboard (e.g. typing in
+            // a field) so editing the UI never drives the camera.
+            if (!ui_wants_keyboard)
             {
-                movement = movement + forward;
-            }
-            if (input.IsKeyDown(rag::core::KeyCode::S))
-            {
-                movement = movement - forward;
-            }
-            if (input.IsKeyDown(rag::core::KeyCode::D))
-            {
-                movement = movement + right;
-            }
-            if (input.IsKeyDown(rag::core::KeyCode::A))
-            {
-                movement = movement - right;
-            }
-            if (input.IsKeyDown(rag::core::KeyCode::Space) ||
-                input.IsKeyDown(rag::core::KeyCode::E))
-            {
-                movement = movement + WorldUp;
-            }
-            if (input.IsKeyDown(rag::core::KeyCode::LeftControl) ||
-                input.IsKeyDown(rag::core::KeyCode::Q))
-            {
-                movement = movement - WorldUp;
+                if (input.IsKeyDown(rag::core::KeyCode::W))
+                {
+                    movement = movement + forward;
+                }
+                if (input.IsKeyDown(rag::core::KeyCode::S))
+                {
+                    movement = movement - forward;
+                }
+                if (input.IsKeyDown(rag::core::KeyCode::D))
+                {
+                    movement = movement + right;
+                }
+                if (input.IsKeyDown(rag::core::KeyCode::A))
+                {
+                    movement = movement - right;
+                }
+                if (input.IsKeyDown(rag::core::KeyCode::Space) ||
+                    input.IsKeyDown(rag::core::KeyCode::E))
+                {
+                    movement = movement + WorldUp;
+                }
+                if (input.IsKeyDown(rag::core::KeyCode::LeftControl) ||
+                    input.IsKeyDown(rag::core::KeyCode::Q))
+                {
+                    movement = movement - WorldUp;
+                }
             }
 
             if (rag::math::Length(movement) > 0.000001f)
@@ -534,10 +664,18 @@ namespace
         rag::renderer::RenderWorld render_world_;
         rag::scene::EntityId camera_entity_{};
 
+        // Directional-light state owned by the editor panel and pushed onto the
+        // scene each frame by SyncLightFromUi().
+        rag::scene::EntityId light_entity_{};
+        rag::math::Vec3 light_euler_{0.65f, 0.0f, 0.65f};
+        rag::math::Vec3 light_color_{1.0f, 0.92f, 0.78f};
+        rag::f32 light_intensity_ = 1.25f;
+
 #if defined(RAG_ENABLE_PHYSICS)
         rag::physics::PhysicsWorld physics_;
         std::vector<PhysicsBody> physics_bodies_;
         bool physics_ready_ = false;
+        rag::f32 physics_gravity_y_ = -9.81f;
 #endif
 
         static constexpr rag::f32 MoveSpeed = 4.5f;

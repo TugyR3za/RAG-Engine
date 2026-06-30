@@ -16,6 +16,10 @@
 #include "Rag/RendererVK/Internal/VulkanTextureDescriptors.h"
 #include "Rag/RendererVK/Internal/VulkanUniformResources.h"
 
+#if defined(RAG_ENABLE_IMGUI)
+    #include "Rag/RendererVK/Internal/VulkanImGuiLayer.h"
+#endif
+
 #if defined(RAG_SHADOW_DEBUG)
     #include "Rag/RendererVK/Internal/VulkanShadowDebugPipeline.h"
 #endif
@@ -365,6 +369,31 @@ namespace rag::renderer::vk
             image_in_flight_.assign(swapchain_->ImageCount(), VK_NULL_HANDLE);
             UpdateStats();
 
+#if defined(RAG_ENABLE_IMGUI)
+            // ImGui is brought up only now that the device, swapchain and render
+            // pass all exist, exactly as the task requires.
+            VulkanImGuiInit imgui_init{};
+            imgui_init.instance = instance_->Get();
+            imgui_init.physical_device = device_->PhysicalDevice();
+            imgui_init.device = device_->Device();
+            imgui_init.graphics_queue_family = device_->Families().graphics_family.value();
+            imgui_init.graphics_queue = device_->GraphicsQueue();
+            imgui_init.render_pass = swapchain_->RenderPass();
+            imgui_init.min_image_count = swapchain_->ImageCount();
+            imgui_init.image_count = swapchain_->ImageCount();
+            imgui_init.window_handle = desc_.window->GetNativeHandle().window;
+            imgui_ = std::make_unique<VulkanImGuiLayer>(imgui_init);
+
+            // Route raw Win32 messages through the ImGui backend so it can track
+            // input. The window holds the hook by value; we clear it in ~Impl
+            // before imgui_ is destroyed, so it never dangles.
+            VulkanImGuiLayer* imgui_ptr = imgui_.get();
+            desc_.window->SetNativeMessageHook(
+                [imgui_ptr](void* hwnd, u32 message, u64 w_param, i64 l_param, i64& out_result) {
+                    return imgui_ptr->ProcessWin32Message(hwnd, message, w_param, l_param, out_result);
+                });
+#endif
+
             RAG_LOG_INFO(
                 "Initialized Vulkan renderer with ",
                 stats_.swapchain_image_count,
@@ -374,6 +403,16 @@ namespace rag::renderer::vk
         ~Impl()
         {
             WaitIdle();
+#if defined(RAG_ENABLE_IMGUI)
+            // Detach the window hook before tearing ImGui down so no late message
+            // can reach a destroyed layer, then shut ImGui down while the device
+            // is still alive.
+            if (desc_.window != nullptr)
+            {
+                desc_.window->SetNativeMessageHook(nullptr);
+            }
+            imgui_.reset();
+#endif
             RAG_LOG_INFO("Shut down Vulkan renderer.");
         }
 
@@ -450,6 +489,20 @@ namespace rag::renderer::vk
 
             RAG_VK_CHECK(vkResetFences(device_->Device(), 1, &frame.in_flight));
             RAG_VK_CHECK(vkResetCommandPool(device_->Device(), frame.command_pool, 0));
+
+#if defined(RAG_ENABLE_IMGUI)
+            // Start the overlay frame and let the editor build its widgets. This
+            // is paired with imgui_->RenderInto() inside RecordCommandBuffer, and
+            // both only run on a frame we are certain to submit.
+            if (imgui_ != nullptr)
+            {
+                imgui_->BeginFrame();
+                if (context.on_build_ui)
+                {
+                    context.on_build_ui();
+                }
+            }
+#endif
 
             RecordCommandBuffer(frame.command_buffer, image_index, frame_index, context);
 
@@ -593,6 +646,15 @@ namespace rag::renderer::vk
             shadow_debug_pipeline_->Draw(command_buffer);
 #endif
 
+#if defined(RAG_ENABLE_IMGUI)
+            // Draw the editor overlay last so it composites on top of the scene,
+            // still inside the swapchain render pass.
+            if (imgui_ != nullptr)
+            {
+                imgui_->RenderInto(command_buffer);
+            }
+#endif
+
             swapchain_->EndRenderPass(command_buffer);
             RAG_VK_CHECK(vkEndCommandBuffer(command_buffer));
         }
@@ -674,6 +736,14 @@ namespace rag::renderer::vk
             frames_->RecreateRenderFinishedSemaphores(swapchain_->ImageCount());
             image_in_flight_.assign(swapchain_->ImageCount(), VK_NULL_HANDLE);
             UpdateStats();
+
+#if defined(RAG_ENABLE_IMGUI)
+            if (imgui_ != nullptr)
+            {
+                imgui_->OnSwapchainRecreated(swapchain_->RenderPass(), swapchain_->ImageCount());
+            }
+#endif
+
             resize_requested_ = false;
             surface_suspended_ = false;
             return true;
@@ -858,6 +928,11 @@ namespace rag::renderer::vk
         std::vector<u32> mesh_texture_indices_;
         std::unique_ptr<VulkanFrameResources> frames_;
         std::vector<VkFence> image_in_flight_;
+#if defined(RAG_ENABLE_IMGUI)
+        // Declared after the device/swapchain it borrows handles from; explicitly
+        // reset in ~Impl before those are torn down.
+        std::unique_ptr<VulkanImGuiLayer> imgui_;
+#endif
         RendererStats stats_{};
         std::chrono::steady_clock::time_point previous_frame_time_{};
         f64 diagnostics_elapsed_seconds_ = 0.0;

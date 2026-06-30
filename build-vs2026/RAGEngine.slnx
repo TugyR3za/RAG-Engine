@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Solution>
+	<Configurations>
+		<BuildType Name="Debug"/>
+		<BuildType Name="Release"/>
+		<BuildType Name="MinSizeRel"/>
+		<BuildType Name="RelWithDebInfo"/>
+		<Platform Name="x64"/>
+	</Configurations>
+	<Project Path="ALL_BUILD.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="af1bb3c0-7b8d-3ddb-b572-46e9808a62a6" DefaultStartup="true">
+		<BuildDependency Project="_deps/joltphysics-build/Jolt.vcxproj"/>
+		<BuildDependency Project="RagCore.vcxproj"/>
+		<BuildDependency Project="RagPhysics.vcxproj"/>
+		<BuildDependency Project="RagPlatform.vcxproj"/>
+		<BuildDependency Project="RagRenderer.vcxproj"/>
+		<BuildDependency Project="RagRendererVK.vcxproj"/>
+		<BuildDependency Project="RagRuntime.vcxproj"/>
+		<BuildDependency Project="RagSandbox.vcxproj"/>
+		<BuildDependency Project="RagScene.vcxproj"/>
+		<BuildDependency Project="RagSceneTests.vcxproj"/>
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="imgui.vcxproj"/>
+	</Project>
+	<Project Path="INSTALL.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="c9ca87d4-ba37-3255-9322-fb397e1674ab">
+		<BuildDependency Project="ALL_BUILD.vcxproj"/>
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<Build Solution="Debug|*" Project="false"/>
+		<Build Solution="Release|*" Project="false"/>
+		<Build Solution="MinSizeRel|*" Project="false"/>
+		<Build Solution="RelWithDebInfo|*" Project="false"/>
+	</Project>
+	<Project Path="_deps/joltphysics-build/Jolt.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="f9eae7ef-16df-3c90-8118-74062e81df50">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="RagCore.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="6c166ca4-ed6f-31c9-aca2-a9ed8e65538c">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="RagPhysics.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="82b1b4f2-477d-39a7-832a-f9f42b9c7bae">
+		<BuildDependency Project="_deps/joltphysics-build/Jolt.vcxproj"/>
+		<BuildDependency Project="RagCore.vcxproj"/>
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="RagPlatform.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="89d7e6fc-8747-38b9-8b82-b93e152dbe5f">
+		<BuildDependency Project="RagCore.vcxproj"/>
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="RagRenderer.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="1c4758c2-d7ec-330d-a971-c82463a1cda1">
+		<BuildDependency Project="RagCore.vcxproj"/>
+		<BuildDependency Project="RagPlatform.vcxproj"/>
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="RagRendererVK.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="9f7a0caf-d1dd-3ee1-ad86-dfeccf492aef">
+		<BuildDependency Project="RagCore.vcxproj"/>
+		<BuildDependency Project="RagPlatform.vcxproj"/>
+		<BuildDependency Project="RagRenderer.vcxproj"/>
+		<BuildDependency Project="RagRendererVKShaders.vcxproj"/>
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="imgui.vcxproj"/>
+	</Project>
+	<Project Path="RagRendererVKShaders.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="399044b3-0ae7-3cdd-abd0-6997ddb4c6bd">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="RagRuntime.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="8ab1ac78-7b8b-3b02-afba-d62887c38fa6">
+		<BuildDependency Project="RagCore.vcxproj"/>
+		<BuildDependency Project="RagPlatform.vcxproj"/>
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="RagSandbox.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="b16d155c-da77-3fbe-a121-82a2df63cac4">
+		<BuildDependency Project="_deps/joltphysics-build/Jolt.vcxproj"/>
+		<BuildDependency Project="RagCore.vcxproj"/>
+		<BuildDependency Project="RagPhysics.vcxproj"/>
+		<BuildDependency Project="RagPlatform.vcxproj"/>
+		<BuildDependency Project="RagRenderer.vcxproj"/>
+		<BuildDependency Project="RagRendererVK.vcxproj"/>
+		<BuildDependency Project="RagRendererVKShaders.vcxproj"/>
+		<BuildDependency Project="RagRuntime.vcxproj"/>
+		<BuildDependency Project="RagScene.vcxproj"/>
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="imgui.vcxproj"/>
+	</Project>
+	<Project Path="RagScene.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="7468ac37-6e1c-32a2-953b-8be693436792">
+		<BuildDependency Project="RagCore.vcxproj"/>
+		<BuildDependency Project="RagPlatform.vcxproj"/>
+		<BuildDependency Project="RagRenderer.vcxproj"/>
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="RagSceneTests.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="e669220c-569d-37fa-a8a0-0a3e4726949f">
+		<BuildDependency Project="RagCore.vcxproj"/>
+		<BuildDependency Project="RagPlatform.vcxproj"/>
+		<BuildDependency Project="RagRenderer.vcxproj"/>
+		<BuildDependency Project="RagScene.vcxproj"/>
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="ZERO_CHECK.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="c4a046b8-f6ed-3ae0-88ab-364d148b1ff7"/>
+	<Project Path="imgui.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="cdc9226a-d0e0-386c-91c9-5fa1e8a2c1f1">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+</Solution>

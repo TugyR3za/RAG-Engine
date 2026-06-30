@@ -1,0 +1,160 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\VulkanRenderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanAssetPath.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanCommon.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanDevice.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanFrameResources.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanGltfLoader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanGraphicsPipeline.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanIndexBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanInstance.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanMesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanMeshLoader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanShaderModule.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanShadowDebugPipeline.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanShadowMap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanShadowPipeline.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanSurface.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanStbImage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanSwapchain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanTexture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanTextureDescriptors.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanUniformResources.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanVertexBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanImGuiLayer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\VulkanRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanAssetPath.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanCommon.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanDevice.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanFrameResources.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanGltfLoader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanGraphicsPipeline.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanIndexBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanInstance.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanMesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanMeshLoader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanShaderModule.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanShadowDebugPipeline.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanShadowMap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanShadowPipeline.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanSurface.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanSwapchain.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanTexture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanTextureDescriptors.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanUniformResources.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanVertexBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanImGuiLayer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\ShadowDebug.frag" />
+    <None Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\ShadowDebug.vert" />
+    <None Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\ShadowDepth.vert" />
+    <None Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\Triangle.frag" />
+    <None Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\Triangle.vert" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{DBA9883D-590E-3120-9DB5-39F57CD5257C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{2527617C-180A-3530-9A7A-AD5B79ABFE96}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

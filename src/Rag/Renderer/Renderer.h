@@ -5,6 +5,7 @@
 #include "Rag/Platform/Window.h"
 
 #include <array>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -31,6 +32,12 @@ namespace rag::renderer
     {
         std::array<f32, 4> clear_color = {0.0f, 0.18f, 1.0f, 1.0f};
         const struct RenderWorld* render_world = nullptr;
+
+        // Optional editor/overlay UI builder, invoked by the renderer once per
+        // frame between starting and finishing the overlay (ImGui) frame. The
+        // callback issues plain ImGui calls; it never touches the backend, so no
+        // Vulkan types are exposed to the caller. Empty means "no overlay UI".
+        std::function<void()> on_build_ui;
     };
 
     struct MeshHandle

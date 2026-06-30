@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\CMakeFiles\3d72adcbbbdbf0c349eadace0c4d90c5\shadow_debug.frag.spv.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\CMakeFiles\3d72adcbbbdbf0c349eadace0c4d90c5\shadow_debug.vert.spv.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\CMakeFiles\3d72adcbbbdbf0c349eadace0c4d90c5\shadow_depth.vert.spv.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\CMakeFiles\3d72adcbbbdbf0c349eadace0c4d90c5\triangle.frag.spv.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\CMakeFiles\3d72adcbbbdbf0c349eadace0c4d90c5\triangle.vert.spv.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\CMakeFiles\d343d397df881873b6dfc6b46c0c8d68\RagRendererVKShaders.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\CMakeFiles\RagRendererVKShaders" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{5E5B63B1-E0BA-3029-B885-6AA97C1AAE16}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

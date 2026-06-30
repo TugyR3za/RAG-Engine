@@ -19,6 +19,7 @@ namespace rag::platform
 
         void PollEvents() override;
         void SetEventCallback(WindowEventCallback callback) override;
+        void SetNativeMessageHook(NativeMessageHook hook) override;
         void SetTitle(const std::string& title) override;
         void SetFullscreen(bool fullscreen) override;
 
@@ -44,6 +45,7 @@ namespace rag::platform
         bool should_close_ = false;
         bool fullscreen_ = false;
         WindowEventCallback event_callback_;
+        NativeMessageHook native_message_hook_;
     };
 }
 

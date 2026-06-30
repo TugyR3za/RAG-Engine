@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imgui-subbuild\CMakeFiles\b48f6bc7e84bb60c5ea5a7c1b54f4896\imgui-populate-mkdir.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imgui-subbuild\CMakeFiles\b48f6bc7e84bb60c5ea5a7c1b54f4896\imgui-populate-download.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imgui-subbuild\CMakeFiles\b48f6bc7e84bb60c5ea5a7c1b54f4896\imgui-populate-update.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imgui-subbuild\CMakeFiles\b48f6bc7e84bb60c5ea5a7c1b54f4896\imgui-populate-patch.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imgui-subbuild\CMakeFiles\b48f6bc7e84bb60c5ea5a7c1b54f4896\imgui-populate-configure.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imgui-subbuild\CMakeFiles\b48f6bc7e84bb60c5ea5a7c1b54f4896\imgui-populate-build.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imgui-subbuild\CMakeFiles\b48f6bc7e84bb60c5ea5a7c1b54f4896\imgui-populate-install.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imgui-subbuild\CMakeFiles\b48f6bc7e84bb60c5ea5a7c1b54f4896\imgui-populate-test.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imgui-subbuild\CMakeFiles\57bbcf91ed7897ad250f27b76a37d647\imgui-populate-complete.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imgui-subbuild\CMakeFiles\57c210484903c0932fd1fc3262a311c8\imgui-populate.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imgui-subbuild\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imgui-subbuild\CMakeFiles\imgui-populate" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{B0B13A37-3776-3F57-85CC-61D6D86AC7C9}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

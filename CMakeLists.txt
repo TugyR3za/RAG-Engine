@@ -10,6 +10,7 @@ option(RAG_BUILD_SANDBOX "Build the RAG Engine sandbox application" ON)
 option(RAG_BUILD_TESTS "Build RAG Engine test executables" ON)
 option(RAG_ENABLE_VULKAN "Build the Vulkan renderer backend" ON)
 option(RAG_ENABLE_PHYSICS "Build the Jolt-backed physics module" ON)
+option(RAG_ENABLE_IMGUI "Build the Dear ImGui editor overlay (requires the Vulkan backend)" ON)
 option(RAG_SHADOW_DEBUG "Draw the directional shadow depth map as a debug overlay quad" OFF)
 
 include(cmake/RagCompilerOptions.cmake)
@@ -118,6 +119,43 @@ endif()
 if(RAG_ENABLE_VULKAN)
     rag_find_vulkan()
 
+    # Dear ImGui ships no CMake of its own, so its core plus the official Win32
+    # and Vulkan backends are compiled into a small static library here. Pinned
+    # to a specific release tag (never HEAD) so future pulls stay reproducible.
+    if(RAG_ENABLE_IMGUI)
+        include(FetchContent)
+        FetchContent_Declare(
+            imgui
+            GIT_REPOSITORY https://github.com/ocornut/imgui.git
+            GIT_TAG v1.91.8
+            GIT_SHALLOW TRUE
+        )
+        FetchContent_MakeAvailable(imgui)
+
+        add_library(imgui STATIC
+            ${imgui_SOURCE_DIR}/imgui.cpp
+            ${imgui_SOURCE_DIR}/imgui_draw.cpp
+            ${imgui_SOURCE_DIR}/imgui_tables.cpp
+            ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+            ${imgui_SOURCE_DIR}/backends/imgui_impl_win32.cpp
+            ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
+        )
+        target_include_directories(imgui PUBLIC
+            ${imgui_SOURCE_DIR}
+            ${imgui_SOURCE_DIR}/backends
+        )
+        # Vulkan headers/loader are needed only to compile the Vulkan backend;
+        # keep them PRIVATE so code that includes only imgui.h stays Vulkan-free.
+        target_link_libraries(imgui PRIVATE Vulkan::Vulkan)
+        if(WIN32)
+            target_link_libraries(imgui PRIVATE user32 dwmapi imm32)
+        endif()
+        if(MSVC)
+            # Third party: don't subject ImGui to the engine's /W4 /permissive-.
+            target_compile_options(imgui PRIVATE /W0)
+        endif()
+    endif()
+
     add_library(RagRendererVK STATIC
         src/Rag/RendererVK/VulkanRenderer.cpp
         src/Rag/RendererVK/VulkanRenderer.h
@@ -179,6 +217,17 @@ if(RAG_ENABLE_VULKAN)
             $<$<BOOL:${RAG_SHADOW_DEBUG}>:RAG_SHADOW_DEBUG=1>
     )
     target_link_libraries(RagRendererVK PUBLIC RagRenderer PRIVATE Vulkan::Vulkan)
+
+    if(RAG_ENABLE_IMGUI)
+        target_sources(RagRendererVK PRIVATE
+            src/Rag/RendererVK/Internal/VulkanImGuiLayer.cpp
+            src/Rag/RendererVK/Internal/VulkanImGuiLayer.h
+        )
+        # imgui is linked PUBLIC so the editor/game layer can build panels with
+        # imgui.h, while the Win32/Vulkan backends stay used only in RendererVK.
+        target_link_libraries(RagRendererVK PUBLIC imgui)
+        target_compile_definitions(RagRendererVK PUBLIC RAG_ENABLE_IMGUI=1)
+    endif()
 
     set(RAG_VULKAN_SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/shaders")
 

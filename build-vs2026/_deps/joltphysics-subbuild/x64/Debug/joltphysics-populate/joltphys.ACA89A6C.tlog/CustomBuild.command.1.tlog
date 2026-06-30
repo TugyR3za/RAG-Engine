@@ -1,0 +1,150 @@
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\JOLTPHYSICS-SUBBUILD\CMAKEFILES\8190D34553A7CD4FA3A1051A37188928\JOLTPHYSICS-POPULATE-MKDIR.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -Dcfgdir=/Debug -P "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/joltphysics-subbuild/joltphysics-populate-prefix/tmp/joltphysics-populate-mkdirs.cmake"
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/joltphysics-subbuild/joltphysics-populate-prefix/src/joltphysics-populate-stamp/Debug/joltphysics-populate-mkdir"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\JOLTPHYSICS-SUBBUILD\CMAKEFILES\8190D34553A7CD4FA3A1051A37188928\JOLTPHYSICS-POPULATE-DOWNLOAD.RULE
+setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/joltphysics-subbuild/joltphysics-populate-prefix/tmp/joltphysics-populate-gitclone.cmake"
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/joltphysics-subbuild/joltphysics-populate-prefix/src/joltphysics-populate-stamp/Debug/joltphysics-populate-download"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\JOLTPHYSICS-SUBBUILD\CMAKEFILES\8190D34553A7CD4FA3A1051A37188928\JOLTPHYSICS-POPULATE-UPDATE.RULE
+setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\joltphysics-src"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -Dcan_fetch=YES -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/joltphysics-subbuild/joltphysics-populate-prefix/tmp/joltphysics-populate-gitupdate.cmake"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\JOLTPHYSICS-SUBBUILD\CMAKEFILES\8190D34553A7CD4FA3A1051A37188928\JOLTPHYSICS-POPULATE-PATCH.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/joltphysics-subbuild/joltphysics-populate-prefix/src/joltphysics-populate-stamp/Debug/joltphysics-populate-patch"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\JOLTPHYSICS-SUBBUILD\CMAKEFILES\8190D34553A7CD4FA3A1051A37188928\JOLTPHYSICS-POPULATE-CONFIGURE.RULE
+setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\joltphysics-build"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/joltphysics-subbuild/joltphysics-populate-prefix/src/joltphysics-populate-stamp/Debug/joltphysics-populate-configure"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\JOLTPHYSICS-SUBBUILD\CMAKEFILES\8190D34553A7CD4FA3A1051A37188928\JOLTPHYSICS-POPULATE-BUILD.RULE
+setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\joltphysics-build"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/joltphysics-subbuild/joltphysics-populate-prefix/src/joltphysics-populate-stamp/Debug/joltphysics-populate-build"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\JOLTPHYSICS-SUBBUILD\CMAKEFILES\8190D34553A7CD4FA3A1051A37188928\JOLTPHYSICS-POPULATE-INSTALL.RULE
+setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\joltphysics-build"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/joltphysics-subbuild/joltphysics-populate-prefix/src/joltphysics-populate-stamp/Debug/joltphysics-populate-install"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\JOLTPHYSICS-SUBBUILD\CMAKEFILES\8190D34553A7CD4FA3A1051A37188928\JOLTPHYSICS-POPULATE-TEST.RULE
+setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\joltphysics-build"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/joltphysics-subbuild/joltphysics-populate-prefix/src/joltphysics-populate-stamp/Debug/joltphysics-populate-test"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\JOLTPHYSICS-SUBBUILD\CMAKEFILES\439495ABD4F7A5AA355404D2DE183831\JOLTPHYSICS-POPULATE-COMPLETE.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/joltphysics-subbuild/CMakeFiles/Debug"
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/joltphysics-subbuild/CMakeFiles/Debug/joltphysics-populate-complete"
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/joltphysics-subbuild/joltphysics-populate-prefix/src/joltphysics-populate-stamp/Debug/joltphysics-populate-done"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\JOLTPHYSICS-SUBBUILD\CMAKEFILES\3354910F82703D569FF84B51ED09A8A0\JOLTPHYSICS-POPULATE.RULE
+setlocal
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\JOLTPHYSICS-SUBBUILD\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/joltphysics-subbuild" "-BC:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/joltphysics-subbuild" --check-stamp-file "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/joltphysics-subbuild/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

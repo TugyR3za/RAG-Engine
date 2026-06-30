@@ -322,6 +322,11 @@ namespace rag::platform
         event_callback_ = std::move(callback);
     }
 
+    void Win32Window::SetNativeMessageHook(NativeMessageHook hook)
+    {
+        native_message_hook_ = std::move(hook);
+    }
+
     void Win32Window::SetTitle(const std::string& title)
     {
         const std::wstring wide_title = ToWideString(title);
@@ -426,6 +431,20 @@ namespace rag::platform
         i64& result,
         bool& handled)
     {
+        // Give an installed overlay (e.g. the ImGui Win32 backend) first look at
+        // the raw message. If it fully handles the message we stop here and hand
+        // its result back to the OS; otherwise the engine processes it as usual.
+        if (native_message_hook_)
+        {
+            i64 hook_result = 0;
+            if (native_message_hook_(hwnd, message, w_param, l_param, hook_result))
+            {
+                result = hook_result;
+                handled = true;
+                return;
+            }
+        }
+
         switch (message)
         {
         case WM_ERASEBKGND:
