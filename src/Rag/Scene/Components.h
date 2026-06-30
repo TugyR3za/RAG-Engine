@@ -57,6 +57,10 @@ namespace rag::scene
     struct LightComponent
     {
         renderer::RenderLightType type = renderer::RenderLightType::Directional;
+        // Direction in the light entity's local space. Keeping this separate
+        // from position lets tools aim a light from an arbitrary base vector
+        // while the entity transform still supplies hierarchy/world rotation.
+        math::Vec3 local_direction{0.0f, -1.0f, 0.0f};
         math::Vec3 color{1.0f, 1.0f, 1.0f};
         f32 intensity = 1.0f;
         f32 range = 10.0f;

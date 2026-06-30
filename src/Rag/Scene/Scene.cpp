@@ -326,7 +326,8 @@ namespace rag::scene
             render_light.object_id = entity.ToU64();
             render_light.type = light.type;
             render_light.position = math::ExtractTranslation(transform->world_matrix);
-            render_light.direction = math::TransformDirection(transform->world_matrix, math::Vec3{0.0f, -1.0f, 0.0f});
+            render_light.direction =
+                math::TransformDirection(transform->world_matrix, light.local_direction);
             render_light.color = light.color;
             render_light.intensity = light.intensity;
             render_light.range = light.range;

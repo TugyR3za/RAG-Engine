@@ -342,11 +342,11 @@ namespace
             // rotation, color and intensity live in members the UI mutates and
             // SyncLightFromUi() pushes onto the scene each frame.
             light_entity_ = scene_.CreateEntity();
-            rag::scene::TransformComponent& light_transform = scene_.AddTransform(light_entity_);
-            light_transform.local_rotation_radians = light_euler_;
+            scene_.AddTransform(light_entity_);
 
             rag::scene::LightComponent& light = scene_.AddLight(light_entity_);
             light.type = rag::renderer::RenderLightType::Directional;
+            light.local_direction = rag::math::Normalize(BaseDirectionalLightDirection);
             light.color = light_color_;
             light.intensity = light_intensity_;
 
@@ -485,13 +485,13 @@ namespace
         {
             if (rag::scene::LightComponent* light = scene_.GetLight(light_entity_))
             {
+                const rag::math::Mat4 light_rotation =
+                    rag::math::RotationEulerXYZ(light_euler_);
+                light->local_direction = rag::math::TransformDirection(
+                    light_rotation,
+                    BaseDirectionalLightDirection);
                 light->color = light_color_;
                 light->intensity = light_intensity_;
-            }
-            if (rag::scene::TransformComponent* transform = scene_.GetTransform(light_entity_))
-            {
-                transform->local_rotation_radians = light_euler_;
-                scene_.MarkTransformDirty(light_entity_);
             }
         }
 
@@ -526,7 +526,9 @@ namespace
                 stats.active_gpu_name.empty() ? "(unknown)" : stats.active_gpu_name.c_str());
 
             ImGui::SeparatorText("Directional Light");
-            ImGui::SliderFloat3("Rotation (rad)", &light_euler_.x, -3.14159265f, 3.14159265f);
+            ImGui::SliderFloat("Pitch (X, rad)", &light_euler_.x, -rag::math::Pi, rag::math::Pi);
+            ImGui::SliderFloat("Yaw (Y, rad)", &light_euler_.y, -rag::math::Pi, rag::math::Pi);
+            ImGui::SliderFloat("Roll (Z, rad)", &light_euler_.z, -rag::math::Pi, rag::math::Pi);
             ImGui::ColorEdit3("Color", &light_color_.x);
             ImGui::SliderFloat("Intensity", &light_intensity_, 0.0f, 5.0f);
 
@@ -667,7 +669,7 @@ namespace
         // Directional-light state owned by the editor panel and pushed onto the
         // scene each frame by SyncLightFromUi().
         rag::scene::EntityId light_entity_{};
-        rag::math::Vec3 light_euler_{0.65f, 0.0f, 0.65f};
+        rag::math::Vec3 light_euler_{};
         rag::math::Vec3 light_color_{1.0f, 0.92f, 0.78f};
         rag::f32 light_intensity_ = 1.25f;
 
@@ -682,6 +684,12 @@ namespace
         static constexpr rag::f32 SprintMultiplier = 4.0f;
         static constexpr rag::f32 MouseSensitivity = 0.0025f;
         static constexpr rag::f32 MaximumPitchRadians = (rag::math::Pi * 0.5f) - 0.01f;
+        // A small component on every axis makes each fixed-axis Euler control
+        // affect the light direction independently, including Z rotation.
+        static constexpr rag::math::Vec3 BaseDirectionalLightDirection{
+            0.25f,
+            -0.85f,
+            -0.46f};
         rag::f32 camera_yaw_radians_ = 0.0f;
         rag::f32 camera_pitch_radians_ = 0.0f;
         rag::f64 time_since_title_update_ = 0.0;
