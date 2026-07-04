@@ -8,6 +8,7 @@
 #include "Rag/RendererVK/Internal/VulkanInstance.h"
 #include "Rag/RendererVK/Internal/VulkanMesh.h"
 #include "Rag/RendererVK/Internal/VulkanMeshLoader.h"
+#include "Rag/RendererVK/Internal/VulkanSelectionOutlinePipeline.h"
 #include "Rag/RendererVK/Internal/VulkanShadowMap.h"
 #include "Rag/RendererVK/Internal/VulkanShadowPipeline.h"
 #include "Rag/RendererVK/Internal/VulkanSurface.h"
@@ -269,6 +270,14 @@ namespace rag::renderer::vk
                 swapchain_->RenderPass(),
                 uniform_resources_->DescriptorSetLayout(),
                 texture_descriptors_->DescriptorSetLayout());
+
+            // Editor selection highlight: shares the swapchain render pass and the
+            // per-frame camera descriptor set layout. Always built (its cost is one
+            // pipeline); it only draws when a frame supplies a selection highlight.
+            selection_outline_pipeline_ = std::make_unique<VulkanSelectionOutlinePipeline>(
+                device_->Device(),
+                swapchain_->RenderPass(),
+                uniform_resources_->DescriptorSetLayout());
 
             // Shadow resources are independent of the swapchain and fixed size.
             shadow_map_ = std::make_unique<VulkanShadowMap>(
@@ -640,6 +649,19 @@ namespace rag::renderer::vk
                 vkCmdDrawIndexed(command_buffer, meshes_[mesh_index]->IndexCount(), 1, 0, 0, 0);
             });
 
+            // Editor selection highlight: a colored line box around the selected
+            // object, drawn on top of the shaded scene (but under the ImGui overlay).
+            if (context.selection_highlight.active && selection_outline_pipeline_ != nullptr)
+            {
+                selection_outline_pipeline_->Bind(command_buffer, swapchain_->Extent());
+                selection_outline_pipeline_->BindDescriptorSet(command_buffer, descriptor_set);
+                selection_outline_pipeline_->Draw(
+                    command_buffer,
+                    context.selection_highlight.center,
+                    context.selection_highlight.extents,
+                    context.selection_highlight.color);
+            }
+
 #if defined(RAG_SHADOW_DEBUG)
             shadow_debug_pipeline_->Bind(command_buffer, swapchain_->Extent());
             shadow_debug_pipeline_->BindDescriptorSet(command_buffer, descriptor_set);
@@ -722,6 +744,12 @@ namespace rag::renderer::vk
                     swapchain_->RenderPass(),
                     uniform_resources_->DescriptorSetLayout(),
                     texture_descriptors_->DescriptorSetLayout());
+
+                // The outline pipeline is tied to the swapchain render pass too.
+                selection_outline_pipeline_ = std::make_unique<VulkanSelectionOutlinePipeline>(
+                    device_->Device(),
+                    swapchain_->RenderPass(),
+                    uniform_resources_->DescriptorSetLayout());
 
 #if defined(RAG_SHADOW_DEBUG)
                 // The overlay pipeline is tied to the swapchain render pass; the
@@ -919,6 +947,7 @@ namespace rag::renderer::vk
         std::vector<std::unique_ptr<VulkanTexture>> textures_;
         std::unique_ptr<VulkanTextureDescriptors> texture_descriptors_;
         std::unique_ptr<VulkanGraphicsPipeline> pipeline_;
+        std::unique_ptr<VulkanSelectionOutlinePipeline> selection_outline_pipeline_;
         std::unique_ptr<VulkanShadowMap> shadow_map_;
         std::unique_ptr<VulkanShadowPipeline> shadow_pipeline_;
 #if defined(RAG_SHADOW_DEBUG)

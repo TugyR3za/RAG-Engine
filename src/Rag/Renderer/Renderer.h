@@ -28,6 +28,19 @@ namespace rag::renderer
         u32 frames_in_flight = 2;
     };
 
+    // An optional world-space, axis-aligned bounding box that the renderer draws
+    // as colored lines to highlight the editor's currently selected object. The
+    // editor fills this in each frame from the selected entity's world bounds;
+    // with active == false the renderer draws no highlight. Kept backend-agnostic
+    // (math types only) so all Vulkan specifics stay inside RendererVK.
+    struct SelectionHighlight
+    {
+        bool active = false;
+        math::Vec3 center{};
+        math::Vec3 extents{0.5f, 0.5f, 0.5f};
+        math::Vec3 color{1.0f, 0.55f, 0.1f};
+    };
+
     struct RenderFrameContext
     {
         std::array<f32, 4> clear_color = {0.0f, 0.18f, 1.0f, 1.0f};
@@ -38,6 +51,10 @@ namespace rag::renderer
         // callback issues plain ImGui calls; it never touches the backend, so no
         // Vulkan types are exposed to the caller. Empty means "no overlay UI".
         std::function<void()> on_build_ui;
+
+        // Optional selection highlight box drawn on top of the 3D scene (see
+        // SelectionHighlight). Inactive by default so a plain game frame draws none.
+        SelectionHighlight selection_highlight{};
     };
 
     struct MeshHandle

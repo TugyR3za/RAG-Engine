@@ -105,6 +105,134 @@
     </Midl>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\CMakeFiles\3d72adcbbbdbf0c349eadace0c4d90c5\selection_outline.frag.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling RAG Engine Vulkan shader SelectionOutline.frag</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders"
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe -V "C:/Users/naime/OneDrive/Desktop/RAG Engine/src/Rag/RendererVK/Shaders/SelectionOutline.frag" -o "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.frag.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\SelectionOutline.frag;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\selection_outline.frag.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling RAG Engine Vulkan shader SelectionOutline.frag</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders"
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe -V "C:/Users/naime/OneDrive/Desktop/RAG Engine/src/Rag/RendererVK/Shaders/SelectionOutline.frag" -o "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.frag.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\SelectionOutline.frag;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\selection_outline.frag.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Compiling RAG Engine Vulkan shader SelectionOutline.frag</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders"
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe -V "C:/Users/naime/OneDrive/Desktop/RAG Engine/src/Rag/RendererVK/Shaders/SelectionOutline.frag" -o "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.frag.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\SelectionOutline.frag;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\selection_outline.frag.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Compiling RAG Engine Vulkan shader SelectionOutline.frag</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders"
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe -V "C:/Users/naime/OneDrive/Desktop/RAG Engine/src/Rag/RendererVK/Shaders/SelectionOutline.frag" -o "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.frag.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\SelectionOutline.frag;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\selection_outline.frag.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\CMakeFiles\3d72adcbbbdbf0c349eadace0c4d90c5\selection_outline.vert.spv.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling RAG Engine Vulkan shader SelectionOutline.vert</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders"
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe -V "C:/Users/naime/OneDrive/Desktop/RAG Engine/src/Rag/RendererVK/Shaders/SelectionOutline.vert" -o "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.vert.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\SelectionOutline.vert;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\selection_outline.vert.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling RAG Engine Vulkan shader SelectionOutline.vert</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders"
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe -V "C:/Users/naime/OneDrive/Desktop/RAG Engine/src/Rag/RendererVK/Shaders/SelectionOutline.vert" -o "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.vert.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\SelectionOutline.vert;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\selection_outline.vert.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Compiling RAG Engine Vulkan shader SelectionOutline.vert</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders"
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe -V "C:/Users/naime/OneDrive/Desktop/RAG Engine/src/Rag/RendererVK/Shaders/SelectionOutline.vert" -o "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.vert.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\SelectionOutline.vert;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\selection_outline.vert.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Compiling RAG Engine Vulkan shader SelectionOutline.vert</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders"
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe -V "C:/Users/naime/OneDrive/Desktop/RAG Engine/src/Rag/RendererVK/Shaders/SelectionOutline.vert" -o "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.vert.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\SelectionOutline.vert;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\selection_outline.vert.spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
     <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\CMakeFiles\3d72adcbbbdbf0c349eadace0c4d90c5\shadow_debug.frag.spv.rule">
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling RAG Engine Vulkan shader ShadowDebug.frag</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
@@ -434,7 +562,7 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\triangle.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\triangle.frag.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_depth.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_debug.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_debug.frag.spv;%(AdditionalInputs)</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\triangle.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\triangle.frag.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_depth.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_debug.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_debug.frag.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\selection_outline.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\selection_outline.frag.spv;%(AdditionalInputs)</AdditionalInputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\CMakeFiles\RagRendererVKShaders</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
       <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</VerifyInputsAndOutputsExist>
@@ -446,7 +574,7 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\triangle.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\triangle.frag.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_depth.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_debug.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_debug.frag.spv;%(AdditionalInputs)</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\triangle.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\triangle.frag.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_depth.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_debug.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_debug.frag.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\selection_outline.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\selection_outline.frag.spv;%(AdditionalInputs)</AdditionalInputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\CMakeFiles\RagRendererVKShaders</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
       <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</VerifyInputsAndOutputsExist>
@@ -458,7 +586,7 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\triangle.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\triangle.frag.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_depth.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_debug.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_debug.frag.spv;%(AdditionalInputs)</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\triangle.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\triangle.frag.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_depth.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_debug.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_debug.frag.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\selection_outline.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\selection_outline.frag.spv;%(AdditionalInputs)</AdditionalInputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\CMakeFiles\RagRendererVKShaders</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
       <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</VerifyInputsAndOutputsExist>
@@ -470,7 +598,7 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\triangle.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\triangle.frag.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_depth.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_debug.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_debug.frag.spv;%(AdditionalInputs)</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\triangle.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\triangle.frag.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_depth.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_debug.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\shadow_debug.frag.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\selection_outline.vert.spv;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\generated\shaders\selection_outline.frag.spv;%(AdditionalInputs)</AdditionalInputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\CMakeFiles\RagRendererVKShaders</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
       <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</VerifyInputsAndOutputsExist>

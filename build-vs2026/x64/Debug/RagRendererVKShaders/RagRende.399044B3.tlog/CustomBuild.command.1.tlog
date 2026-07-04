@@ -1,3 +1,27 @@
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\CMAKEFILES\3D72ADCBBBDBF0C349EADACE0C4D90C5\SELECTION_OUTLINE.FRAG.SPV.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders"
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe -V "C:/Users/naime/OneDrive/Desktop/RAG Engine/src/Rag/RendererVK/Shaders/SelectionOutline.frag" -o "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.frag.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\CMAKEFILES\3D72ADCBBBDBF0C349EADACE0C4D90C5\SELECTION_OUTLINE.VERT.SPV.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders"
+if %errorlevel% neq 0 goto :cmEnd
+C:\VulkanSDK\1.4.350.0\Bin\glslangValidator.exe -V "C:/Users/naime/OneDrive/Desktop/RAG Engine/src/Rag/RendererVK/Shaders/SelectionOutline.vert" -o "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.vert.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
 ^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\CMAKEFILES\3D72ADCBBBDBF0C349EADACE0C4D90C5\SHADOW_DEBUG.FRAG.SPV.RULE
 setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders"

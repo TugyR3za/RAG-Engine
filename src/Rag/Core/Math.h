@@ -86,6 +86,24 @@ namespace rag::math
         return value * inverse;
     }
 
+    // Angle-unit conversions. Editor UIs edit rotation in degrees while the engine
+    // and physics store radians, so these are the single conversion point.
+    inline constexpr f32 DegreesPerRadian = 180.0f / Pi;
+    inline constexpr f32 RadiansPerDegree = Pi / 180.0f;
+
+    [[nodiscard]] inline f32 ToDegrees(f32 radians) { return radians * DegreesPerRadian; }
+    [[nodiscard]] inline f32 ToRadians(f32 degrees) { return degrees * RadiansPerDegree; }
+
+    [[nodiscard]] inline Vec3 ToDegrees(Vec3 radians)
+    {
+        return Vec3{radians.x * DegreesPerRadian, radians.y * DegreesPerRadian, radians.z * DegreesPerRadian};
+    }
+
+    [[nodiscard]] inline Vec3 ToRadians(Vec3 degrees)
+    {
+        return Vec3{degrees.x * RadiansPerDegree, degrees.y * RadiansPerDegree, degrees.z * RadiansPerDegree};
+    }
+
     [[nodiscard]] inline Mat4 Identity()
     {
         Mat4 result{};
@@ -207,6 +225,30 @@ namespace rag::math
         return result;
     }
 
+    // Builds a rotation quaternion from XYZ Euler angles (radians), matching the
+    // Rz*Ry*Rx convention of RotationEulerXYZ so that
+    // QuatToMat4(QuatFromEulerXYZ(e)) == RotationEulerXYZ(e). Used to feed edited
+    // Euler angles to a physics body, whose orientation is stored as a quaternion.
+    [[nodiscard]] inline Quat QuatFromEulerXYZ(Vec3 radians)
+    {
+        const f32 hx = radians.x * 0.5f;
+        const f32 hy = radians.y * 0.5f;
+        const f32 hz = radians.z * 0.5f;
+        const f32 cx = std::cos(hx);
+        const f32 sx = std::sin(hx);
+        const f32 cy = std::cos(hy);
+        const f32 sy = std::sin(hy);
+        const f32 cz = std::cos(hz);
+        const f32 sz = std::sin(hz);
+
+        Quat result;
+        result.x = (cz * cy * sx) - (sz * sy * cx);
+        result.y = (cz * sy * cx) + (sz * cy * sx);
+        result.z = (sz * cy * cx) - (cz * sy * sx);
+        result.w = (cz * cy * cx) + (sz * sy * sx);
+        return result;
+    }
+
     [[nodiscard]] inline Mat4 ComposeTransform(Vec3 position, Quat rotation, Vec3 scale)
     {
         return Multiply(Multiply(Translation(position), QuatToMat4(rotation)), Scale(scale));
@@ -223,6 +265,17 @@ namespace rag::math
             (matrix(0, 0) * direction.x) + (matrix(0, 1) * direction.y) + (matrix(0, 2) * direction.z),
             (matrix(1, 0) * direction.x) + (matrix(1, 1) * direction.y) + (matrix(1, 2) * direction.z),
             (matrix(2, 0) * direction.x) + (matrix(2, 1) * direction.y) + (matrix(2, 2) * direction.z)});
+    }
+
+    // Transforms a position by an affine matrix (implicit w = 1), so translation
+    // is applied and the result is not normalized. Complements TransformDirection
+    // for points such as bounding-box corners.
+    [[nodiscard]] inline Vec3 TransformPoint(const Mat4& matrix, Vec3 point)
+    {
+        return Vec3{
+            (matrix(0, 0) * point.x) + (matrix(0, 1) * point.y) + (matrix(0, 2) * point.z) + matrix(0, 3),
+            (matrix(1, 0) * point.x) + (matrix(1, 1) * point.y) + (matrix(1, 2) * point.z) + matrix(1, 3),
+            (matrix(2, 0) * point.x) + (matrix(2, 1) * point.y) + (matrix(2, 2) * point.z) + matrix(2, 3)};
     }
 
     [[nodiscard]] inline Mat4 InverseRigidTransform(const Mat4& matrix)

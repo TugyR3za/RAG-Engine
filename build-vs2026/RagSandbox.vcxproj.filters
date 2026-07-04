@@ -6,9 +6,17 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\sandbox\EditorContext.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
     <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{DBA9883D-590E-3120-9DB5-39F57CD5257C}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source Files">
       <UniqueIdentifier>{2527617C-180A-3530-9A7A-AD5B79ABFE96}</UniqueIdentifier>
     </Filter>

@@ -127,7 +127,7 @@
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>Preparing RAG Engine shader directory next to RagSandbox	Copying RAG Engine Vulkan shader triangle.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader triangle.frag.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_depth.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_debug.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_debug.frag.spv next to RagSandbox	Copying RAG Engine model assets next to RagSandbox	Copying RAG Engine texture assets next to RagSandbox</Message>
+      <Message>Preparing RAG Engine shader directory next to RagSandbox	Copying RAG Engine Vulkan shader triangle.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader triangle.frag.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_depth.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_debug.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_debug.frag.spv next to RagSandbox	Copying RAG Engine Vulkan shader selection_outline.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader selection_outline.frag.spv next to RagSandbox	Copying RAG Engine model assets next to RagSandbox	Copying RAG Engine texture assets next to RagSandbox</Message>
       <Command>setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/Debug/shaders"
 if %errorlevel% neq 0 goto :cmEnd
@@ -175,6 +175,24 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd
 setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/shadow_debug.frag.spv" "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/Debug/shaders/shadow_debug.frag.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.vert.spv" "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/Debug/shaders/selection_outline.vert.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.frag.spv" "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/Debug/shaders/selection_outline.frag.spv"
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -263,7 +281,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>Preparing RAG Engine shader directory next to RagSandbox	Copying RAG Engine Vulkan shader triangle.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader triangle.frag.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_depth.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_debug.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_debug.frag.spv next to RagSandbox	Copying RAG Engine model assets next to RagSandbox	Copying RAG Engine texture assets next to RagSandbox</Message>
+      <Message>Preparing RAG Engine shader directory next to RagSandbox	Copying RAG Engine Vulkan shader triangle.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader triangle.frag.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_depth.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_debug.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_debug.frag.spv next to RagSandbox	Copying RAG Engine Vulkan shader selection_outline.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader selection_outline.frag.spv next to RagSandbox	Copying RAG Engine model assets next to RagSandbox	Copying RAG Engine texture assets next to RagSandbox</Message>
       <Command>setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/Release/shaders"
 if %errorlevel% neq 0 goto :cmEnd
@@ -311,6 +329,24 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd
 setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/shadow_debug.frag.spv" "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/Release/shaders/shadow_debug.frag.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.vert.spv" "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/Release/shaders/selection_outline.vert.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.frag.spv" "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/Release/shaders/selection_outline.frag.spv"
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -399,7 +435,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>Preparing RAG Engine shader directory next to RagSandbox	Copying RAG Engine Vulkan shader triangle.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader triangle.frag.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_depth.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_debug.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_debug.frag.spv next to RagSandbox	Copying RAG Engine model assets next to RagSandbox	Copying RAG Engine texture assets next to RagSandbox</Message>
+      <Message>Preparing RAG Engine shader directory next to RagSandbox	Copying RAG Engine Vulkan shader triangle.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader triangle.frag.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_depth.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_debug.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_debug.frag.spv next to RagSandbox	Copying RAG Engine Vulkan shader selection_outline.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader selection_outline.frag.spv next to RagSandbox	Copying RAG Engine model assets next to RagSandbox	Copying RAG Engine texture assets next to RagSandbox</Message>
       <Command>setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/MinSizeRel/shaders"
 if %errorlevel% neq 0 goto :cmEnd
@@ -447,6 +483,24 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd
 setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/shadow_debug.frag.spv" "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/MinSizeRel/shaders/shadow_debug.frag.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.vert.spv" "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/MinSizeRel/shaders/selection_outline.vert.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.frag.spv" "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/MinSizeRel/shaders/selection_outline.frag.spv"
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -534,7 +588,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>Preparing RAG Engine shader directory next to RagSandbox	Copying RAG Engine Vulkan shader triangle.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader triangle.frag.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_depth.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_debug.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_debug.frag.spv next to RagSandbox	Copying RAG Engine model assets next to RagSandbox	Copying RAG Engine texture assets next to RagSandbox</Message>
+      <Message>Preparing RAG Engine shader directory next to RagSandbox	Copying RAG Engine Vulkan shader triangle.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader triangle.frag.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_depth.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_debug.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader shadow_debug.frag.spv next to RagSandbox	Copying RAG Engine Vulkan shader selection_outline.vert.spv next to RagSandbox	Copying RAG Engine Vulkan shader selection_outline.frag.spv next to RagSandbox	Copying RAG Engine model assets next to RagSandbox	Copying RAG Engine texture assets next to RagSandbox</Message>
       <Command>setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/RelWithDebInfo/shaders"
 if %errorlevel% neq 0 goto :cmEnd
@@ -582,6 +636,24 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd
 setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/shadow_debug.frag.spv" "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/RelWithDebInfo/shaders/shadow_debug.frag.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.vert.spv" "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/RelWithDebInfo/shaders/selection_outline.vert.spv"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/generated/shaders/selection_outline.frag.spv" "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/RelWithDebInfo/shaders/selection_outline.frag.spv"
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -684,6 +756,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\sandbox\EditorContext.h" />
     <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\sandbox\SandboxMain.cpp" />
   </ItemGroup>
   <ItemGroup />

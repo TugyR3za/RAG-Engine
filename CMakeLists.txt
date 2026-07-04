@@ -183,6 +183,8 @@ if(RAG_ENABLE_VULKAN)
         src/Rag/RendererVK/Internal/VulkanMesh.h
         src/Rag/RendererVK/Internal/VulkanMeshLoader.cpp
         src/Rag/RendererVK/Internal/VulkanMeshLoader.h
+        src/Rag/RendererVK/Internal/VulkanSelectionOutlinePipeline.cpp
+        src/Rag/RendererVK/Internal/VulkanSelectionOutlinePipeline.h
         src/Rag/RendererVK/Internal/VulkanShaderModule.cpp
         src/Rag/RendererVK/Internal/VulkanShaderModule.h
         src/Rag/RendererVK/Internal/VulkanShadowDebugPipeline.cpp
@@ -204,6 +206,8 @@ if(RAG_ENABLE_VULKAN)
         src/Rag/RendererVK/Internal/VulkanUniformResources.h
         src/Rag/RendererVK/Internal/VulkanVertexBuffer.cpp
         src/Rag/RendererVK/Internal/VulkanVertexBuffer.h
+        src/Rag/RendererVK/Shaders/SelectionOutline.frag
+        src/Rag/RendererVK/Shaders/SelectionOutline.vert
         src/Rag/RendererVK/Shaders/ShadowDebug.frag
         src/Rag/RendererVK/Shaders/ShadowDebug.vert
         src/Rag/RendererVK/Shaders/ShadowDepth.vert
@@ -243,6 +247,8 @@ if(RAG_ENABLE_VULKAN)
         "ShadowDepth.vert|shadow_depth.vert.spv"
         "ShadowDebug.vert|shadow_debug.vert.spv"
         "ShadowDebug.frag|shadow_debug.frag.spv"
+        "SelectionOutline.vert|selection_outline.vert.spv"
+        "SelectionOutline.frag|selection_outline.frag.spv"
     )
 
     set(RAG_VULKAN_SHADER_SPV_FILES "")
@@ -271,7 +277,10 @@ if(RAG_ENABLE_VULKAN)
 endif()
 
 if(RAG_BUILD_SANDBOX)
-    add_executable(RagSandbox sandbox/SandboxMain.cpp)
+    add_executable(RagSandbox
+        sandbox/EditorContext.h
+        sandbox/SandboxMain.cpp
+    )
     rag_configure_target(RagSandbox)
     target_link_libraries(RagSandbox PRIVATE RagEngine)
 

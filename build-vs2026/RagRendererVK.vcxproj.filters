@@ -34,6 +34,9 @@
     <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanMeshLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanSelectionOutlinePipeline.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanShaderModule.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -105,6 +108,9 @@
     <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanMeshLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanSelectionOutlinePipeline.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanShaderModule.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -143,6 +149,8 @@
     <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\SelectionOutline.frag" />
+    <None Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\SelectionOutline.vert" />
     <None Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\ShadowDebug.frag" />
     <None Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\ShadowDebug.vert" />
     <None Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Shaders\ShadowDepth.vert" />

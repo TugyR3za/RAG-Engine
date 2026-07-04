@@ -23,6 +23,21 @@ namespace rag::scene
         [[nodiscard]] bool IsAlive(EntityId entity) const;
         [[nodiscard]] std::size_t EntityCount() const;
 
+        // Invokes visit(EntityId) once for every live entity, in slot (creation)
+        // order. Header-only and allocation-free so tools and the editor can walk
+        // the whole scene each frame; the core scene keeps no separate entity list.
+        template <typename Visitor>
+        void ForEachEntity(Visitor&& visit) const
+        {
+            for (u32 index = 0; index < static_cast<u32>(entity_slots_.size()); ++index)
+            {
+                if (entity_slots_[index].alive)
+                {
+                    visit(EntityId{index, entity_slots_[index].generation});
+                }
+            }
+        }
+
         TransformComponent& AddTransform(EntityId entity);
         [[nodiscard]] bool RemoveTransform(EntityId entity);
         [[nodiscard]] TransformComponent* GetTransform(EntityId entity);

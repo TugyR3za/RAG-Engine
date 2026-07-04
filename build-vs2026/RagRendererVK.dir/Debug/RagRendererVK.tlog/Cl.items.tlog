@@ -9,6 +9,7 @@ C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanInd
 C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanInstance.cpp;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\RagRendererVK.dir\Debug\VulkanInstance.obj
 C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanMesh.cpp;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\RagRendererVK.dir\Debug\VulkanMesh.obj
 C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanMeshLoader.cpp;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\RagRendererVK.dir\Debug\VulkanMeshLoader.obj
+C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanSelectionOutlinePipeline.cpp;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\RagRendererVK.dir\Debug\VulkanSelectionOutlinePipeline.obj
 C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanShaderModule.cpp;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\RagRendererVK.dir\Debug\VulkanShaderModule.obj
 C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanShadowDebugPipeline.cpp;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\RagRendererVK.dir\Debug\VulkanShadowDebugPipeline.obj
 C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\RendererVK\Internal\VulkanShadowMap.cpp;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\RagRendererVK.dir\Debug\VulkanShadowMap.obj
