@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\7ab32e0738b29227946d32d5ce3d1e7b\imguizmo-populate-mkdir.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\7ab32e0738b29227946d32d5ce3d1e7b\imguizmo-populate-download.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\7ab32e0738b29227946d32d5ce3d1e7b\imguizmo-populate-update.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\7ab32e0738b29227946d32d5ce3d1e7b\imguizmo-populate-patch.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\7ab32e0738b29227946d32d5ce3d1e7b\imguizmo-populate-configure.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\7ab32e0738b29227946d32d5ce3d1e7b\imguizmo-populate-build.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\7ab32e0738b29227946d32d5ce3d1e7b\imguizmo-populate-install.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\7ab32e0738b29227946d32d5ce3d1e7b\imguizmo-populate-test.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\30a831a04b995885c517ae4a07c727e7\imguizmo-populate-complete.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\70b9a84edcd49fdbf461a22f9d74f445\imguizmo-populate.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\imguizmo-populate" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{7362CF2D-3697-3D99-AE42-BF3C000B3A23}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

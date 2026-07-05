@@ -1,0 +1,303 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{9430E474-6E01-3933-9DF3-7CD5729F60A6}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>imguizmo-populate</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v145</PlatformToolset>
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\7ab32e0738b29227946d32d5ce3d1e7b\imguizmo-populate-mkdir.rule">
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Creating directories for 'imguizmo-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -Dcfgdir=/Debug -P "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/tmp/imguizmo-populate-mkdirs.cmake"
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/src/imguizmo-populate-stamp/Debug/imguizmo-populate-mkdir"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-mkdir</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\7ab32e0738b29227946d32d5ce3d1e7b\imguizmo-populate-download.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Performing download step (git clone) for 'imguizmo-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/tmp/imguizmo-populate-gitclone.cmake"
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/src/imguizmo-populate-stamp/Debug/imguizmo-populate-download"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\imguizmo-populate-gitinfo.txt;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-mkdir;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-download</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\7ab32e0738b29227946d32d5ce3d1e7b\imguizmo-populate-update.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Performing update step for 'imguizmo-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-src"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -Dcan_fetch=YES -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/tmp/imguizmo-populate-gitupdate.cmake"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\tmp\imguizmo-populate-gitupdate.cmake;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\imguizmo-populate-update-info.txt;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-download;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-update</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</VerifyInputsAndOutputsExist>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\7ab32e0738b29227946d32d5ce3d1e7b\imguizmo-populate-patch.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">No patch step for 'imguizmo-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/src/imguizmo-populate-stamp/Debug/imguizmo-populate-patch"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\imguizmo-populate-patch-info.txt;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-update;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-patch</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</VerifyInputsAndOutputsExist>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\7ab32e0738b29227946d32d5ce3d1e7b\imguizmo-populate-configure.rule">
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">No configure step for 'imguizmo-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-build"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/src/imguizmo-populate-stamp/Debug/imguizmo-populate-configure"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\tmp\imguizmo-populate-cfgcmd.txt;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-patch;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-configure</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\7ab32e0738b29227946d32d5ce3d1e7b\imguizmo-populate-build.rule">
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">No build step for 'imguizmo-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-build"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/src/imguizmo-populate-stamp/Debug/imguizmo-populate-build"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-configure;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-build</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\7ab32e0738b29227946d32d5ce3d1e7b\imguizmo-populate-install.rule">
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">No install step for 'imguizmo-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-build"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/src/imguizmo-populate-stamp/Debug/imguizmo-populate-install"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-build;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-install</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\7ab32e0738b29227946d32d5ce3d1e7b\imguizmo-populate-test.rule">
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">No test step for 'imguizmo-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-build"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/src/imguizmo-populate-stamp/Debug/imguizmo-populate-test"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-install;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-test</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\30a831a04b995885c517ae4a07c727e7\imguizmo-populate-complete.rule">
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Completed 'imguizmo-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/CMakeFiles/Debug"
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/CMakeFiles/Debug/imguizmo-populate-complete"
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/src/imguizmo-populate-stamp/Debug/imguizmo-populate-done"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-install;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-mkdir;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-download;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-update;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-patch;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-configure;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-build;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\src\imguizmo-populate-stamp\Debug\imguizmo-populate-test;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\Debug\imguizmo-populate-complete</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</VerifyInputsAndOutputsExist>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\70b9a84edcd49fdbf461a22f9d74f445\imguizmo-populate.rule">
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'"></Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\Debug\imguizmo-populate-complete;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\imguizmo-populate</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</VerifyInputsAndOutputsExist>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeLists.txt">
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild" "-BC:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild" --check-stamp-file "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\ExternalProject.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\ExternalProject\PatchInfo.txt.in;C:\Program Files\CMake\share\cmake-4.3\Modules\ExternalProject\RepositoryInfo.txt.in;C:\Program Files\CMake\share\cmake-4.3\Modules\ExternalProject\UpdateInfo.txt.in;C:\Program Files\CMake\share\cmake-4.3\Modules\ExternalProject\cfgcmd.txt.in;C:\Program Files\CMake\share\cmake-4.3\Modules\ExternalProject\gitclone.cmake.in;C:\Program Files\CMake\share\cmake-4.3\Modules\ExternalProject\gitupdate.cmake.in;C:\Program Files\CMake\share\cmake-4.3\Modules\ExternalProject\mkdirs.cmake.in;C:\Program Files\CMake\share\cmake-4.3\Modules\ExternalProject\shared_internal_commands.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows-Initialize.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\WindowsPaths.cmake;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\4.3.3\CMakeSystem.cmake;C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\imguizmo-populate-prefix\tmp\imguizmo-populate-mkdirs.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\CMakeFiles\imguizmo-populate">
+    </None>
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-subbuild\ZERO_CHECK.vcxproj">
+      <Project>{7579C632-669C-3CCD-BAA0-535AF4AE1BE9}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

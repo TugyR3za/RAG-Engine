@@ -32,6 +32,17 @@
 #if defined(RAG_EDITOR)
     // Editor-only selection + display-name state, kept out of the Scene core.
     #include "EditorContext.h"
+
+    // ImGuizmo draws the in-viewport translate/rotate/scale handles. It only needs
+    // imgui.h (pulled in above under RAG_ENABLE_IMGUI, which RAG_EDITOR implies) and
+    // shares ImGui's single static context. Silence its third-party /W4 noise.
+    #if defined(_MSC_VER)
+        #pragma warning(push, 0)
+    #endif
+    #include <ImGuizmo.h>
+    #if defined(_MSC_VER)
+        #pragma warning(pop)
+    #endif
 #endif
 
 #include <algorithm>
@@ -160,6 +171,29 @@ namespace
                 const ImGuiIO& io = ImGui::GetIO();
                 ui_wants_mouse = io.WantCaptureMouse;
                 ui_wants_keyboard = io.WantCaptureKeyboard;
+            }
+#endif
+
+#if defined(RAG_EDITOR)
+            // Gizmo mode hotkeys W/E/R (translate/rotate/scale). These letters are
+            // also free-fly movement keys, so only switch modes when the camera is
+            // NOT being flown (right mouse up) and ImGui is not typing, leaving the
+            // fly controls untouched. The gizmo toolbar buttons work regardless.
+            if (editor_mode_ && !ui_wants_keyboard &&
+                !input.IsMouseButtonDown(rag::core::MouseButton::Right))
+            {
+                if (input.WasKeyPressed(rag::core::KeyCode::W))
+                {
+                    gizmo_operation_ = ImGuizmo::TRANSLATE;
+                }
+                if (input.WasKeyPressed(rag::core::KeyCode::E))
+                {
+                    gizmo_operation_ = ImGuizmo::ROTATE;
+                }
+                if (input.WasKeyPressed(rag::core::KeyCode::R))
+                {
+                    gizmo_operation_ = ImGuizmo::SCALE;
+                }
             }
 #endif
 
@@ -588,12 +622,21 @@ namespace
         // mode is on.
         void BuildEditorUi()
         {
+            // ImGuizmo shares ImGui's frame; start it now that the renderer has
+            // already called ImGui::NewFrame (BeginFrame -> on_build_ui).
+            ImGuizmo::BeginFrame();
+
             // Drop the selection first if it points at an entity that no longer
             // exists, so no panel this frame acts on a stale id.
             editor_.RefreshValidity(scene_);
 
             BuildMainMenuBar();
             BuildDockspace();
+
+            // Draw the transform gizmo before the Inspector so a drag this frame is
+            // written into the TransformComponent and the Inspector fields below
+            // read the updated values in the same frame.
+            DrawTransformGizmo();
 
             if (show_hierarchy_panel_)
             {
@@ -694,7 +737,64 @@ namespace
                 ImGui::EndMenu();
             }
 
+            if (ImGui::BeginMenu("Gizmo"))
+            {
+                if (ImGui::MenuItem("Translate", "W", gizmo_operation_ == ImGuizmo::TRANSLATE))
+                {
+                    gizmo_operation_ = ImGuizmo::TRANSLATE;
+                }
+                if (ImGui::MenuItem("Rotate", "E", gizmo_operation_ == ImGuizmo::ROTATE))
+                {
+                    gizmo_operation_ = ImGuizmo::ROTATE;
+                }
+                if (ImGui::MenuItem("Scale", "R", gizmo_operation_ == ImGuizmo::SCALE))
+                {
+                    gizmo_operation_ = ImGuizmo::SCALE;
+                }
+                ImGui::Separator();
+                // Scale is only meaningful in local space; ImGuizmo forces it there.
+                const bool local = gizmo_mode_ == ImGuizmo::LOCAL;
+                if (ImGui::MenuItem("Local space", nullptr, local))
+                {
+                    gizmo_mode_ = ImGuizmo::LOCAL;
+                }
+                if (ImGui::MenuItem("World space", nullptr, !local))
+                {
+                    gizmo_mode_ = ImGuizmo::WORLD;
+                }
+                ImGui::EndMenu();
+            }
+
+            // Inline toolbar: the same mode switch one click away in the menu bar.
+            BuildGizmoToolbar();
+
             ImGui::EndMainMenuBar();
+        }
+
+        // Small radio-style buttons in the main menu bar for the active gizmo mode,
+        // so the mode is switchable without opening a menu or knowing the hotkeys.
+        void BuildGizmoToolbar()
+        {
+            ImGui::TextDisabled("|");
+            const auto ModeButton = [this](const char* label, ImGuizmo::OPERATION op)
+            {
+                const bool selected = gizmo_operation_ == op;
+                if (selected)
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 0.65f));
+                }
+                if (ImGui::SmallButton(label))
+                {
+                    gizmo_operation_ = op;
+                }
+                if (selected)
+                {
+                    ImGui::PopStyleColor();
+                }
+            };
+            ModeButton("Move", ImGuizmo::TRANSLATE);
+            ModeButton("Rotate", ImGuizmo::ROTATE);
+            ModeButton("Scale", ImGuizmo::SCALE);
         }
 
         // The dockable debug panel: the stats plus the live light, gravity and
@@ -1260,6 +1360,16 @@ namespace
                 return;
             }
 
+            // A click that lands on (or grabs) a gizmo handle manipulates the object
+            // instead of picking. gizmo_over_/gizmo_using_ reflect the previous
+            // frame's ImGuizmo state (the gizmo is drawn later in the frame); since
+            // the handle is hovered for a frame before the press, this reliably
+            // suppresses the stray re-pick without a full-frame reorder.
+            if (gizmo_over_ || gizmo_using_)
+            {
+                return;
+            }
+
             if (!render_world_.camera.valid || window_ == nullptr)
             {
                 return;
@@ -1354,6 +1464,122 @@ namespace
                 (half_size.z * relative_padding) + absolute_padding};
             highlight.color = highlight_color;
             return highlight;
+        }
+
+        // --- Transform gizmo (ImGuizmo) ----------------------------------------
+
+        // Draws the ImGuizmo translate/rotate/scale handles on the selected entity
+        // and, while a handle is dragged, writes the manipulated pose back into the
+        // TransformComponent (and into the physics body for a simulated entity). The
+        // gizmo uses the scene camera's view/projection so it lines up with the
+        // object at any angle and stays a usable on-screen size. No handles are
+        // drawn for the active camera (manipulating the view you look through in
+        // that same view is degenerate) or for an entity without a transform.
+        //
+        // gizmo_using_/gizmo_over_ are refreshed here every frame; UpdateViewportSelection
+        // (which runs earlier in the frame) reads the previous frame's values to keep
+        // a click on a handle from also re-picking.
+        void DrawTransformGizmo()
+        {
+            gizmo_using_ = false;
+            gizmo_over_ = false;
+
+            const rag::scene::EntityId entity = editor_.Selected();
+            if (!entity.IsValid() || !scene_.IsAlive(entity) || entity == scene_.ActiveCamera())
+            {
+                return;
+            }
+
+            rag::scene::TransformComponent* transform = scene_.GetTransform(entity);
+            if (transform == nullptr || !render_world_.camera.valid || window_ == nullptr)
+            {
+                return;
+            }
+
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            ImGuizmo::SetOrthographic(false);
+            ImGuizmo::SetDrawlist(ImGui::GetBackgroundDrawList());
+            ImGuizmo::SetRect(viewport->Pos.x, viewport->Pos.y, viewport->Size.x, viewport->Size.y);
+
+            // RenderCamera view/projection are GL-convention (the Vulkan Y-flip is
+            // applied only to the renderer's UBO copy, not here), which is exactly
+            // what ImGuizmo expects, so they are fed as-is. Mat4 storage is
+            // column-major, matching ImGuizmo's float[16] layout.
+            const float* view = render_world_.camera.view.elements.data();
+            const float* projection = render_world_.camera.projection.elements.data();
+
+            // Not dragging: keep the gizmo's matrix synced to the live object so it
+            // tracks physics motion. Dragging: ImGuizmo owns and accumulates into
+            // gizmo_matrix_, so re-decomposing it each frame does not add drift.
+            if (!ImGuizmo::IsUsing())
+            {
+                gizmo_matrix_ = transform->world_matrix;
+            }
+
+            ImGuizmo::Manipulate(
+                view,
+                projection,
+                gizmo_operation_,
+                gizmo_mode_,
+                gizmo_matrix_.elements.data());
+
+            gizmo_using_ = ImGuizmo::IsUsing();
+            gizmo_over_ = ImGuizmo::IsOver();
+
+            if (gizmo_using_)
+            {
+                ApplyGizmoMatrix(entity, *transform, gizmo_matrix_);
+            }
+        }
+
+        // Writes a manipulated world matrix into the entity's transform. No sandbox
+        // entity is parented, so world == local and the decomposed world TRS is
+        // assigned straight to the local fields. Position and scale always update;
+        // rotation only updates on a ROTATE drag so a translate/scale never disturbs
+        // the stored orientation. Rotation is kept as Euler radians (the Inspector's
+        // degree fields read it) and, for a physics body, mirrored into the
+        // quaternion and teleported into Jolt so gravity does not undo the edit.
+        void ApplyGizmoMatrix(
+            rag::scene::EntityId entity,
+            rag::scene::TransformComponent& transform,
+            const rag::math::Mat4& world_matrix)
+        {
+            const rag::math::TransformDecomposition decomposed =
+                rag::math::DecomposeTransform(world_matrix);
+
+            transform.local_position = decomposed.position;
+            transform.local_scale = decomposed.scale;
+
+            const bool rotation_changed = gizmo_operation_ == ImGuizmo::ROTATE;
+            if (rotation_changed)
+            {
+                transform.local_rotation_radians = decomposed.rotation_radians;
+            }
+
+            if (IsPhysicsDriven(entity))
+            {
+                // Jolt overwrites position + rotation every Step(), so push the pose
+                // in (teleport + clear velocity). On a rotate drag recompute the quat
+                // from the edited Euler; otherwise reuse the live physics quat that
+                // StepPhysics keeps current, matching the Inspector's behavior. Scale
+                // is not a rigid-body property, so it stays a visual-only change.
+                if (rotation_changed)
+                {
+                    transform.local_rotation_quat =
+                        rag::math::QuatFromEulerXYZ(transform.local_rotation_radians);
+                }
+                transform.use_quaternion_rotation = true;
+                PushTransformToPhysicsBody(
+                    entity, transform.local_position, transform.local_rotation_quat);
+            }
+            else if (rotation_changed)
+            {
+                // Non-physics entity: drive rotation from the edited Euler angles,
+                // not a stale quaternion left by a previous owner.
+                transform.use_quaternion_rotation = false;
+            }
+
+            scene_.MarkTransformDirty(entity);
         }
 #endif
 
@@ -1484,6 +1710,17 @@ namespace
         bool show_debug_panel_ = true;
         bool dock_layout_initialized_ = false;
         rag::editor::EditorContext editor_;
+
+        // Transform-gizmo state. gizmo_operation_ is the active mode (W/E/R or the
+        // toolbar); gizmo_mode_ toggles local/world axes. gizmo_matrix_ is the pose
+        // ImGuizmo manipulates (owned by ImGuizmo during a drag, synced to the object
+        // otherwise). gizmo_using_/gizmo_over_ cache last frame's ImGuizmo state so
+        // click-to-select can defer to a grabbed/hovered handle.
+        ImGuizmo::OPERATION gizmo_operation_ = ImGuizmo::TRANSLATE;
+        ImGuizmo::MODE gizmo_mode_ = ImGuizmo::WORLD;
+        rag::math::Mat4 gizmo_matrix_ = rag::math::Identity();
+        bool gizmo_using_ = false;
+        bool gizmo_over_ = false;
 #endif
 
         // Directional-light state owned by the editor panel and pushed onto the

@@ -259,6 +259,87 @@ namespace rag::math
         return Vec3{matrix(0, 3), matrix(1, 3), matrix(2, 3)};
     }
 
+    // The position/rotation/scale a TRS matrix was built from. Rotation is XYZ
+    // Euler radians in the same Rz*Ry*Rx convention as RotationEulerXYZ, so that
+    // ComposeTransform(d.position, d.rotation_radians, d.scale) reproduces the
+    // original matrix. This is the inverse of ComposeTransform and lets an editor
+    // gizmo write a manipulated model matrix back into a TransformComponent.
+    struct TransformDecomposition
+    {
+        Vec3 position{};
+        Vec3 rotation_radians{};
+        Vec3 scale{1.0f, 1.0f, 1.0f};
+    };
+
+    [[nodiscard]] inline TransformDecomposition DecomposeTransform(const Mat4& matrix)
+    {
+        TransformDecomposition result;
+        result.position = ExtractTranslation(matrix);
+
+        // Scale is the length of each basis column; a mirrored (negative
+        // determinant) matrix is represented as a negative X scale so recompose
+        // matches. The epsilon guards a collapsed axis from producing NaNs.
+        const Vec3 column0{matrix(0, 0), matrix(1, 0), matrix(2, 0)};
+        const Vec3 column1{matrix(0, 1), matrix(1, 1), matrix(2, 1)};
+        const Vec3 column2{matrix(0, 2), matrix(1, 2), matrix(2, 2)};
+
+        f32 scale_x = Length(column0);
+        const f32 scale_y = Length(column1);
+        const f32 scale_z = Length(column2);
+
+        const f32 determinant =
+            (column0.x * ((column1.y * column2.z) - (column1.z * column2.y))) -
+            (column1.x * ((column0.y * column2.z) - (column0.z * column2.y))) +
+            (column2.x * ((column0.y * column1.z) - (column0.z * column1.y)));
+        if (determinant < 0.0f)
+        {
+            scale_x = -scale_x;
+        }
+        result.scale = Vec3{scale_x, scale_y, scale_z};
+
+        const f32 inverse_x = std::abs(scale_x) > 1e-8f ? 1.0f / scale_x : 0.0f;
+        const f32 inverse_y = std::abs(scale_y) > 1e-8f ? 1.0f / scale_y : 0.0f;
+        const f32 inverse_z = std::abs(scale_z) > 1e-8f ? 1.0f / scale_z : 0.0f;
+
+        // Rotation basis with the scale divided out (r_row_col).
+        const f32 r00 = matrix(0, 0) * inverse_x;
+        const f32 r10 = matrix(1, 0) * inverse_x;
+        const f32 r20 = matrix(2, 0) * inverse_x;
+        const f32 r01 = matrix(0, 1) * inverse_y;
+        const f32 r11 = matrix(1, 1) * inverse_y;
+        const f32 r21 = matrix(2, 1) * inverse_y;
+        const f32 r22 = matrix(2, 2) * inverse_z;
+
+        // Invert R = Rz(z)*Ry(y)*Rx(x): R(2,0) = -sin(y), R(2,1)=cos(y)sin(x),
+        // R(2,2)=cos(y)cos(x), R(1,0)=sin(z)cos(y), R(0,0)=cos(z)cos(y).
+        f32 rotation_x;
+        f32 rotation_y;
+        f32 rotation_z;
+        if (std::abs(r20) < 0.99999f)
+        {
+            rotation_y = std::asin(-r20);
+            rotation_x = std::atan2(r21, r22);
+            rotation_z = std::atan2(r10, r00);
+        }
+        else
+        {
+            // Gimbal lock (cos(y) ~ 0): pin roll (z) to 0 and solve pitch (x).
+            rotation_z = 0.0f;
+            if (r20 < 0.0f)
+            {
+                rotation_y = Pi * 0.5f;
+                rotation_x = std::atan2(r01, r11);
+            }
+            else
+            {
+                rotation_y = -Pi * 0.5f;
+                rotation_x = std::atan2(-r01, r11);
+            }
+        }
+        result.rotation_radians = Vec3{rotation_x, rotation_y, rotation_z};
+        return result;
+    }
+
     [[nodiscard]] inline Vec3 TransformDirection(const Mat4& matrix, Vec3 direction)
     {
         return Normalize(Vec3{

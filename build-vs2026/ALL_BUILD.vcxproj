@@ -218,6 +218,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Project>{CDC9226A-D0E0-386C-91C9-5FA1E8A2C1F1}</Project>
       <Name>imgui</Name>
     </ProjectReference>
+    <ProjectReference Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\imguizmo.vcxproj">
+      <Project>{F9297475-059E-3738-A236-77FEFB16A444}</Project>
+      <Name>imguizmo</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

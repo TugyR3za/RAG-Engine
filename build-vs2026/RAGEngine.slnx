@@ -20,6 +20,7 @@
 		<BuildDependency Project="RagSceneTests.vcxproj"/>
 		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
 		<BuildDependency Project="imgui.vcxproj"/>
+		<BuildDependency Project="imguizmo.vcxproj"/>
 	</Project>
 	<Project Path="INSTALL.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="c9ca87d4-ba37-3255-9322-fb397e1674ab">
 		<BuildDependency Project="ALL_BUILD.vcxproj"/>
@@ -77,6 +78,7 @@
 		<BuildDependency Project="RagScene.vcxproj"/>
 		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
 		<BuildDependency Project="imgui.vcxproj"/>
+		<BuildDependency Project="imguizmo.vcxproj"/>
 	</Project>
 	<Project Path="RagScene.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="7468ac37-6e1c-32a2-953b-8be693436792">
 		<BuildDependency Project="RagCore.vcxproj"/>
@@ -94,5 +96,9 @@
 	<Project Path="ZERO_CHECK.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="c4a046b8-f6ed-3ae0-88ab-364d148b1ff7"/>
 	<Project Path="imgui.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="cdc9226a-d0e0-386c-91c9-5fa1e8a2c1f1">
 		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="imguizmo.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="f9297475-059e-3738-a236-77fefb16a444">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="imgui.vcxproj"/>
 	</Project>
 </Solution>

@@ -158,6 +158,35 @@ if(RAG_ENABLE_VULKAN)
             # Third party: don't subject ImGui to the engine's /W4 /permissive-.
             target_compile_options(imgui PRIVATE /W0)
         endif()
+
+        # ImGuizmo draws the translate/rotate/scale handles in the 3D viewport. It
+        # pairs with Dear ImGui and only needs ImGui's headers, so just its one
+        # gizmo translation unit is compiled into a small static library that links
+        # the imgui target above (sharing its single GImGui context) -- the repo's
+        # own CMake also pulls in GraphEditor/Sequencer/etc. and a second imgui,
+        # which are not wanted here. SOURCE_SUBDIR points MakeAvailable at src/ (which
+        # has no CMakeLists.txt) so it only downloads the sources and does not run
+        # ImGuizmo's CMake. Pinned to a specific master commit (never HEAD): ImGuizmo
+        # has no release tag new enough to build against the ImGui docking branch
+        # used here. GIT_SHALLOW is off because a shallow clone cannot fetch an
+        # arbitrary (unadvertised) SHA.
+        FetchContent_Declare(
+            imguizmo
+            GIT_REPOSITORY https://github.com/CedricGuillemet/ImGuizmo.git
+            GIT_TAG 87fb88b13a4f6bb04cd6ecd4e9d1625929935ff1
+            SOURCE_SUBDIR src
+        )
+        FetchContent_MakeAvailable(imguizmo)
+
+        add_library(imguizmo STATIC
+            ${imguizmo_SOURCE_DIR}/src/ImGuizmo.cpp
+        )
+        target_include_directories(imguizmo PUBLIC ${imguizmo_SOURCE_DIR}/src)
+        target_link_libraries(imguizmo PUBLIC imgui)
+        if(MSVC)
+            # Third party: keep it out of the engine's /W4 /permissive-.
+            target_compile_options(imguizmo PRIVATE /W0)
+        endif()
     endif()
 
     add_library(RagRendererVK STATIC
@@ -290,6 +319,10 @@ if(RAG_BUILD_SANDBOX)
     # sandbox compiles to the bare game with no editor code at all.
     if(RAG_EDITOR AND RAG_ENABLE_IMGUI AND RAG_ENABLE_VULKAN)
         target_compile_definitions(RagSandbox PRIVATE RAG_EDITOR=1)
+        # ImGuizmo (translate/rotate/scale gizmo) is editor-only; the sandbox calls
+        # it directly from BuildEditorUi. imgui itself is already public via
+        # RagRendererVK, so this only adds the gizmo translation unit + headers.
+        target_link_libraries(RagSandbox PRIVATE imguizmo)
     endif()
 
     if(RAG_ENABLE_VULKAN)

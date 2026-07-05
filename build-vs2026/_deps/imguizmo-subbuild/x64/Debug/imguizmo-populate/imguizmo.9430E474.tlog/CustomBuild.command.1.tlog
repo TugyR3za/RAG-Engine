@@ -1,0 +1,150 @@
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\IMGUIZMO-SUBBUILD\CMAKEFILES\7AB32E0738B29227946D32D5CE3D1E7B\IMGUIZMO-POPULATE-MKDIR.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -Dcfgdir=/Debug -P "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/tmp/imguizmo-populate-mkdirs.cmake"
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/src/imguizmo-populate-stamp/Debug/imguizmo-populate-mkdir"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\IMGUIZMO-SUBBUILD\CMAKEFILES\7AB32E0738B29227946D32D5CE3D1E7B\IMGUIZMO-POPULATE-DOWNLOAD.RULE
+setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/tmp/imguizmo-populate-gitclone.cmake"
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/src/imguizmo-populate-stamp/Debug/imguizmo-populate-download"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\IMGUIZMO-SUBBUILD\CMAKEFILES\7AB32E0738B29227946D32D5CE3D1E7B\IMGUIZMO-POPULATE-UPDATE.RULE
+setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-src"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -Dcan_fetch=YES -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/tmp/imguizmo-populate-gitupdate.cmake"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\IMGUIZMO-SUBBUILD\CMAKEFILES\7AB32E0738B29227946D32D5CE3D1E7B\IMGUIZMO-POPULATE-PATCH.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/src/imguizmo-populate-stamp/Debug/imguizmo-populate-patch"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\IMGUIZMO-SUBBUILD\CMAKEFILES\7AB32E0738B29227946D32D5CE3D1E7B\IMGUIZMO-POPULATE-CONFIGURE.RULE
+setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-build"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/src/imguizmo-populate-stamp/Debug/imguizmo-populate-configure"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\IMGUIZMO-SUBBUILD\CMAKEFILES\7AB32E0738B29227946D32D5CE3D1E7B\IMGUIZMO-POPULATE-BUILD.RULE
+setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-build"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/src/imguizmo-populate-stamp/Debug/imguizmo-populate-build"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\IMGUIZMO-SUBBUILD\CMAKEFILES\7AB32E0738B29227946D32D5CE3D1E7B\IMGUIZMO-POPULATE-INSTALL.RULE
+setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-build"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/src/imguizmo-populate-stamp/Debug/imguizmo-populate-install"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\IMGUIZMO-SUBBUILD\CMAKEFILES\7AB32E0738B29227946D32D5CE3D1E7B\IMGUIZMO-POPULATE-TEST.RULE
+setlocal
+cd "C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\_deps\imguizmo-build"
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/src/imguizmo-populate-stamp/Debug/imguizmo-populate-test"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\IMGUIZMO-SUBBUILD\CMAKEFILES\30A831A04B995885C517AE4A07C727E7\IMGUIZMO-POPULATE-COMPLETE.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E make_directory "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/CMakeFiles/Debug"
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/CMakeFiles/Debug/imguizmo-populate-complete"
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/imguizmo-populate-prefix/src/imguizmo-populate-stamp/Debug/imguizmo-populate-done"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\IMGUIZMO-SUBBUILD\CMAKEFILES\70B9A84EDCD49FDBF461A22F9D74F445\IMGUIZMO-POPULATE.RULE
+setlocal
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\NAIME\ONEDRIVE\DESKTOP\RAG ENGINE\BUILD-VS2026\_DEPS\IMGUIZMO-SUBBUILD\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild" "-BC:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild" --check-stamp-file "C:/Users/naime/OneDrive/Desktop/RAG Engine/build-vs2026/_deps/imguizmo-subbuild/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
