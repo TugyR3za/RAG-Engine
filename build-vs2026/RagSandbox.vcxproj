@@ -756,6 +756,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\sandbox\AssetBrowser.h" />
     <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\sandbox\EditorContext.h" />
     <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\sandbox\SandboxMain.cpp" />
   </ItemGroup>

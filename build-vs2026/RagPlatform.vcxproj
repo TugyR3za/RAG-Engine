@@ -320,6 +320,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\Platform\SystemPaths.h" />
     <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\Platform\Window.h" />
     <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\Platform\Win32\Win32Window.cpp" />
     <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\Platform\Win32\Win32Window.h" />

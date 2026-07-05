@@ -33,6 +33,11 @@
     // Editor-only selection + display-name state, kept out of the Scene core.
     #include "EditorContext.h"
 
+    // Editor-only Asset Browser model: scans the project's on-disk asset folders
+    // (models/, assets/) into a sorted, selectable list. Pure filesystem + state,
+    // no Vulkan, so it stays a plain header alongside EditorContext.
+    #include "AssetBrowser.h"
+
     // ImGuizmo draws the in-viewport translate/rotate/scale handles. It only needs
     // imgui.h (pulled in above under RAG_ENABLE_IMGUI, which RAG_EDITOR implies) and
     // shares ImGui's single static context. Silence its third-party /W4 noise.
@@ -652,6 +657,11 @@ namespace
             {
                 BuildDebugPanel();
             }
+
+            if (show_assets_panel_)
+            {
+                BuildAssetsPanel();
+            }
         }
 
         // DockSpaceOverViewport creates the full-client borderless host window.
@@ -675,8 +685,9 @@ namespace
         }
 
         // Lays out the default docking arrangement: Hierarchy on the left, the
-        // Inspector above the Debug panel on the right, and the central node left
-        // empty for the 3D viewport. The user may re-dock freely afterwards.
+        // Inspector above the Debug panel on the right, the Assets browser as a
+        // full-width strip along the bottom, and the central node left empty for
+        // the 3D viewport. The user may re-dock freely afterwards.
         void BuildDefaultDockLayout(ImGuiID dockspace_id, const ImVec2& size)
         {
             ImGui::DockBuilderRemoveNode(dockspace_id);
@@ -686,8 +697,12 @@ namespace
             // SplitNode carves a node off the central area and reassigns the
             // "remaining" id through the out-param, so keep the original root id
             // intact for DockBuilderFinish. The central node stays empty for the
-            // 3D viewport.
+            // 3D viewport. Carve the bottom strip off first so the Assets browser
+            // spans the full window width; the left/right columns then divide the
+            // region above it (the classic editor layout).
             ImGuiID central = dockspace_id;
+            const ImGuiID bottom_node =
+                ImGui::DockBuilderSplitNode(central, ImGuiDir_Down, 0.26f, nullptr, &central);
             const ImGuiID right_node =
                 ImGui::DockBuilderSplitNode(central, ImGuiDir_Right, 0.26f, nullptr, &central);
             const ImGuiID left_node =
@@ -702,6 +717,7 @@ namespace
             ImGui::DockBuilderDockWindow("Hierarchy", left_node);
             ImGui::DockBuilderDockWindow("Inspector", right_upper);
             ImGui::DockBuilderDockWindow("RAG Engine Debug", right_lower);
+            ImGui::DockBuilderDockWindow("Assets", bottom_node);
 
             ImGui::DockBuilderFinish(dockspace_id);
         }
@@ -720,6 +736,7 @@ namespace
                 ImGui::MenuItem("Hierarchy", nullptr, &show_hierarchy_panel_);
                 ImGui::MenuItem("Inspector", nullptr, &show_inspector_panel_);
                 ImGui::MenuItem("Debug Panel", nullptr, &show_debug_panel_);
+                ImGui::MenuItem("Assets", nullptr, &show_assets_panel_);
                 ImGui::Separator();
                 ImGui::MenuItem("Editor Mode", "F1", &editor_mode_);
                 ImGui::EndMenu();
@@ -733,6 +750,7 @@ namespace
                     show_hierarchy_panel_ = true;
                     show_inspector_panel_ = true;
                     show_debug_panel_ = true;
+                    show_assets_panel_ = true;
                 }
                 ImGui::EndMenu();
             }
@@ -857,6 +875,237 @@ namespace
 #endif
             }
             ImGui::End();
+        }
+
+        // The dockable Asset Browser panel, docked along the bottom by default. It
+        // lists the files found in the project's asset folders (models/, assets/),
+        // grouped by folder and labelled by type, sorted alphabetically so the view
+        // is stable between runs. The list is rescanned whenever the panel (re)appears
+        // -- so files added since last time show up on reopen -- plus a manual Refresh
+        // button. Clicking a row selects it and fills the info pane; double-clicking a
+        // known model (or the Spawn button) drops a new entity into the scene reusing
+        // that model's already-registered mesh.
+        //
+        // This is primarily a VIEWER. Activation is funnelled through OnAssetActivated
+        // so future actions (import, drag-into-viewport, material assignment) can hang
+        // off the same selection without reworking the list.
+        void BuildAssetsPanel()
+        {
+            if (ImGui::Begin("Assets", &show_assets_panel_))
+            {
+                // Rescan on (re)open so files added since last time appear. Appearing
+                // is true the first frame the panel is shown -- initial layout, a View
+                // menu re-enable, or its dock tab being re-selected.
+                if (ImGui::IsWindowAppearing())
+                {
+                    asset_browser_.Refresh();
+                }
+
+                if (ImGui::Button("Refresh"))
+                {
+                    asset_browser_.Refresh();
+                }
+                ImGui::SameLine();
+                ImGui::TextDisabled(
+                    "Click to inspect - double-click a model (or Spawn) to add it to the scene");
+                ImGui::Separator();
+
+                // File list on the left (stretches), details on the right (fixed).
+                const float info_pane_width = 300.0f;
+                const float spacing = ImGui::GetStyle().ItemSpacing.x;
+                const float available_width = ImGui::GetContentRegionAvail().x;
+                const float list_width =
+                    std::max(available_width - info_pane_width - spacing, 160.0f);
+
+                ImGui::BeginChild("asset_list", ImVec2(list_width, 0.0f), ImGuiChildFlags_Borders);
+                BuildAssetList();
+                ImGui::EndChild();
+
+                ImGui::SameLine();
+
+                ImGui::BeginChild("asset_info", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Borders);
+                BuildAssetInfo();
+                ImGui::EndChild();
+            }
+            ImGui::End();
+        }
+
+        // The scrollable file list: one table per folder (so files stay grouped and
+        // sorted within their folder) with a Name column and a Type column. A missing
+        // folder shows a muted note instead of erroring; an empty one says so.
+        void BuildAssetList()
+        {
+            for (const rag::editor::AssetFolder& folder : asset_browser_.Folders())
+            {
+                if (!folder.found)
+                {
+                    ImGui::SeparatorText(folder.label.c_str());
+                    ImGui::TextDisabled("  folder '%s' not found", folder.subdirectory.c_str());
+                    continue;
+                }
+
+                const std::string heading =
+                    folder.label + " (" + std::to_string(folder.entries.size()) + ")";
+                ImGui::SeparatorText(heading.c_str());
+
+                if (folder.entries.empty())
+                {
+                    ImGui::TextDisabled("  (empty)");
+                    continue;
+                }
+
+                // Scope ids by folder so the two tables (and equal file names across
+                // folders) never collide.
+                ImGui::PushID(folder.subdirectory.c_str());
+                constexpr ImGuiTableFlags table_flags =
+                    ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp;
+                if (ImGui::BeginTable("files", 2, table_flags))
+                {
+                    ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+
+                    for (const rag::editor::AssetEntry& entry : folder.entries)
+                    {
+                        ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(0);
+
+                        const bool selected = asset_browser_.IsSelected(folder, entry);
+                        ImGui::PushID(entry.name.c_str());
+                        const bool activated = ImGui::Selectable(
+                            entry.name.c_str(),
+                            selected,
+                            ImGuiSelectableFlags_SpanAllColumns |
+                                ImGuiSelectableFlags_AllowDoubleClick);
+                        if (activated)
+                        {
+                            asset_browser_.Select(folder, entry);
+                            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                            {
+                                OnAssetActivated(entry);
+                            }
+                        }
+                        ImGui::PopID();
+
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::TextDisabled("%s", rag::editor::AssetTypeLabel(entry.type));
+                    }
+                    ImGui::EndTable();
+                }
+                ImGui::PopID();
+            }
+        }
+
+        // The right-hand details pane: name, folder, type, extension and full path of
+        // the selected asset, plus the spawn action for a known model.
+        void BuildAssetInfo()
+        {
+            ImGui::SeparatorText("Details");
+
+            const rag::editor::AssetEntry* entry = asset_browser_.SelectedEntry();
+            if (entry == nullptr)
+            {
+                ImGui::TextDisabled("Select an asset to see its details.");
+                return;
+            }
+
+            ImGui::TextWrapped("%s", entry->name.c_str());
+            ImGui::TextDisabled("Folder: %s", asset_browser_.SelectedFolderLabel().c_str());
+            ImGui::Text("Type: %s", rag::editor::AssetTypeLabel(entry->type));
+            ImGui::Text(
+                "Extension: %s", entry->extension.empty() ? "(none)" : entry->extension.c_str());
+            ImGui::TextWrapped("Path: %s", entry->path.c_str());
+
+            if (entry->type == rag::editor::AssetType::Model)
+            {
+                ImGui::Separator();
+                if (entry->spawn_mesh.has_value())
+                {
+                    if (ImGui::Button("Spawn into scene"))
+                    {
+                        OnAssetActivated(*entry);
+                    }
+                    ImGui::TextDisabled("Reuses the preloaded mesh; appears in front of the camera.");
+                }
+                else
+                {
+                    ImGui::BeginDisabled();
+                    ImGui::Button("Spawn into scene");
+                    ImGui::EndDisabled();
+                    // TODO: spawning a model the renderer did not preload needs a
+                    // runtime mesh-import API (upload a mesh mid-run, return a
+                    // MeshHandle). Until then only the models the sandbox registers at
+                    // startup (sphere.obj, Duck.glb) are spawnable.
+                    ImGui::TextDisabled("No preloaded mesh for this file yet.");
+                }
+            }
+            else if (entry->type == rag::editor::AssetType::Texture)
+            {
+                ImGui::Separator();
+                // TODO (thumbnail): preview the texture by loading it through the
+                // renderer and drawing it with ImGui::Image. That needs the renderer
+                // to expose an ImGui texture handle (ImGui_ImplVulkan_AddTexture) and
+                // own its lifetime; deferred to keep validation clean.
+                ImGui::TextDisabled("Texture preview: not yet implemented.");
+            }
+        }
+
+        // Single funnel for "the user activated an asset" (double-click or the Spawn
+        // button). Today it spawns known models; future asset actions branch here.
+        void OnAssetActivated(const rag::editor::AssetEntry& entry)
+        {
+            if (entry.spawn_mesh.has_value())
+            {
+                SpawnModel(entry);
+            }
+        }
+
+        // Creates a new scene entity that reuses a mesh the renderer already
+        // registered at startup (no runtime GPU upload), places it in front of the
+        // camera so it is visible, names it, and selects it so the Inspector and gizmo
+        // target it immediately. The spawned entity has no physics body, so it stays
+        // where placed and the gizmo can move it -- a deliberately simple, safe "drop
+        // it into the world" action that touches no Vulkan state.
+        void SpawnModel(const rag::editor::AssetEntry& entry)
+        {
+            if (!entry.spawn_mesh.has_value())
+            {
+                return;
+            }
+
+            const rag::scene::EntityId entity = scene_.CreateEntity();
+            NameEntity(entity, entry.name + " (spawn " + std::to_string(++spawn_counter_) + ")");
+
+            rag::scene::TransformComponent& transform = scene_.AddTransform(entity);
+            transform.local_position = ComputeSpawnPosition();
+
+            rag::scene::RenderableComponent& renderable = scene_.AddRenderable(entity);
+            renderable.mesh = *entry.spawn_mesh;
+            renderable.local_bounds.extents = rag::math::Vec3{1.0f, 1.0f, 1.0f};
+
+            scene_.MarkTransformDirty(entity);
+            editor_.Select(entity);
+            RAG_LOG_INFO("Spawned asset '", entry.name, "' as a new scene entity.");
+        }
+
+        // A point a few metres in front of the camera, so a spawned asset lands in
+        // view rather than at the busy origin. Falls back to a fixed spot when the
+        // camera transform is unavailable.
+        [[nodiscard]] rag::math::Vec3 ComputeSpawnPosition() const
+        {
+            const rag::scene::TransformComponent* camera_transform =
+                scene_.GetTransform(camera_entity_);
+            if (camera_transform == nullptr)
+            {
+                return rag::math::Vec3{0.0f, 2.0f, 0.0f};
+            }
+
+            const rag::f32 cos_pitch = std::cos(camera_pitch_radians_);
+            const rag::math::Vec3 forward = rag::math::Normalize(rag::math::Vec3{
+                -std::sin(camera_yaw_radians_) * cos_pitch,
+                std::sin(camera_pitch_radians_),
+                -std::cos(camera_yaw_radians_) * cos_pitch});
+            constexpr rag::f32 spawn_distance = 6.0f;
+            return camera_transform->local_position + (forward * spawn_distance);
         }
 
         // The dockable Scene Hierarchy panel. Lists every live entity in the scene,
@@ -1708,8 +1957,14 @@ namespace
         bool show_hierarchy_panel_ = true;
         bool show_inspector_panel_ = true;
         bool show_debug_panel_ = true;
+        bool show_assets_panel_ = true;
         bool dock_layout_initialized_ = false;
         rag::editor::EditorContext editor_;
+
+        // Asset Browser state (bottom panel): the on-disk file list + click
+        // selection. spawn_counter_ makes each spawned entity's name unique.
+        rag::editor::AssetBrowser asset_browser_;
+        rag::u32 spawn_counter_ = 0;
 
         // Transform-gizmo state. gizmo_operation_ is the active mode (W/E/R or the
         // toolbar); gizmo_mode_ toggles local/world axes. gizmo_matrix_ is the pose

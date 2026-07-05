@@ -4,11 +4,14 @@
 
 #include "Rag/Core/Assert.h"
 #include "Rag/Core/Log.h"
+#include "Rag/Platform/SystemPaths.h"
 
 #include <Windows.h>
 #include <windowsx.h>
 
+#include <filesystem>
 #include <string>
+#include <vector>
 
 namespace rag::platform
 {
@@ -593,6 +596,32 @@ namespace rag::platform
     std::unique_ptr<IWindow> CreatePlatformWindow(const WindowDesc& desc)
     {
         return std::make_unique<Win32Window>(desc);
+    }
+
+    std::filesystem::path ExecutableDirectory()
+    {
+        // GetModuleFileNameW with a null module returns the running executable's
+        // full path. It has no "required size" query, so grow the buffer until the
+        // returned length fits inside it (length == size means truncation).
+        std::vector<wchar_t> buffer(512);
+        for (;;)
+        {
+            const DWORD length =
+                GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+            if (length == 0)
+            {
+                // Query failed; fall back to the working directory so callers that
+                // resolve assets relative to the exe still get a usable base path.
+                std::error_code error;
+                std::filesystem::path current = std::filesystem::current_path(error);
+                return error ? std::filesystem::path{} : current;
+            }
+            if (length < buffer.size())
+            {
+                return std::filesystem::path(buffer.data(), buffer.data() + length).parent_path();
+            }
+            buffer.resize(buffer.size() * 2);
+        }
     }
 }
 

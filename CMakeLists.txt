@@ -32,6 +32,7 @@ add_library(RagCore STATIC
 rag_configure_target(RagCore)
 
 add_library(RagPlatform STATIC
+    src/Rag/Platform/SystemPaths.h
     src/Rag/Platform/Window.h
 )
 rag_configure_target(RagPlatform)
@@ -307,6 +308,7 @@ endif()
 
 if(RAG_BUILD_SANDBOX)
     add_executable(RagSandbox
+        sandbox/AssetBrowser.h
         sandbox/EditorContext.h
         sandbox/SandboxMain.cpp
     )
