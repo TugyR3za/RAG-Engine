@@ -1,0 +1,861 @@
+{
+  "entities": [
+    {
+      "name": "Cube 0",
+      "physics": {
+        "boxHalfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "continuousCollision": true,
+        "gravityEnabled": true,
+        "mode": "Dynamic",
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "shape": "Box",
+        "sphereRadius": 0.5
+      },
+      "renderable": {
+        "boundsCenter": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "boundsExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "material": {
+          "generation": 0,
+          "index": 4294967295
+        },
+        "mesh": "builtin:cube",
+        "texture": "assets/texture.png",
+        "visibilityLayer": 1,
+        "visible": true
+      },
+      "transform": {
+        "position": [
+          4.0,
+          7.0,
+          0.0
+        ],
+        "rotationEulerRadians": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationQuat": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "useQuaternionRotation": true
+      }
+    },
+    {
+      "name": "Cube 1",
+      "physics": {
+        "boxHalfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "continuousCollision": true,
+        "gravityEnabled": true,
+        "mode": "Dynamic",
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "shape": "Box",
+        "sphereRadius": 0.5
+      },
+      "renderable": {
+        "boundsCenter": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "boundsExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "material": {
+          "generation": 0,
+          "index": 4294967295
+        },
+        "mesh": "builtin:cube",
+        "texture": "assets/texture.png",
+        "visibilityLayer": 1,
+        "visible": true
+      },
+      "transform": {
+        "position": [
+          2.8284270763397217,
+          7.599999904632568,
+          2.8284270763397217
+        ],
+        "rotationEulerRadians": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationQuat": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "useQuaternionRotation": true
+      }
+    },
+    {
+      "name": "Cube 2",
+      "physics": {
+        "boxHalfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "continuousCollision": true,
+        "gravityEnabled": true,
+        "mode": "Dynamic",
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "shape": "Box",
+        "sphereRadius": 0.5
+      },
+      "renderable": {
+        "boundsCenter": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "boundsExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "material": {
+          "generation": 0,
+          "index": 4294967295
+        },
+        "mesh": "builtin:cube",
+        "texture": "assets/texture.png",
+        "visibilityLayer": 1,
+        "visible": true
+      },
+      "transform": {
+        "position": [
+          -1.7484555314695172e-07,
+          8.199999809265137,
+          4.0
+        ],
+        "rotationEulerRadians": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationQuat": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "useQuaternionRotation": true
+      }
+    },
+    {
+      "name": "Cube 3",
+      "physics": {
+        "boxHalfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "continuousCollision": true,
+        "gravityEnabled": true,
+        "mode": "Dynamic",
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "shape": "Box",
+        "sphereRadius": 0.5
+      },
+      "renderable": {
+        "boundsCenter": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "boundsExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "material": {
+          "generation": 0,
+          "index": 4294967295
+        },
+        "mesh": "builtin:cube",
+        "texture": "assets/texture.png",
+        "visibilityLayer": 1,
+        "visible": true
+      },
+      "transform": {
+        "position": [
+          -2.8284270763397217,
+          8.800000190734863,
+          2.8284270763397217
+        ],
+        "rotationEulerRadians": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationQuat": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "useQuaternionRotation": true
+      }
+    },
+    {
+      "name": "Cube 4",
+      "physics": {
+        "boxHalfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "continuousCollision": true,
+        "gravityEnabled": true,
+        "mode": "Dynamic",
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "shape": "Box",
+        "sphereRadius": 0.5
+      },
+      "renderable": {
+        "boundsCenter": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "boundsExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "material": {
+          "generation": 0,
+          "index": 4294967295
+        },
+        "mesh": "builtin:cube",
+        "texture": "assets/texture.png",
+        "visibilityLayer": 1,
+        "visible": true
+      },
+      "transform": {
+        "position": [
+          -4.0,
+          9.399999618530273,
+          -3.4969110629390343e-07
+        ],
+        "rotationEulerRadians": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationQuat": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "useQuaternionRotation": true
+      }
+    },
+    {
+      "name": "Cube 5",
+      "physics": {
+        "boxHalfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "continuousCollision": true,
+        "gravityEnabled": true,
+        "mode": "Dynamic",
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "shape": "Box",
+        "sphereRadius": 0.5
+      },
+      "renderable": {
+        "boundsCenter": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "boundsExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "material": {
+          "generation": 0,
+          "index": 4294967295
+        },
+        "mesh": "builtin:cube",
+        "texture": "assets/texture.png",
+        "visibilityLayer": 1,
+        "visible": true
+      },
+      "transform": {
+        "position": [
+          -2.8284265995025635,
+          10.0,
+          -2.82842755317688
+        ],
+        "rotationEulerRadians": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationQuat": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "useQuaternionRotation": true
+      }
+    },
+    {
+      "name": "Cube 6",
+      "physics": {
+        "boxHalfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "continuousCollision": true,
+        "gravityEnabled": true,
+        "mode": "Dynamic",
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "shape": "Box",
+        "sphereRadius": 0.5
+      },
+      "renderable": {
+        "boundsCenter": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "boundsExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "material": {
+          "generation": 0,
+          "index": 4294967295
+        },
+        "mesh": "builtin:cube",
+        "texture": "assets/texture.png",
+        "visibilityLayer": 1,
+        "visible": true
+      },
+      "transform": {
+        "position": [
+          4.769952255401222e-08,
+          10.600000381469727,
+          -4.0
+        ],
+        "rotationEulerRadians": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationQuat": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "useQuaternionRotation": true
+      }
+    },
+    {
+      "name": "Cube 7",
+      "physics": {
+        "boxHalfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "continuousCollision": true,
+        "gravityEnabled": true,
+        "mode": "Dynamic",
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "shape": "Box",
+        "sphereRadius": 0.5
+      },
+      "renderable": {
+        "boundsCenter": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "boundsExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "material": {
+          "generation": 0,
+          "index": 4294967295
+        },
+        "mesh": "builtin:cube",
+        "texture": "assets/texture.png",
+        "visibilityLayer": 1,
+        "visible": true
+      },
+      "transform": {
+        "position": [
+          2.828428030014038,
+          11.200000762939453,
+          -2.8284261226654053
+        ],
+        "rotationEulerRadians": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationQuat": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "useQuaternionRotation": true
+      }
+    },
+    {
+      "name": "Center Cube",
+      "physics": {
+        "boxHalfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "continuousCollision": true,
+        "gravityEnabled": true,
+        "mode": "Dynamic",
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "shape": "Box",
+        "sphereRadius": 0.5
+      },
+      "renderable": {
+        "boundsCenter": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "boundsExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "material": {
+          "generation": 0,
+          "index": 4294967295
+        },
+        "mesh": "builtin:cube",
+        "texture": "assets/texture.png",
+        "visibilityLayer": 1,
+        "visible": true
+      },
+      "transform": {
+        "position": [
+          0.0,
+          12.0,
+          0.0
+        ],
+        "rotationEulerRadians": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationQuat": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.5,
+          1.5,
+          1.5
+        ],
+        "useQuaternionRotation": true
+      }
+    },
+    {
+      "name": "Ground",
+      "physics": {
+        "boxHalfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "continuousCollision": true,
+        "gravityEnabled": true,
+        "mode": "Static",
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "shape": "Box",
+        "sphereRadius": 0.5
+      },
+      "renderable": {
+        "boundsCenter": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "boundsExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "material": {
+          "generation": 0,
+          "index": 4294967295
+        },
+        "mesh": "builtin:ground",
+        "texture": "assets/texture.png",
+        "visibilityLayer": 1,
+        "visible": true
+      },
+      "transform": {
+        "position": [
+          0.0,
+          -0.6000000238418579,
+          0.0
+        ],
+        "rotationEulerRadians": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationQuat": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          40.0,
+          0.20000000298023224,
+          40.0
+        ],
+        "useQuaternionRotation": false
+      }
+    },
+    {
+      "name": "Sphere",
+      "physics": {
+        "boxHalfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "continuousCollision": true,
+        "gravityEnabled": true,
+        "mode": "Dynamic",
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "shape": "Sphere",
+        "sphereRadius": 1.0
+      },
+      "renderable": {
+        "boundsCenter": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "boundsExtents": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "material": {
+          "generation": 0,
+          "index": 4294967295
+        },
+        "mesh": "models/sphere.obj",
+        "texture": "assets/texture.png",
+        "visibilityLayer": 1,
+        "visible": true
+      },
+      "transform": {
+        "position": [
+          6.5,
+          9.0,
+          0.0
+        ],
+        "rotationEulerRadians": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationQuat": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "useQuaternionRotation": true
+      }
+    },
+    {
+      "name": "Duck",
+      "physics": {
+        "boxHalfExtents": [
+          0.699999988079071,
+          0.6000000238418579,
+          0.699999988079071
+        ],
+        "continuousCollision": true,
+        "gravityEnabled": true,
+        "mode": "Dynamic",
+        "offset": [
+          0.0,
+          0.699999988079071,
+          0.0
+        ],
+        "shape": "Box",
+        "sphereRadius": 0.5
+      },
+      "renderable": {
+        "boundsCenter": [
+          0.0,
+          0.699999988079071,
+          0.0
+        ],
+        "boundsExtents": [
+          0.699999988079071,
+          0.6000000238418579,
+          0.699999988079071
+        ],
+        "material": {
+          "generation": 0,
+          "index": 4294967295
+        },
+        "mesh": "models/Duck.glb",
+        "texture": "models/Duck.glb (embedded baseColor)",
+        "visibilityLayer": 1,
+        "visible": true
+      },
+      "transform": {
+        "position": [
+          -6.5,
+          3.0,
+          0.0
+        ],
+        "rotationEulerRadians": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationQuat": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "useQuaternionRotation": true
+      }
+    },
+    {
+      "camera": {
+        "active": true,
+        "aspectRatio": 1.7777777910232544,
+        "farPlane": 100.0,
+        "nearPlane": 0.10000000149011612,
+        "orthographicHeight": 10.0,
+        "projection": "Perspective",
+        "verticalFovRadians": 1.0471975803375244
+      },
+      "name": "Camera",
+      "transform": {
+        "position": [
+          0.0,
+          3.0,
+          9.0
+        ],
+        "rotationEulerRadians": [
+          -0.30000001192092896,
+          0.0,
+          0.0
+        ],
+        "rotationQuat": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "useQuaternionRotation": false
+      }
+    },
+    {
+      "light": {
+        "color": [
+          1.0,
+          0.9200000166893005,
+          0.7799999713897705
+        ],
+        "editorEulerRadians": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "innerConeRadians": 0.3499999940395355,
+        "intensity": 1.25,
+        "localDirection": [
+          0.2504260838031769,
+          -0.8514487147331238,
+          -0.460783988237381
+        ],
+        "outerConeRadians": 0.75,
+        "range": 10.0,
+        "type": "Directional",
+        "visibilityLayer": 1,
+        "visible": true
+      },
+      "name": "Sun",
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationEulerRadians": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationQuat": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "useQuaternionRotation": false
+      }
+    }
+  ],
+  "generator": "RAG Engine",
+  "sceneVersion": 1
+}

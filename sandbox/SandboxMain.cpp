@@ -2,7 +2,9 @@
 #include "Rag/Core/Event.h"
 #include "Rag/Core/Log.h"
 #include "Rag/Core/Math.h"
+#include "Rag/Platform/SystemPaths.h"
 #include "Rag/Scene/Scene.h"
+#include "Rag/Scene/SceneSerialization.h"
 
 #if defined(RAG_ENABLE_PHYSICS)
     #include "Rag/Physics/PhysicsWorld.h"
@@ -51,12 +53,16 @@
 #endif
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <exception>
+#include <filesystem>
 #include <limits>
+#include <optional>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -78,7 +84,37 @@ namespace
                 "Free-fly camera: WASD move, Space/E up, Left Ctrl/Q down, "
                 "hold Right Mouse to look, Left Shift to sprint.");
             InitializePhysics();
-            BuildScene();
+
+            // Load the scene from the default scene file instead of building it in
+            // code, so the same save/load path the editor uses is exercised every
+            // launch. If the file is missing or unreadable, fall back to building
+            // the hard-coded default scene and then save it once as the default so
+            // subsequent launches load it (proving the round-trip end to end).
+            current_scene_path_ = DefaultScenePath();
+            std::string scene_error;
+            bool loaded = false;
+            if (const std::optional<std::filesystem::path> existing =
+                    ResolveExistingScenePath(DefaultSceneFilename))
+            {
+                loaded = LoadSceneFromPath(*existing, scene_error);
+            }
+
+            if (!loaded)
+            {
+                RAG_LOG_INFO(
+                    "No usable default scene file; building the built-in scene and "
+                    "saving it to '",
+                    current_scene_path_.string(),
+                    "'.");
+                BuildScene();
+
+                std::string save_error;
+                if (!SaveSceneToPath(current_scene_path_, save_error))
+                {
+                    RAG_LOG_WARNING(
+                        "Could not write the default scene file: ", save_error);
+                }
+            }
 
             if (smoke_test_)
             {
@@ -442,39 +478,12 @@ namespace
             duck_renderable.local_bounds = BoundsForMesh(DuckMeshHandle);
             (void)SpawnDynamicBox(duck);
 
-            camera_entity_ = scene_.CreateEntity();
-            NameEntity(camera_entity_, "Camera");
-            rag::scene::TransformComponent& camera_transform = scene_.AddTransform(camera_entity_);
-            camera_transform.local_position = rag::math::Vec3{0.0f, 3.0f, 9.0f};
-            camera_yaw_radians_ = 0.0f;
-            camera_pitch_radians_ = -0.3f;
-            camera_transform.local_rotation_radians =
-                rag::math::Vec3{camera_pitch_radians_, camera_yaw_radians_, 0.0f};
-
-            rag::scene::CameraComponent& camera = scene_.AddCamera(camera_entity_);
-            camera.vertical_fov_radians = rag::math::Pi / 3.0f;
-            camera.near_plane = 0.1f;
-            camera.far_plane = 100.0f;
-            if (window_ != nullptr && window_->Width() > 0 && window_->Height() > 0)
-            {
-                camera.aspect_ratio =
-                    static_cast<rag::f32>(window_->Width()) /
-                    static_cast<rag::f32>(window_->Height());
-            }
-            scene_.SetActiveCamera(camera_entity_);
+            CreateDefaultCameraEntity();
 
             // The directional light is kept editable from the debug panel: its
             // rotation, color and intensity live in members the UI mutates and
             // SyncLightFromUi() pushes onto the scene each frame.
-            light_entity_ = scene_.CreateEntity();
-            NameEntity(light_entity_, "Sun");
-            scene_.AddTransform(light_entity_);
-
-            rag::scene::LightComponent& light = scene_.AddLight(light_entity_);
-            light.type = rag::renderer::RenderLightType::Directional;
-            light.local_direction = rag::math::Normalize(BaseDirectionalLightDirection);
-            light.color = light_color_;
-            light.intensity = light_intensity_;
+            CreateDefaultLightEntity();
 
             RAG_LOG_INFO(
                 "Built sandbox scene: ",
@@ -875,6 +884,497 @@ namespace
             }
         }
 
+        // --- Default scene building blocks (shared by BuildScene / New Scene) ---
+
+        // Name of the scene file the sandbox loads on startup and writes as the
+        // fallback default. It lives in a "scenes" folder next to the executable.
+        static constexpr const char* DefaultSceneFilename = "default.ragscene";
+
+        // Creates the free-fly editor camera at its default pose and makes it the
+        // active camera, keeping the yaw/pitch members in sync. Shared by the
+        // built-in scene and "New Scene" so both agree on the camera setup.
+        void CreateDefaultCameraEntity()
+        {
+            camera_entity_ = scene_.CreateEntity();
+            NameEntity(camera_entity_, "Camera");
+            rag::scene::TransformComponent& transform = scene_.AddTransform(camera_entity_);
+            transform.local_position = rag::math::Vec3{0.0f, 3.0f, 9.0f};
+            camera_yaw_radians_ = 0.0f;
+            camera_pitch_radians_ = -0.3f;
+            transform.local_rotation_radians =
+                rag::math::Vec3{camera_pitch_radians_, camera_yaw_radians_, 0.0f};
+
+            rag::scene::CameraComponent& camera = scene_.AddCamera(camera_entity_);
+            camera.vertical_fov_radians = rag::math::Pi / 3.0f;
+            camera.near_plane = 0.1f;
+            camera.far_plane = 100.0f;
+            if (window_ != nullptr && window_->Width() > 0 && window_->Height() > 0)
+            {
+                camera.aspect_ratio =
+                    static_cast<rag::f32>(window_->Width()) /
+                    static_cast<rag::f32>(window_->Height());
+            }
+            scene_.SetActiveCamera(camera_entity_);
+        }
+
+        // Creates the editable directional "sun" from the current light members and
+        // records it as light_entity_ (the one SyncLightFromUi drives each frame).
+        void CreateDefaultLightEntity()
+        {
+            light_entity_ = scene_.CreateEntity();
+            NameEntity(light_entity_, "Sun");
+            scene_.AddTransform(light_entity_);
+
+            rag::scene::LightComponent& light = scene_.AddLight(light_entity_);
+            light.type = rag::renderer::RenderLightType::Directional;
+            light.local_direction = rag::math::Normalize(BaseDirectionalLightDirection);
+            light.color = light_color_;
+            light.intensity = light_intensity_;
+        }
+
+        // --- Scene serialization: save / load / new ----------------------------
+
+        // The directory scene files live in: a "scenes" folder next to the
+        // executable (where the app can always write). Save targets this; load also
+        // falls back to the working directory (see ResolveExistingScenePath).
+        [[nodiscard]] std::filesystem::path ScenesDirectory() const
+        {
+            return rag::platform::ExecutableDirectory() / "scenes";
+        }
+
+        [[nodiscard]] std::filesystem::path DefaultScenePath() const
+        {
+            return ScenesDirectory() / DefaultSceneFilename;
+        }
+
+        // Resolves a scene file for loading: prefer the copy next to the executable,
+        // then the one under the current working directory, mirroring how the
+        // renderer resolves models/ and assets/. Returns nothing if neither exists.
+        [[nodiscard]] std::optional<std::filesystem::path> ResolveExistingScenePath(
+            const std::string& filename) const
+        {
+            std::error_code error;
+            const std::array<std::filesystem::path, 2> candidates = {
+                rag::platform::ExecutableDirectory() / "scenes" / filename,
+                std::filesystem::current_path(error) / "scenes" / filename,
+            };
+            for (const std::filesystem::path& candidate : candidates)
+            {
+                if (std::filesystem::is_regular_file(candidate, error))
+                {
+                    return candidate;
+                }
+                error.clear();
+            }
+            return std::nullopt;
+        }
+
+        // Maps a renderer mesh handle to a stable, human-readable identifier that
+        // survives a save/load, and back. The index convention MUST match the
+        // renderer's mesh registry and BuildScene (0 = cube, 1 = sphere.obj,
+        // 2 = ground, 3 = Duck.glb); an unknown identifier resolves to the cube.
+        [[nodiscard]] static std::string MeshIdentifier(rag::renderer::MeshHandle mesh)
+        {
+            switch (mesh.index)
+            {
+                case 0: return "builtin:cube";
+                case 1: return "models/sphere.obj";
+                case 2: return "builtin:ground";
+                case 3: return "models/Duck.glb";
+                default: return "builtin:cube";
+            }
+        }
+
+        [[nodiscard]] static bool IsKnownMeshIdentifier(const std::string& id)
+        {
+            return id == "builtin:cube" || id == "models/sphere.obj" ||
+                   id == "builtin:ground" || id == "models/Duck.glb";
+        }
+
+        [[nodiscard]] static rag::renderer::MeshHandle MeshHandleFromIdentifier(
+            const std::string& id)
+        {
+            if (id == "models/sphere.obj") return rag::renderer::MeshHandle{1, 0};
+            if (id == "builtin:ground") return rag::renderer::MeshHandle{2, 0};
+            if (id == "models/Duck.glb") return rag::renderer::MeshHandle{3, 0};
+            return rag::renderer::MeshHandle{0, 0}; // builtin:cube + unknown fallback
+        }
+
+        // Human-readable texture id for the mesh's material. In this engine the bound
+        // texture follows the mesh slot (the duck carries its own embedded base-color
+        // image; everything else shares assets/texture.png), so this is descriptive
+        // metadata; the mesh id re-resolves both geometry and texture on load.
+        [[nodiscard]] static std::string TextureIdentifier(rag::renderer::MeshHandle mesh)
+        {
+            return mesh.index == 3
+                ? "models/Duck.glb (embedded baseColor)"
+                : "assets/texture.png";
+        }
+
+        // The name persisted for an entity: the editor display name if present, else
+        // a stable index-based fallback (so a non-editor build still round-trips).
+        [[nodiscard]] std::string NameForSerialization(rag::scene::EntityId entity) const
+        {
+#if defined(RAG_EDITOR)
+            if (const std::string* name = editor_.Name(entity))
+            {
+                return *name;
+            }
+#endif
+            return "Entity " + std::to_string(entity.index);
+        }
+
+        // Walks the live scene (+ editor names + physics records) into the neutral
+        // serialized model. Captures authoring state only -- transforms, component
+        // parameters, mesh/texture identifiers and each body's collider descriptor
+        // -- never transient runtime state such as live velocities or selection.
+        [[nodiscard]] rag::scene::SerializedScene CaptureScene()
+        {
+            rag::scene::SerializedScene out;
+            scene_.ForEachEntity([this, &out](rag::scene::EntityId entity)
+            {
+                rag::scene::SerializedEntity serialized;
+                serialized.name = NameForSerialization(entity);
+
+                if (const rag::scene::TransformComponent* transform = scene_.GetTransform(entity))
+                {
+                    rag::scene::SerializedTransform t;
+                    t.position = transform->local_position;
+                    t.rotation_euler_radians = transform->local_rotation_radians;
+                    t.rotation_quat = transform->local_rotation_quat;
+                    t.use_quaternion_rotation = transform->use_quaternion_rotation;
+                    t.scale = transform->local_scale;
+                    serialized.transform = t;
+                }
+
+                if (const rag::scene::CameraComponent* camera = scene_.GetCamera(entity))
+                {
+                    rag::scene::SerializedCamera c;
+                    c.projection_mode = camera->projection_mode;
+                    c.vertical_fov_radians = camera->vertical_fov_radians;
+                    c.aspect_ratio = camera->aspect_ratio;
+                    c.near_plane = camera->near_plane;
+                    c.far_plane = camera->far_plane;
+                    c.orthographic_height = camera->orthographic_height;
+                    c.active = entity == scene_.ActiveCamera();
+                    serialized.camera = c;
+                }
+
+                if (const rag::scene::RenderableComponent* renderable = scene_.GetRenderable(entity))
+                {
+                    rag::scene::SerializedRenderable r;
+                    r.mesh = MeshIdentifier(renderable->mesh);
+                    r.texture = TextureIdentifier(renderable->mesh);
+                    r.material_index = renderable->material.index;
+                    r.material_generation = renderable->material.generation;
+                    r.local_bounds = renderable->local_bounds;
+                    r.visibility_layer = renderable->visibility_layer;
+                    r.visible = renderable->visible;
+                    serialized.renderable = r;
+                }
+
+                if (const rag::scene::LightComponent* light = scene_.GetLight(entity))
+                {
+                    rag::scene::SerializedLight l;
+                    l.type = light->type;
+                    l.color = light->color;
+                    l.intensity = light->intensity;
+                    l.local_direction = light->local_direction;
+                    l.range = light->range;
+                    l.inner_cone_radians = light->inner_cone_radians;
+                    l.outer_cone_radians = light->outer_cone_radians;
+                    l.visibility_layer = light->visibility_layer;
+                    l.visible = light->visible;
+                    // The editable sun records the sandbox's authoring euler so its
+                    // exact orientation restores; other lights have no such widget.
+                    if (entity == light_entity_)
+                    {
+                        l.editor_euler_radians = light_euler_;
+                    }
+                    serialized.light = l;
+                }
+
+#if defined(RAG_ENABLE_PHYSICS)
+                if (const PhysicsBody* physics_body = FindPhysicsBody(entity))
+                {
+                    rag::scene::SerializedPhysics p;
+                    p.mode = BodyModeToString(physics_body->desc.mode);
+                    p.shape = ColliderShapeToString(physics_body->desc.shape);
+                    p.box_half_extents = physics_body->desc.box_half_extents;
+                    p.sphere_radius = physics_body->desc.sphere_radius;
+                    p.offset = physics_body->desc.offset;
+                    p.gravity_enabled = physics_body->desc.gravity_enabled;
+                    p.continuous_collision = physics_body->desc.continuous_collision;
+                    serialized.physics = p;
+                }
+#endif
+
+                out.entities.push_back(std::move(serialized));
+            });
+            return out;
+        }
+
+        // Tears down the live scene ahead of a load / new: destroys every physics
+        // body cleanly (no leaks), destroys every entity, and clears editor names +
+        // selection + the extracted render world so nothing from the old scene lingers.
+        void ClearSceneState()
+        {
+#if defined(RAG_ENABLE_PHYSICS)
+            for (PhysicsBody& physics_body : physics_bodies_)
+            {
+                if (physics_body.body.IsValid())
+                {
+                    physics_.DestroyBody(physics_body.body);
+                }
+            }
+            physics_bodies_.clear();
+#endif
+            std::vector<rag::scene::EntityId> entities;
+            entities.reserve(scene_.EntityCount());
+            scene_.ForEachEntity([&entities](rag::scene::EntityId entity)
+            {
+                entities.push_back(entity);
+            });
+            for (const rag::scene::EntityId entity : entities)
+            {
+                scene_.DestroyEntity(entity);
+            }
+
+#if defined(RAG_EDITOR)
+            editor_.Clear();
+#endif
+            camera_entity_ = rag::scene::EntityId{};
+            light_entity_ = rag::scene::EntityId{};
+            mouse_look_active_ = false;
+            render_world_.Clear();
+        }
+
+        // Rebuilds the live scene from the neutral model. Clears first, then recreates
+        // each entity in file order, re-resolving mesh identifiers back to the
+        // renderer's registry and rebuilding physics through the existing per-object
+        // registration path so colliders/bodies match the saved authoring exactly.
+        void ApplyScene(const rag::scene::SerializedScene& data)
+        {
+            ClearSceneState();
+
+            rag::scene::EntityId active_camera{};
+            rag::scene::EntityId first_camera{};
+            rag::scene::EntityId first_light{};
+
+            for (const rag::scene::SerializedEntity& serialized : data.entities)
+            {
+                const rag::scene::EntityId entity = scene_.CreateEntity();
+                NameEntity(entity, serialized.name);
+
+                if (serialized.transform.has_value())
+                {
+                    rag::scene::TransformComponent& transform = scene_.AddTransform(entity);
+                    transform.local_position = serialized.transform->position;
+                    transform.local_rotation_radians = serialized.transform->rotation_euler_radians;
+                    transform.local_rotation_quat = serialized.transform->rotation_quat;
+                    transform.use_quaternion_rotation = serialized.transform->use_quaternion_rotation;
+                    transform.local_scale = serialized.transform->scale;
+                }
+
+                if (serialized.renderable.has_value())
+                {
+                    const rag::scene::SerializedRenderable& source = *serialized.renderable;
+                    if (!IsKnownMeshIdentifier(source.mesh))
+                    {
+                        RAG_LOG_WARNING(
+                            "Scene load: unknown mesh identifier '",
+                            source.mesh,
+                            "' on entity '",
+                            serialized.name,
+                            "'; falling back to the built-in cube.");
+                    }
+                    rag::scene::RenderableComponent& renderable = scene_.AddRenderable(entity);
+                    renderable.mesh = MeshHandleFromIdentifier(source.mesh);
+                    renderable.material = rag::renderer::MaterialHandle{
+                        source.material_index, source.material_generation};
+                    renderable.local_bounds = source.local_bounds;
+                    renderable.visibility_layer = source.visibility_layer;
+                    renderable.visible = source.visible;
+                }
+
+                if (serialized.camera.has_value())
+                {
+                    rag::scene::CameraComponent& camera = scene_.AddCamera(entity);
+                    camera.projection_mode = serialized.camera->projection_mode;
+                    camera.vertical_fov_radians = serialized.camera->vertical_fov_radians;
+                    camera.aspect_ratio = serialized.camera->aspect_ratio;
+                    camera.near_plane = serialized.camera->near_plane;
+                    camera.far_plane = serialized.camera->far_plane;
+                    camera.orthographic_height = serialized.camera->orthographic_height;
+                    if (!first_camera.IsValid())
+                    {
+                        first_camera = entity;
+                    }
+                    if (serialized.camera->active && !active_camera.IsValid())
+                    {
+                        active_camera = entity;
+                    }
+                }
+
+                if (serialized.light.has_value())
+                {
+                    rag::scene::LightComponent& light = scene_.AddLight(entity);
+                    light.type = serialized.light->type;
+                    light.color = serialized.light->color;
+                    light.intensity = serialized.light->intensity;
+                    light.local_direction = serialized.light->local_direction;
+                    light.range = serialized.light->range;
+                    light.inner_cone_radians = serialized.light->inner_cone_radians;
+                    light.outer_cone_radians = serialized.light->outer_cone_radians;
+                    light.visibility_layer = serialized.light->visibility_layer;
+                    light.visible = serialized.light->visible;
+                    if (!first_light.IsValid())
+                    {
+                        // Adopt the first light as the sandbox's editable sun and
+                        // restore the authoring state SyncLightFromUi drives from.
+                        first_light = entity;
+                        light_euler_ = serialized.light->editor_euler_radians;
+                        light_color_ = serialized.light->color;
+                        light_intensity_ = serialized.light->intensity;
+                    }
+                }
+
+                scene_.MarkTransformDirty(entity);
+
+#if defined(RAG_ENABLE_PHYSICS)
+                if (serialized.physics.has_value())
+                {
+                    rag::physics::BodyDesc desc;
+                    desc.mode = BodyModeFromString(serialized.physics->mode);
+                    desc.shape = ColliderShapeFromString(serialized.physics->shape);
+                    desc.box_half_extents = serialized.physics->box_half_extents;
+                    desc.sphere_radius = serialized.physics->sphere_radius;
+                    desc.offset = serialized.physics->offset;
+                    desc.gravity_enabled = serialized.physics->gravity_enabled;
+                    desc.continuous_collision = serialized.physics->continuous_collision;
+                    (void)RegisterPhysicsBody(entity, desc);
+                }
+#endif
+            }
+
+            camera_entity_ = active_camera.IsValid() ? active_camera : first_camera;
+            light_entity_ = first_light;
+            FinalizeLoadedCamera();
+        }
+
+        // Restores the sandbox camera members from the loaded active camera: refreshes
+        // the aspect ratio from the current window and seeds yaw/pitch from the
+        // camera's stored Euler so the free-fly controls continue seamlessly.
+        void FinalizeLoadedCamera()
+        {
+            if (!scene_.IsAlive(camera_entity_))
+            {
+                return;
+            }
+            scene_.SetActiveCamera(camera_entity_);
+
+            if (rag::scene::CameraComponent* camera = scene_.GetCamera(camera_entity_))
+            {
+                if (window_ != nullptr && window_->Width() > 0 && window_->Height() > 0)
+                {
+                    camera->aspect_ratio =
+                        static_cast<rag::f32>(window_->Width()) /
+                        static_cast<rag::f32>(window_->Height());
+                }
+            }
+            if (const rag::scene::TransformComponent* transform = scene_.GetTransform(camera_entity_))
+            {
+                camera_pitch_radians_ = transform->local_rotation_radians.x;
+                camera_yaw_radians_ = transform->local_rotation_radians.y;
+            }
+        }
+
+        // Captures and writes the current scene to a file. Returns false (logging the
+        // reason) if the write fails; on success records the path as the current one.
+        bool SaveSceneToPath(const std::filesystem::path& path, std::string& out_error)
+        {
+            const rag::scene::SerializedScene data = CaptureScene();
+            if (!rag::scene::SaveSceneToFile(data, path, out_error))
+            {
+                RAG_LOG_ERROR("Failed to save scene to '", path.string(), "': ", out_error);
+                return false;
+            }
+            current_scene_path_ = path;
+            RAG_LOG_INFO(
+                "Saved scene (",
+                data.entities.size(),
+                " entities) to '",
+                path.string(),
+                "'.");
+            return true;
+        }
+
+        // Reads a scene file and rebuilds the live scene from it. Returns false
+        // (logging the reason, leaving the current scene untouched) on any error.
+        bool LoadSceneFromPath(const std::filesystem::path& path, std::string& out_error)
+        {
+            rag::scene::SerializedScene data;
+            if (!rag::scene::LoadSceneFromFile(path, data, out_error))
+            {
+                RAG_LOG_WARNING("Could not load scene from '", path.string(), "': ", out_error);
+                return false;
+            }
+            ApplyScene(data);
+            current_scene_path_ = path;
+            RAG_LOG_INFO(
+                "Loaded scene (",
+                data.entities.size(),
+                " entities) from '",
+                path.string(),
+                "'.");
+            return true;
+        }
+
+        // Replaces the scene with a minimal default: just the free-fly camera and the
+        // directional sun, so the viewport stays navigable and lit but otherwise empty.
+        void NewScene()
+        {
+            ClearSceneState();
+            light_euler_ = rag::math::Vec3{};
+            light_color_ = rag::math::Vec3{1.0f, 0.92f, 0.78f};
+            light_intensity_ = 1.25f;
+            CreateDefaultCameraEntity();
+            CreateDefaultLightEntity();
+            RAG_LOG_INFO("New scene created (camera + directional light).");
+        }
+
+#if defined(RAG_ENABLE_PHYSICS)
+        [[nodiscard]] static const char* BodyModeToString(rag::physics::BodyMode mode)
+        {
+            switch (mode)
+            {
+                case rag::physics::BodyMode::None: return "None";
+                case rag::physics::BodyMode::Static: return "Static";
+                case rag::physics::BodyMode::Dynamic: return "Dynamic";
+            }
+            return "None";
+        }
+
+        [[nodiscard]] static rag::physics::BodyMode BodyModeFromString(const std::string& text)
+        {
+            if (text == "Static") return rag::physics::BodyMode::Static;
+            if (text == "Dynamic") return rag::physics::BodyMode::Dynamic;
+            return rag::physics::BodyMode::None;
+        }
+
+        [[nodiscard]] static const char* ColliderShapeToString(rag::physics::ColliderShape shape)
+        {
+            return shape == rag::physics::ColliderShape::Sphere ? "Sphere" : "Box";
+        }
+
+        [[nodiscard]] static rag::physics::ColliderShape ColliderShapeFromString(const std::string& text)
+        {
+            return text == "Sphere"
+                ? rag::physics::ColliderShape::Sphere
+                : rag::physics::ColliderShape::Box;
+        }
+#endif
+
 #if defined(RAG_EDITOR)
         // Builds the whole editor for the frame: a full-window dockspace host (with
         // the main menu bar and a pass-through central node so the 3D scene shows
@@ -978,14 +1478,99 @@ namespace
             ImGui::DockBuilderFinish(dockspace_id);
         }
 
-        // The top menu bar. Actions are minimal but real: View toggles the panel and
-        // editor mode; Layout rebuilds the default dock arrangement.
+        // The File menu: New / Save / Save As / Load. Scene files live in a "scenes"
+        // folder next to the executable (path shown in the menu); the text field
+        // names the file (".ragscene" is appended if you omit an extension). "Save
+        // Scene" (no name) rewrites the current file; "Load Scene" resolves next to
+        // the exe first, then the working directory.
+        void BuildFileMenu()
+        {
+            if (!ImGui::BeginMenu("File"))
+            {
+                return;
+            }
+
+            if (ImGui::MenuItem("New Scene"))
+            {
+                NewScene();
+                scene_status_ = "New scene (camera + light).";
+            }
+
+            if (ImGui::MenuItem("Save Scene"))
+            {
+                std::string error;
+                scene_status_ = SaveSceneToPath(current_scene_path_, error)
+                    ? "Saved: " + current_scene_path_.string()
+                    : "Save failed: " + error;
+            }
+
+            ImGui::Separator();
+            ImGui::TextDisabled("Scenes folder:");
+            ImGui::TextWrapped("%s", ScenesDirectory().string().c_str());
+            ImGui::SetNextItemWidth(220.0f);
+            ImGui::InputText("File name", scene_name_input_, sizeof(scene_name_input_));
+
+            const std::string filename = SceneFilenameFromInput();
+            if (ImGui::MenuItem("Save Scene As"))
+            {
+                const std::filesystem::path path = ScenesDirectory() / filename;
+                std::string error;
+                scene_status_ = SaveSceneToPath(path, error)
+                    ? "Saved: " + path.string()
+                    : "Save failed: " + error;
+            }
+
+            if (ImGui::MenuItem("Load Scene"))
+            {
+                std::string error;
+                if (const std::optional<std::filesystem::path> path =
+                        ResolveExistingScenePath(filename))
+                {
+                    scene_status_ = LoadSceneFromPath(*path, error)
+                        ? "Loaded: " + path->string()
+                        : "Load failed: " + error;
+                }
+                else
+                {
+                    scene_status_ = "Not found: scenes/" + filename;
+                }
+            }
+
+            if (!scene_status_.empty())
+            {
+                ImGui::Separator();
+                ImGui::TextWrapped("%s", scene_status_.c_str());
+            }
+
+            ImGui::EndMenu();
+        }
+
+        // The scene file name from the text field, defaulting to the default scene
+        // and appending ".ragscene" when the typed name carries no extension.
+        [[nodiscard]] std::string SceneFilenameFromInput() const
+        {
+            std::string name = scene_name_input_;
+            if (name.empty())
+            {
+                name = DefaultSceneFilename;
+            }
+            else if (name.find('.') == std::string::npos)
+            {
+                name += ".ragscene";
+            }
+            return name;
+        }
+
+        // The top menu bar. Actions are minimal but real: File saves/loads scenes;
+        // View toggles the panels and editor mode; Layout rebuilds the default docks.
         void BuildMainMenuBar()
         {
             if (!ImGui::BeginMainMenuBar())
             {
                 return;
             }
+
+            BuildFileMenu();
 
             if (ImGui::BeginMenu("View"))
             {
@@ -2302,6 +2887,10 @@ namespace
         rag::renderer::RenderWorld render_world_;
         rag::scene::EntityId camera_entity_{};
 
+        // Path the current scene was last loaded from / saved to; "Save Scene"
+        // rewrites it. Seeded to the default scene path on startup.
+        std::filesystem::path current_scene_path_;
+
 #if defined(RAG_EDITOR)
         // Editor (developer-only) state. editor_mode_ defaults on for the sandbox
         // and is flipped at runtime with F1; with it off the engine renders only
@@ -2319,6 +2908,11 @@ namespace
         // selection. spawn_counter_ makes each spawned entity's name unique.
         rag::editor::AssetBrowser asset_browser_;
         rag::u32 spawn_counter_ = 0;
+
+        // File-menu state: the scene-name text field and the last save/load status
+        // line shown under the menu items.
+        char scene_name_input_[128] = "default";
+        std::string scene_status_;
 
         // Transform-gizmo state. gizmo_operation_ is the active mode (W/E/R or the
         // toolbar); gizmo_mode_ toggles local/world axes. gizmo_matrix_ is the pose

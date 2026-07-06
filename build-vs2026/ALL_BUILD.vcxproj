@@ -214,6 +214,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Project>{7468AC37-6E1C-32A2-953B-8BE693436792}</Project>
       <Name>RagScene</Name>
     </ProjectReference>
+    <ProjectReference Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\RagSceneSerializationTests.vcxproj">
+      <Project>{112F63E4-5AA7-36F2-8268-47C1A205132A}</Project>
+      <Name>RagSceneSerializationTests</Name>
+    </ProjectReference>
     <ProjectReference Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\RagSceneTests.vcxproj">
       <Project>{E669220C-569D-37FA-A8A0-0A3E4726949F}</Project>
       <Name>RagSceneTests</Name>

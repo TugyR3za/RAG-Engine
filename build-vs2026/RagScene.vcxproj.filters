@@ -4,6 +4,9 @@
     <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\Scene\Scene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\Scene\SceneSerialization.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\Scene\ComponentStorage.h">
@@ -16,6 +19,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\Scene\Scene.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\Scene\SceneSerialization.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

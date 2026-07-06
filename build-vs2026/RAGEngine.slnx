@@ -18,6 +18,7 @@
 		<BuildDependency Project="RagRuntime.vcxproj"/>
 		<BuildDependency Project="RagSandbox.vcxproj"/>
 		<BuildDependency Project="RagScene.vcxproj"/>
+		<BuildDependency Project="RagSceneSerializationTests.vcxproj"/>
 		<BuildDependency Project="RagSceneTests.vcxproj"/>
 		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
 		<BuildDependency Project="imgui.vcxproj"/>
@@ -91,6 +92,13 @@
 		<BuildDependency Project="RagCore.vcxproj"/>
 		<BuildDependency Project="RagPlatform.vcxproj"/>
 		<BuildDependency Project="RagRenderer.vcxproj"/>
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="RagSceneSerializationTests.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="112f63e4-5aa7-36f2-8268-47c1a205132a">
+		<BuildDependency Project="RagCore.vcxproj"/>
+		<BuildDependency Project="RagPlatform.vcxproj"/>
+		<BuildDependency Project="RagRenderer.vcxproj"/>
+		<BuildDependency Project="RagScene.vcxproj"/>
 		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
 	</Project>
 	<Project Path="RagSceneTests.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="e669220c-569d-37fa-a8a0-0a3e4726949f">

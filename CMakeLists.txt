@@ -70,9 +70,14 @@ add_library(RagScene STATIC
     src/Rag/Scene/Entity.h
     src/Rag/Scene/Scene.cpp
     src/Rag/Scene/Scene.h
+    src/Rag/Scene/SceneSerialization.cpp
+    src/Rag/Scene/SceneSerialization.h
 )
 rag_configure_target(RagScene)
 target_link_libraries(RagScene PUBLIC RagCore RagRenderer)
+# Vendored single-header nlohmann/json, used only by SceneSerialization.cpp; kept
+# PRIVATE so <json.hpp> stays out of anyone who merely links RagScene.
+target_include_directories(RagScene PRIVATE ${PROJECT_SOURCE_DIR}/third_party)
 
 if(RAG_ENABLE_PHYSICS)
     include(FetchContent)
@@ -375,6 +380,10 @@ if(RAG_BUILD_TESTS)
     add_executable(RagSceneTests tests/SceneRuntimeTests.cpp)
     rag_configure_target(RagSceneTests)
     target_link_libraries(RagSceneTests PRIVATE RagScene)
+
+    add_executable(RagSceneSerializationTests tests/SceneSerializationTests.cpp)
+    rag_configure_target(RagSceneSerializationTests)
+    target_link_libraries(RagSceneSerializationTests PRIVATE RagScene)
 
     if(RAG_ENABLE_PHYSICS)
         add_executable(RagPhysicsTests tests/PhysicsWorldTests.cpp)

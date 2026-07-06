@@ -78,7 +78,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;C:\Users\naime\OneDrive\Desktop\RAG Engine\third_party;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /utf-8</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -108,10 +108,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;RAG_ENGINE_VERSION=\"0.2.0\";RAG_DEBUG=1;RAG_ENABLE_ASSERTS=1;RAG_PLATFORM_WINDOWS=1;WIN32_LEAN_AND_MEAN;NOMINMAX;UNICODE;_UNICODE;CMAKE_INTDIR=\"Debug\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;C:\Users\naime\OneDrive\Desktop\RAG Engine\third_party;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;C:\Users\naime\OneDrive\Desktop\RAG Engine\third_party;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -124,7 +124,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;C:\Users\naime\OneDrive\Desktop\RAG Engine\third_party;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /utf-8</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -155,10 +155,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;RAG_ENGINE_VERSION=\"0.2.0\";RAG_RELEASE=1;RAG_PLATFORM_WINDOWS=1;WIN32_LEAN_AND_MEAN;NOMINMAX;UNICODE;_UNICODE;CMAKE_INTDIR=\"Release\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;C:\Users\naime\OneDrive\Desktop\RAG Engine\third_party;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;C:\Users\naime\OneDrive\Desktop\RAG Engine\third_party;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -171,7 +171,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;C:\Users\naime\OneDrive\Desktop\RAG Engine\third_party;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /utf-8</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -202,10 +202,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;RAG_ENGINE_VERSION=\"0.2.0\";RAG_RELEASE=1;RAG_PLATFORM_WINDOWS=1;WIN32_LEAN_AND_MEAN;NOMINMAX;UNICODE;_UNICODE;CMAKE_INTDIR=\"MinSizeRel\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;C:\Users\naime\OneDrive\Desktop\RAG Engine\third_party;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;C:\Users\naime\OneDrive\Desktop\RAG Engine\third_party;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -218,7 +218,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;C:\Users\naime\OneDrive\Desktop\RAG Engine\third_party;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /utf-8</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -248,10 +248,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;RAG_ENGINE_VERSION=\"0.2.0\";RAG_RELEASE=1;RAG_PLATFORM_WINDOWS=1;WIN32_LEAN_AND_MEAN;NOMINMAX;UNICODE;_UNICODE;CMAKE_INTDIR=\"RelWithDebInfo\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;C:\Users\naime\OneDrive\Desktop\RAG Engine\third_party;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\naime\OneDrive\Desktop\RAG Engine\src;C:\Users\naime\OneDrive\Desktop\RAG Engine\third_party;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -325,6 +325,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\Scene\Entity.h" />
     <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\Scene\Scene.cpp" />
     <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\Scene\Scene.h" />
+    <ClCompile Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\Scene\SceneSerialization.cpp" />
+    <ClInclude Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\src\Rag\Scene\SceneSerialization.h" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

@@ -56,6 +56,15 @@ namespace rag::editor
             return it != names_.end() ? &it->second : nullptr;
         }
 
+        // Drops the selection and every display name. Used when the scene is
+        // replaced wholesale (New Scene / Load Scene) so no name or selection from
+        // the previous scene lingers on a recycled entity id.
+        void Clear()
+        {
+            ClearSelection();
+            names_.clear();
+        }
+
     private:
         scene::EntityId selected_{};
         std::unordered_map<u64, std::string> names_;
