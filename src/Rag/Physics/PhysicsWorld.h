@@ -59,6 +59,13 @@ namespace rag::physics
         // Reads a body's current world transform back out of the simulation.
         [[nodiscard]] BodyState GetBodyState(BodyHandle handle) const;
 
+        // Replaces a dynamic body's collider with a shape derived from its
+        // immutable creation-time base shape. Box scale is per-axis. Sphere
+        // scale uses the largest axis uniformly so the collider conservatively
+        // encloses a non-uniformly scaled visual sphere. Returns false for an
+        // invalid/non-dynamic handle or if Jolt cannot create the scaled shape.
+        [[nodiscard]] bool SetDynamicBodyScale(BodyHandle handle, const math::Vec3& scale);
+
         // Updates world gravity live (used by the editor's gravity slider).
         void SetGravity(const math::Vec3& gravity);
 

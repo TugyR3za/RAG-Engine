@@ -178,10 +178,52 @@ namespace rag::physics
             }
             return id;
         }
+
+        constexpr f32 MinimumColliderScale = 0.01f;
+        constexpr f32 ColliderScaleEpsilon = 0.0001f;
+
+        f32 SanitizeScaleAxis(f32 scale)
+        {
+            if (!std::isfinite(scale))
+            {
+                return 1.0f;
+            }
+            return std::max(std::abs(scale), MinimumColliderScale);
+        }
+
+        math::Vec3 SanitizeScale(const math::Vec3& scale)
+        {
+            return math::Vec3{
+                SanitizeScaleAxis(scale.x),
+                SanitizeScaleAxis(scale.y),
+                SanitizeScaleAxis(scale.z)};
+        }
+
+        bool ScalesMatch(const math::Vec3& left, const math::Vec3& right)
+        {
+            return
+                std::abs(left.x - right.x) <= ColliderScaleEpsilon &&
+                std::abs(left.y - right.y) <= ColliderScaleEpsilon &&
+                std::abs(left.z - right.z) <= ColliderScaleEpsilon;
+        }
     }
 
     struct PhysicsWorld::Impl
     {
+        enum class DynamicShapeType
+        {
+            Box,
+            Sphere
+        };
+
+        struct DynamicShapeRecord
+        {
+            JPH::BodyID body_id;
+            JPH::RefConst<JPH::Shape> base_shape;
+            DynamicShapeType type = DynamicShapeType::Box;
+            math::Vec3 applied_scale{1.0f, 1.0f, 1.0f};
+        };
+
         PhysicsWorldDesc desc{};
         bool initialized = false;
 
@@ -192,6 +234,7 @@ namespace rag::physics
         ObjectLayerPairFilterImpl object_layer_pair_filter;
         JPH::PhysicsSystem physics_system;
         std::vector<JPH::BodyID> bodies;
+        std::vector<DynamicShapeRecord> dynamic_shapes;
     };
 
     PhysicsWorld::PhysicsWorld() = default;
@@ -290,6 +333,7 @@ namespace rag::physics
                 }
             }
             impl_->bodies.clear();
+            impl_->dynamic_shapes.clear();
         }
 
         impl_->job_system.reset();
@@ -377,6 +421,14 @@ namespace rag::physics
             return {};
         }
 
+        // Hold an immutable reference to the unscaled shape. Every later scale
+        // replacement is derived from this shape, never from the current one.
+        impl_->dynamic_shapes.push_back(Impl::DynamicShapeRecord{
+            id,
+            shape,
+            Impl::DynamicShapeType::Box,
+            math::Vec3{1.0f, 1.0f, 1.0f}});
+
         return BodyHandle{id.GetIndexAndSequenceNumber()};
     }
 
@@ -411,6 +463,12 @@ namespace rag::physics
             RAG_LOG_ERROR("Physics: failed to create dynamic sphere body (body limit reached?).");
             return {};
         }
+
+        impl_->dynamic_shapes.push_back(Impl::DynamicShapeRecord{
+            id,
+            shape,
+            Impl::DynamicShapeType::Sphere,
+            math::Vec3{1.0f, 1.0f, 1.0f}});
 
         return BodyHandle{id.GetIndexAndSequenceNumber()};
     }
@@ -478,6 +536,69 @@ namespace rag::physics
             rotation.GetZ(),
             rotation.GetW()};
         return state;
+    }
+
+    bool PhysicsWorld::SetDynamicBodyScale(BodyHandle handle, const math::Vec3& scale)
+    {
+        if (!IsInitialized() || !handle.IsValid())
+        {
+            return false;
+        }
+
+        const JPH::BodyID id(handle.id);
+        Impl::DynamicShapeRecord* record = nullptr;
+        for (Impl::DynamicShapeRecord& candidate : impl_->dynamic_shapes)
+        {
+            if (candidate.body_id == id)
+            {
+                record = &candidate;
+                break;
+            }
+        }
+
+        if (record == nullptr)
+        {
+            return false;
+        }
+
+        math::Vec3 applied_scale = SanitizeScale(scale);
+        if (record->type == Impl::DynamicShapeType::Sphere)
+        {
+            // Jolt spheres require uniform scale. The largest visual axis keeps
+            // the collider from becoming smaller than the rendered ellipsoid.
+            const f32 uniform_scale =
+                std::max(applied_scale.x, std::max(applied_scale.y, applied_scale.z));
+            applied_scale = math::Vec3{uniform_scale, uniform_scale, uniform_scale};
+        }
+
+        if (ScalesMatch(record->applied_scale, applied_scale))
+        {
+            return true;
+        }
+
+        const JPH::Shape::ShapeResult scaled_shape = record->base_shape->ScaleShape(
+            JPH::Vec3(applied_scale.x, applied_scale.y, applied_scale.z));
+        if (scaled_shape.HasError())
+        {
+            RAG_LOG_ERROR(
+                "Physics: failed to scale dynamic collider: ",
+                scaled_shape.GetError().c_str());
+            return false;
+        }
+
+        JPH::BodyInterface& body_interface = impl_->physics_system.GetBodyInterface();
+        body_interface.SetShape(
+            id,
+            scaled_shape.Get(),
+            true,
+            JPH::EActivation::Activate);
+        body_interface.SetLinearAndAngularVelocity(
+            id,
+            JPH::Vec3::sZero(),
+            JPH::Vec3::sZero());
+        body_interface.ActivateBody(id);
+        record->applied_scale = applied_scale;
+        return true;
     }
 
     void PhysicsWorld::SetGravity(const math::Vec3& gravity)

@@ -186,6 +186,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Project>{82B1B4F2-477D-39A7-832A-F9F42B9C7BAE}</Project>
       <Name>RagPhysics</Name>
     </ProjectReference>
+    <ProjectReference Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\RagPhysicsTests.vcxproj">
+      <Project>{8D76BF7D-9632-3DB0-AB58-F179989D724A}</Project>
+      <Name>RagPhysicsTests</Name>
+    </ProjectReference>
     <ProjectReference Include="C:\Users\naime\OneDrive\Desktop\RAG Engine\build-vs2026\RagPlatform.vcxproj">
       <Project>{89D7E6FC-8747-38B9-8B82-B93E152DBE5F}</Project>
       <Name>RagPlatform</Name>

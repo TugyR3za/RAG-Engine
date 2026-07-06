@@ -292,6 +292,7 @@ namespace
             rag::scene::EntityId entity{};
             rag::physics::BodyHandle body{};
             rag::math::Vec3 start_position{};
+            rag::math::Vec3 synchronized_scale{1.0f, 1.0f, 1.0f};
         };
 
         void InitializePhysics()
@@ -328,13 +329,11 @@ namespace
         {
             constexpr rag::u32 RingCubeCount = 8;
             constexpr rag::f32 RingRadius = 4.0f;
-            constexpr rag::f32 RingCubeScale = 1.0f;
             constexpr rag::f32 CenterCubeScale = 1.5f;
 
-            // A unit cube spans +/-0.5, so the physics half-extent is half the
-            // visual scale on each axis.
-            constexpr rag::f32 RingCubeHalfExtent = 0.5f * RingCubeScale;
-            constexpr rag::f32 CenterCubeHalfExtent = 0.5f * CenterCubeScale;
+            // A unit cube spans +/-0.5. Keep this collider base unscaled; the
+            // transform scale is applied through PhysicsWorld before stepping.
+            constexpr rag::math::Vec3 CubeBaseHalfExtents{0.5f, 0.5f, 0.5f};
             constexpr rag::f32 SphereRadius = 1.0f; // models/sphere.obj is a unit sphere.
 
             // Dynamic bodies start elevated so they visibly fall and settle on
@@ -380,7 +379,7 @@ namespace
                 SpawnDynamicBox(
                     entity,
                     start_position,
-                    rag::math::Vec3{RingCubeHalfExtent, RingCubeHalfExtent, RingCubeHalfExtent});
+                    CubeBaseHalfExtents);
             }
 
             const rag::math::Vec3 center_start{0.0f, CenterCubeStartHeight, 0.0f};
@@ -394,7 +393,7 @@ namespace
             SpawnDynamicBox(
                 center_cube,
                 center_start,
-                rag::math::Vec3{CenterCubeHalfExtent, CenterCubeHalfExtent, CenterCubeHalfExtent});
+                CubeBaseHalfExtents);
 
             const rag::scene::EntityId ground = scene_.CreateEntity();
             NameEntity(ground, "Ground");
@@ -530,6 +529,43 @@ namespace
             return physics_bodies_.size();
         }
 
+        static bool PhysicsScalesDiffer(
+            const rag::math::Vec3& left,
+            const rag::math::Vec3& right)
+        {
+            constexpr rag::f32 Epsilon = 0.0001f;
+            return
+                std::abs(left.x - right.x) > Epsilon ||
+                std::abs(left.y - right.y) > Epsilon ||
+                std::abs(left.z - right.z) > Epsilon;
+        }
+
+        // Detect transform scale edits from any source before simulation. Jolt
+        // rebuilds from each body's immutable base shape, and only when this
+        // comparison detects a real change.
+        void SynchronizeDynamicColliderScales()
+        {
+            for (PhysicsBody& physics_body : physics_bodies_)
+            {
+                const rag::scene::TransformComponent* transform =
+                    scene_.GetTransform(physics_body.entity);
+                if (transform == nullptr ||
+                    !PhysicsScalesDiffer(
+                        transform->local_scale,
+                        physics_body.synchronized_scale))
+                {
+                    continue;
+                }
+
+                if (physics_.SetDynamicBodyScale(
+                        physics_body.body,
+                        transform->local_scale))
+                {
+                    physics_body.synchronized_scale = transform->local_scale;
+                }
+            }
+        }
+
         void StepPhysics(const rag::core::FrameTime& frame_time)
         {
             if (!physics_ready_)
@@ -537,6 +573,7 @@ namespace
                 return;
             }
 
+            SynchronizeDynamicColliderScales();
             physics_.Step(static_cast<rag::f32>(frame_time.delta_seconds));
 
             // Write each simulated body's pose back onto its scene transform so
@@ -1333,9 +1370,8 @@ namespace
             {
                 // The body overwrites position + rotation every Step(), so editing the
                 // component alone would be undone next frame. Push the new pose into
-                // the body instead (teleport + clear velocity). Scale is not a
-                // rigid-body property, so a scale-only edit just updates the visual
-                // transform and is left out of the teleport.
+                // the body instead (teleport + clear velocity). Scale changes are
+                // detected and applied to the collider before the next physics step.
                 if (rotation_changed)
                 {
                     transform->local_rotation_quat =
@@ -1810,8 +1846,8 @@ namespace
                 // Jolt overwrites position + rotation every Step(), so push the pose
                 // in (teleport + clear velocity). On a rotate drag recompute the quat
                 // from the edited Euler; otherwise reuse the live physics quat that
-                // StepPhysics keeps current, matching the Inspector's behavior. Scale
-                // is not a rigid-body property, so it stays a visual-only change.
+                // StepPhysics keeps current, matching the Inspector's behavior.
+                // Collider scale is synchronized before the next simulation step.
                 if (rotation_changed)
                 {
                     transform.local_rotation_quat =

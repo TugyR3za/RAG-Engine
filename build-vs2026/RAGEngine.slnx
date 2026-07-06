@@ -11,6 +11,7 @@
 		<BuildDependency Project="_deps/joltphysics-build/Jolt.vcxproj"/>
 		<BuildDependency Project="RagCore.vcxproj"/>
 		<BuildDependency Project="RagPhysics.vcxproj"/>
+		<BuildDependency Project="RagPhysicsTests.vcxproj"/>
 		<BuildDependency Project="RagPlatform.vcxproj"/>
 		<BuildDependency Project="RagRenderer.vcxproj"/>
 		<BuildDependency Project="RagRendererVK.vcxproj"/>
@@ -39,6 +40,12 @@
 	<Project Path="RagPhysics.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="82b1b4f2-477d-39a7-832a-f9f42b9c7bae">
 		<BuildDependency Project="_deps/joltphysics-build/Jolt.vcxproj"/>
 		<BuildDependency Project="RagCore.vcxproj"/>
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="RagPhysicsTests.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="8d76bf7d-9632-3db0-ab58-f179989d724a">
+		<BuildDependency Project="_deps/joltphysics-build/Jolt.vcxproj"/>
+		<BuildDependency Project="RagCore.vcxproj"/>
+		<BuildDependency Project="RagPhysics.vcxproj"/>
 		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
 	</Project>
 	<Project Path="RagPlatform.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="89d7e6fc-8747-38b9-8b82-b93e152dbe5f">
