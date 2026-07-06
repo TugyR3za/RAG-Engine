@@ -285,14 +285,19 @@ namespace
 
     private:
 #if defined(RAG_ENABLE_PHYSICS)
-        // Links a dynamic Jolt body to the scene entity it drives, remembering
-        // its spawn position so the editor's reset button can drop it again.
+        // Links a Jolt body to the scene entity it drives. desc is the source of
+        // truth for the collider + simulation settings, so the body can be rebuilt
+        // (None <-> Static <-> Dynamic) without losing shape/scale. body is invalid
+        // while the entity is in BodyMode::None. start_position/start_rotation let
+        // the editor's reset button drop it again.
         struct PhysicsBody
         {
             rag::scene::EntityId entity{};
             rag::physics::BodyHandle body{};
             rag::math::Vec3 start_position{};
+            rag::math::Quat start_rotation{};
             rag::math::Vec3 synchronized_scale{1.0f, 1.0f, 1.0f};
+            rag::physics::BodyDesc desc{};
         };
 
         void InitializePhysics()
@@ -325,16 +330,36 @@ namespace
 #endif
         }
 
+        // Runtime metadata for meshes already registered by the renderer. Bounds
+        // are shared by startup entities, selection, and physics fitting so every
+        // creation path agrees on the model's local-space size and pivot.
+        [[nodiscard]] static rag::renderer::Bounds BoundsForMesh(
+            rag::renderer::MeshHandle mesh)
+        {
+            rag::renderer::Bounds bounds{};
+            if (mesh.index == 1) // models/sphere.obj
+            {
+                bounds.extents = rag::math::Vec3{1.0f, 1.0f, 1.0f};
+            }
+            else if (mesh.index == 3) // models/Duck.glb
+            {
+                bounds.center = rag::math::Vec3{0.0f, 0.7f, 0.0f};
+                bounds.extents = rag::math::Vec3{0.7f, 0.6f, 0.7f};
+            }
+            return bounds;
+        }
+
+        [[nodiscard]] static bool MeshUsesSphereCollider(
+            rag::renderer::MeshHandle mesh)
+        {
+            return mesh.index == 1; // models/sphere.obj
+        }
+
         void BuildScene()
         {
             constexpr rag::u32 RingCubeCount = 8;
             constexpr rag::f32 RingRadius = 4.0f;
             constexpr rag::f32 CenterCubeScale = 1.5f;
-
-            // A unit cube spans +/-0.5. Keep this collider base unscaled; the
-            // transform scale is applied through PhysicsWorld before stepping.
-            constexpr rag::math::Vec3 CubeBaseHalfExtents{0.5f, 0.5f, 0.5f};
-            constexpr rag::f32 SphereRadius = 1.0f; // models/sphere.obj is a unit sphere.
 
             // Dynamic bodies start elevated so they visibly fall and settle on
             // the floor at startup. Tweak these to change the drop heights.
@@ -343,17 +368,16 @@ namespace
             constexpr rag::f32 CenterCubeStartHeight = 12.0f;
             constexpr rag::f32 SphereStartHeight = 9.0f;
 
-            // The static ground collider matches the visual ground plane: a unit
-            // cube mesh scaled to (40, 0.2, 40) centred at y=-0.6, giving a top
-            // surface at y=-0.5.
+            // The static ground is a unit cube mesh scaled to (40, 0.2, 40) centred
+            // at y=-0.6. Its collider uses the same unit half-extents as the cubes
+            // and inherits that scale through the transform, so the box spans
+            // (20, 0.1, 20) with a top surface at y=-0.5 and follows edits to scale.
             constexpr rag::math::Vec3 GroundCenter{0.0f, -0.6f, 0.0f};
             constexpr rag::math::Vec3 GroundScale{40.0f, 0.2f, 40.0f};
-            constexpr rag::math::Vec3 GroundHalfExtents{20.0f, 0.1f, 20.0f};
 
-            // Duck.glb's root node applies a 0.01 scale. Its geometry starts
-            // roughly 0.1 units above local Y=0, so this rests it on the floor.
-            // The duck is left static (not simulated) to keep things simple.
-            constexpr rag::f32 DuckGroundOffset = -0.6f;
+            // Duck.glb's bounds are offset upward from its pivot. BoundsForMesh
+            // supplies the same center/extents to rendering, selection and physics.
+            constexpr rag::f32 DuckDropHeight = 3.0f;
 
             // Renderer mesh registry convention: slot 0 = built-in cube,
             // slot 1 = OBJ sphere, slot 2 = tiled-UV ground, slot 3 = glTF duck.
@@ -376,10 +400,7 @@ namespace
                 NameEntity(entity, "Cube " + std::to_string(index));
                 scene_.AddTransform(entity).local_position = start_position;
                 scene_.AddRenderable(entity).mesh = CubeMeshHandle;
-                SpawnDynamicBox(
-                    entity,
-                    start_position,
-                    CubeBaseHalfExtents);
+                (void)SpawnDynamicBox(entity);
             }
 
             const rag::math::Vec3 center_start{0.0f, CenterCubeStartHeight, 0.0f};
@@ -390,10 +411,7 @@ namespace
             center_transform.local_scale =
                 rag::math::Vec3{CenterCubeScale, CenterCubeScale, CenterCubeScale};
             scene_.AddRenderable(center_cube).mesh = CubeMeshHandle;
-            SpawnDynamicBox(
-                center_cube,
-                center_start,
-                CubeBaseHalfExtents);
+            (void)SpawnDynamicBox(center_cube);
 
             const rag::scene::EntityId ground = scene_.CreateEntity();
             NameEntity(ground, "Ground");
@@ -401,7 +419,7 @@ namespace
             ground_transform.local_position = GroundCenter;
             ground_transform.local_scale = GroundScale;
             scene_.AddRenderable(ground).mesh = GroundMeshHandle;
-            SpawnStaticBox(GroundCenter, GroundHalfExtents);
+            (void)SpawnStaticBox(ground);
 
             // The OBJ sphere drops onto open floor off to the side of the ring so
             // its shadow stays clearly visible as it falls and lands.
@@ -411,18 +429,18 @@ namespace
             scene_.AddTransform(sphere).local_position = sphere_start;
             rag::scene::RenderableComponent& sphere_renderable = scene_.AddRenderable(sphere);
             sphere_renderable.mesh = SphereMeshHandle;
-            sphere_renderable.local_bounds.extents =
-                rag::math::Vec3{SphereRadius, SphereRadius, SphereRadius};
-            SpawnDynamicSphere(sphere, sphere_start, SphereRadius);
+            sphere_renderable.local_bounds = BoundsForMesh(SphereMeshHandle);
+            (void)SpawnDynamicSphere(sphere);
 
             const rag::scene::EntityId duck = scene_.CreateEntity();
             NameEntity(duck, "Duck");
             rag::scene::TransformComponent& duck_transform = scene_.AddTransform(duck);
             duck_transform.local_position =
-                rag::math::Vec3{-6.5f, DuckGroundOffset, 0.0f};
+                rag::math::Vec3{-6.5f, DuckDropHeight, 0.0f};
             rag::scene::RenderableComponent& duck_renderable = scene_.AddRenderable(duck);
             duck_renderable.mesh = DuckMeshHandle;
-            duck_renderable.local_bounds.extents = rag::math::Vec3{1.0f, 1.0f, 1.0f};
+            duck_renderable.local_bounds = BoundsForMesh(DuckMeshHandle);
+            (void)SpawnDynamicBox(duck);
 
             camera_entity_ = scene_.CreateEntity();
             NameEntity(camera_entity_, "Camera");
@@ -470,63 +488,177 @@ namespace
         }
 
 #if defined(RAG_ENABLE_PHYSICS)
-        void SpawnDynamicBox(
+        // Core registration: creates the Jolt body from a descriptor filled with
+        // the entity's current transform, then records it so the editor can later
+        // rescale, reset, reposition, or switch its mode. desc is kept as the
+        // collider source data (shape, base extents, offset) that survives a mode
+        // change, so None -> Dynamic rebuilds the correct collider at the right size.
+        [[nodiscard]] bool RegisterPhysicsBody(
             rag::scene::EntityId entity,
-            const rag::math::Vec3& position,
-            const rag::math::Vec3& half_extents)
+            rag::physics::BodyDesc desc)
         {
-            if (!physics_ready_)
+            if (!physics_ready_ || !scene_.IsAlive(entity))
             {
-                return;
+                return false;
             }
 
-            const rag::physics::BodyHandle body = physics_.CreateDynamicBox(position, half_extents);
-            if (!body.IsValid())
+            if (FindPhysicsBody(entity) != nullptr)
             {
-                return;
+                RAG_LOG_WARNING(
+                    "Physics: entity ",
+                    entity.ToU64(),
+                    " is already registered; duplicate body creation was skipped.");
+                return false;
             }
 
-            physics_bodies_.push_back(PhysicsBody{entity, body, position});
-            if (rag::scene::TransformComponent* transform = scene_.GetTransform(entity))
+            rag::math::Vec3 position = desc.position;
+            rag::math::Quat rotation = desc.rotation;
+            rag::math::Vec3 scale = desc.scale;
+            if (const rag::scene::TransformComponent* transform = scene_.GetTransform(entity))
             {
-                transform->use_quaternion_rotation = true;
+                position = transform->local_position;
+                scale = transform->local_scale;
+                rotation = transform->use_quaternion_rotation
+                    ? transform->local_rotation_quat
+                    : rag::math::QuatFromEulerXYZ(transform->local_rotation_radians);
             }
+            desc.position = position;
+            desc.rotation = rotation;
+            desc.scale = scale;
+
+            rag::physics::BodyHandle body{};
+            if (desc.mode != rag::physics::BodyMode::None)
+            {
+                body = physics_.CreateBody(desc);
+                if (!body.IsValid())
+                {
+                    RAG_LOG_ERROR(
+                        "Physics: failed to register body for entity ",
+                        entity.ToU64(),
+                        ".");
+                    return false;
+                }
+            }
+
+            physics_bodies_.push_back(
+                PhysicsBody{entity, body, position, rotation, scale, desc});
+
+            // Physics owns a dynamic body's orientation, so drive it by quaternion
+            // to avoid gimbal issues; static/none entities keep their editor Euler.
+            if (body.IsValid() && desc.mode == rag::physics::BodyMode::Dynamic)
+            {
+                if (rag::scene::TransformComponent* transform = scene_.GetTransform(entity))
+                {
+                    transform->use_quaternion_rotation = true;
+                }
+            }
+            return true;
         }
 
-        void SpawnDynamicSphere(
+        // Fits a primitive collider to the renderable's local bounds, then uses
+        // the same BodyDesc registration path for startup and runtime entities.
+        [[nodiscard]] bool RegisterRenderablePhysics(
             rag::scene::EntityId entity,
-            const rag::math::Vec3& position,
-            rag::f32 radius)
+            rag::physics::BodyMode mode,
+            rag::physics::ColliderShape shape)
         {
-            if (!physics_ready_)
+            const rag::scene::RenderableComponent* renderable =
+                scene_.GetRenderable(entity);
+            if (renderable == nullptr)
             {
-                return;
+                return false;
             }
 
-            const rag::physics::BodyHandle body = physics_.CreateDynamicSphere(position, radius);
-            if (!body.IsValid())
-            {
-                return;
-            }
+            constexpr rag::f32 MinimumExtent = 0.01f;
+            const rag::renderer::Bounds& bounds = renderable->local_bounds;
+            const rag::math::Vec3 extents{
+                std::max(std::abs(bounds.extents.x), MinimumExtent),
+                std::max(std::abs(bounds.extents.y), MinimumExtent),
+                std::max(std::abs(bounds.extents.z), MinimumExtent)};
 
-            physics_bodies_.push_back(PhysicsBody{entity, body, position});
-            if (rag::scene::TransformComponent* transform = scene_.GetTransform(entity))
+            rag::physics::BodyDesc desc;
+            desc.shape = shape;
+            desc.mode = mode;
+            desc.offset = bounds.center;
+            desc.gravity_enabled = true;
+            desc.continuous_collision = true;
+            if (shape == rag::physics::ColliderShape::Sphere)
             {
-                transform->use_quaternion_rotation = true;
+                desc.sphere_radius =
+                    std::max(extents.x, std::max(extents.y, extents.z));
             }
+            else
+            {
+                desc.box_half_extents = extents;
+            }
+            return RegisterPhysicsBody(entity, desc);
         }
 
-        void SpawnStaticBox(const rag::math::Vec3& position, const rag::math::Vec3& half_extents)
+        [[nodiscard]] bool SpawnDynamicBox(rag::scene::EntityId entity)
         {
-            if (physics_ready_)
-            {
-                (void)physics_.CreateStaticBox(position, half_extents);
-            }
+            return RegisterRenderablePhysics(
+                entity,
+                rag::physics::BodyMode::Dynamic,
+                rag::physics::ColliderShape::Box);
+        }
+
+        [[nodiscard]] bool SpawnDynamicSphere(rag::scene::EntityId entity)
+        {
+            return RegisterRenderablePhysics(
+                entity,
+                rag::physics::BodyMode::Dynamic,
+                rag::physics::ColliderShape::Sphere);
+        }
+
+        [[nodiscard]] bool SpawnStaticBox(rag::scene::EntityId entity)
+        {
+            return RegisterRenderablePhysics(
+                entity,
+                rag::physics::BodyMode::Static,
+                rag::physics::ColliderShape::Box);
+        }
+
+        [[nodiscard]] bool SpawnDynamicPhysicsForMesh(
+            rag::scene::EntityId entity,
+            rag::renderer::MeshHandle mesh)
+        {
+            return MeshUsesSphereCollider(mesh)
+                ? SpawnDynamicSphere(entity)
+                : SpawnDynamicBox(entity);
         }
 
         [[nodiscard]] std::size_t DynamicBodyCount() const
         {
-            return physics_bodies_.size();
+            std::size_t count = 0;
+            for (const PhysicsBody& physics_body : physics_bodies_)
+            {
+                if (physics_body.desc.mode == rag::physics::BodyMode::Dynamic)
+                {
+                    ++count;
+                }
+            }
+            return count;
+        }
+
+        // Scene destruction owns entity lifetime. Sweep physics records before
+        // each step so any runtime-destroyed entity immediately releases its Jolt
+        // body and cannot leave a dangling simulation record.
+        void RemoveDestroyedPhysicsBodies()
+        {
+            for (auto it = physics_bodies_.begin(); it != physics_bodies_.end();)
+            {
+                if (scene_.IsAlive(it->entity))
+                {
+                    ++it;
+                    continue;
+                }
+
+                if (it->body.IsValid())
+                {
+                    physics_.DestroyBody(it->body);
+                }
+                it = physics_bodies_.erase(it);
+            }
         }
 
         static bool PhysicsScalesDiffer(
@@ -540,13 +672,19 @@ namespace
                 std::abs(left.z - right.z) > Epsilon;
         }
 
-        // Detect transform scale edits from any source before simulation. Jolt
-        // rebuilds from each body's immutable base shape, and only when this
-        // comparison detects a real change.
-        void SynchronizeDynamicColliderScales()
+        // Detect transform scale edits from any source before simulation and push
+        // them onto the collider. Jolt rebuilds from each body's immutable base
+        // shape, and only when this comparison detects a real change. Applies to
+        // static and dynamic bodies; entities with no live body (None) are skipped.
+        void SynchronizeColliderScales()
         {
             for (PhysicsBody& physics_body : physics_bodies_)
             {
+                if (!physics_body.body.IsValid())
+                {
+                    continue;
+                }
+
                 const rag::scene::TransformComponent* transform =
                     scene_.GetTransform(physics_body.entity);
                 if (transform == nullptr ||
@@ -557,7 +695,7 @@ namespace
                     continue;
                 }
 
-                if (physics_.SetDynamicBodyScale(
+                if (physics_.SetBodyScale(
                         physics_body.body,
                         transform->local_scale))
                 {
@@ -573,13 +711,21 @@ namespace
                 return;
             }
 
-            SynchronizeDynamicColliderScales();
+            RemoveDestroyedPhysicsBodies();
+            SynchronizeColliderScales();
             physics_.Step(static_cast<rag::f32>(frame_time.delta_seconds));
 
-            // Write each simulated body's pose back onto its scene transform so
-            // the renderer draws every object where physics put it.
+            // Write each dynamic body's simulated pose back onto its scene transform
+            // so the renderer draws it where physics put it. Static bodies keep the
+            // pose the editor set, and None-mode entities have no body to read.
             for (const PhysicsBody& physics_body : physics_bodies_)
             {
+                if (physics_body.desc.mode != rag::physics::BodyMode::Dynamic ||
+                    !physics_body.body.IsValid())
+                {
+                    continue;
+                }
+
                 rag::scene::TransformComponent* transform = scene_.GetTransform(physics_body.entity);
                 if (transform == nullptr)
                 {
@@ -603,7 +749,8 @@ namespace
             }
         }
 
-        // Drops every dynamic body back to its spawn position so they fall again.
+        // Drops every dynamic body back to its spawn pose so they fall again. Static
+        // and None-mode entities are left where they are.
         void ResetPhysicsBodies()
         {
             if (!physics_ready_)
@@ -613,14 +760,22 @@ namespace
 
             for (const PhysicsBody& physics_body : physics_bodies_)
             {
-                physics_.ResetDynamicBody(physics_body.body, physics_body.start_position, rag::math::Quat{});
+                if (physics_body.desc.mode != rag::physics::BodyMode::Dynamic ||
+                    !physics_body.body.IsValid())
+                {
+                    continue;
+                }
+                physics_.SetBodyPose(
+                    physics_body.body,
+                    physics_body.start_position,
+                    physics_body.start_rotation);
             }
             RAG_LOG_INFO("Physics bodies reset to their start positions.");
         }
 
-        // Returns the dynamic body tracked for an entity, or nullptr if that entity
-        // is not physics-driven (the static ground, the duck, the camera, the light).
-        // Lets the inspector push transform edits into the simulation.
+        // Returns the physics record tracked for an entity (any mode, including a
+        // None entity whose body is currently absent), or nullptr for an entity the
+        // physics system does not manage (the camera, the light).
         [[nodiscard]] PhysicsBody* FindPhysicsBody(rag::scene::EntityId entity)
         {
             for (PhysicsBody& physics_body : physics_bodies_)
@@ -632,10 +787,74 @@ namespace
             }
             return nullptr;
         }
+
+        // Switches an entity between None/Static/Dynamic live. Destroys the old body
+        // and rebuilds from the preserved descriptor + current transform, so the
+        // collider keeps its shape, offset and scale across the change.
+        void SetEntityBodyMode(PhysicsBody& physics_body, rag::physics::BodyMode new_mode)
+        {
+            if (physics_body.desc.mode == new_mode)
+            {
+                return;
+            }
+
+            if (physics_body.body.IsValid())
+            {
+                physics_.DestroyBody(physics_body.body);
+                physics_body.body = {};
+            }
+
+            physics_body.desc.mode = new_mode;
+            if (new_mode == rag::physics::BodyMode::None)
+            {
+                return;
+            }
+
+            // Rebuild at the entity's current pose/scale so nothing jumps.
+            if (const rag::scene::TransformComponent* transform =
+                    scene_.GetTransform(physics_body.entity))
+            {
+                physics_body.desc.position = transform->local_position;
+                physics_body.desc.scale = transform->local_scale;
+                physics_body.desc.rotation = transform->use_quaternion_rotation
+                    ? transform->local_rotation_quat
+                    : rag::math::QuatFromEulerXYZ(transform->local_rotation_radians);
+            }
+
+            physics_body.body = physics_.CreateBody(physics_body.desc);
+            physics_body.synchronized_scale = physics_body.desc.scale;
+
+            if (physics_body.body.IsValid() &&
+                new_mode == rag::physics::BodyMode::Dynamic)
+            {
+                if (rag::scene::TransformComponent* transform =
+                        scene_.GetTransform(physics_body.entity))
+                {
+                    transform->use_quaternion_rotation = true;
+                }
+            }
+        }
+
+        // Toggles gravity on a dynamic body live (no rebuild needed).
+        void SetEntityGravityEnabled(PhysicsBody& physics_body, bool enabled)
+        {
+            physics_body.desc.gravity_enabled = enabled;
+            if (physics_body.body.IsValid() &&
+                physics_body.desc.mode == rag::physics::BodyMode::Dynamic)
+            {
+                physics_.SetBodyGravityEnabled(physics_body.body, enabled);
+            }
+        }
 #else
-        void SpawnDynamicBox(rag::scene::EntityId, const rag::math::Vec3&, const rag::math::Vec3&) {}
-        void SpawnDynamicSphere(rag::scene::EntityId, const rag::math::Vec3&, rag::f32) {}
-        void SpawnStaticBox(const rag::math::Vec3&, const rag::math::Vec3&) {}
+        [[nodiscard]] bool SpawnDynamicBox(rag::scene::EntityId) { return false; }
+        [[nodiscard]] bool SpawnDynamicSphere(rag::scene::EntityId) { return false; }
+        [[nodiscard]] bool SpawnStaticBox(rag::scene::EntityId) { return false; }
+        [[nodiscard]] bool SpawnDynamicPhysicsForMesh(
+            rag::scene::EntityId,
+            rag::renderer::MeshHandle)
+        {
+            return false;
+        }
         [[nodiscard]] std::size_t DynamicBodyCount() const { return 0; }
         void StepPhysics(const rag::core::FrameTime&) {}
 #endif
@@ -1096,12 +1315,10 @@ namespace
             }
         }
 
-        // Creates a new scene entity that reuses a mesh the renderer already
-        // registered at startup (no runtime GPU upload), places it in front of the
-        // camera so it is visible, names it, and selects it so the Inspector and gizmo
-        // target it immediately. The spawned entity has no physics body, so it stays
-        // where placed and the gizmo can move it -- a deliberately simple, safe "drop
-        // it into the world" action that touches no Vulkan state.
+        // Creates a complete runtime entity through the same render-bounds and
+        // physics registration path as startup objects. Every spawned model gets
+        // an independent Dynamic + gravity + CCD body and immediately appears in
+        // the Hierarchy/Inspector as a normal editor-managed object.
         void SpawnModel(const rag::editor::AssetEntry& entry)
         {
             if (!entry.spawn_mesh.has_value())
@@ -1109,31 +1326,49 @@ namespace
                 return;
             }
 
+            const rag::u32 spawn_index = ++spawn_counter_;
             const rag::scene::EntityId entity = scene_.CreateEntity();
-            NameEntity(entity, entry.name + " (spawn " + std::to_string(++spawn_counter_) + ")");
+            NameEntity(entity, entry.name + " (spawn " + std::to_string(spawn_index) + ")");
 
             rag::scene::TransformComponent& transform = scene_.AddTransform(entity);
-            transform.local_position = ComputeSpawnPosition();
+            transform.local_position = ComputeSpawnPosition(spawn_index);
 
             rag::scene::RenderableComponent& renderable = scene_.AddRenderable(entity);
             renderable.mesh = *entry.spawn_mesh;
-            renderable.local_bounds.extents = rag::math::Vec3{1.0f, 1.0f, 1.0f};
+            renderable.local_bounds = BoundsForMesh(*entry.spawn_mesh);
+
+#if defined(RAG_ENABLE_PHYSICS)
+            if (!SpawnDynamicPhysicsForMesh(entity, *entry.spawn_mesh))
+            {
+                scene_.DestroyEntity(entity);
+                RAG_LOG_ERROR(
+                    "Failed to spawn asset '",
+                    entry.name,
+                    "': physics body creation failed.");
+                return;
+            }
+#endif
 
             scene_.MarkTransformDirty(entity);
             editor_.Select(entity);
-            RAG_LOG_INFO("Spawned asset '", entry.name, "' as a new scene entity.");
+            RAG_LOG_INFO(
+                "Spawned asset '",
+                entry.name,
+                "' as Dynamic physics entity ",
+                entity.ToU64(),
+                " (gravity=on, CCD=on).");
         }
 
         // A point a few metres in front of the camera, so a spawned asset lands in
-        // view rather than at the busy origin. Falls back to a fixed spot when the
-        // camera transform is unavailable.
-        [[nodiscard]] rag::math::Vec3 ComputeSpawnPosition() const
+        // view rather than at the busy origin. Spawn height is clamped above the
+        // floor and consecutive objects are spread laterally to avoid exact overlap.
+        [[nodiscard]] rag::math::Vec3 ComputeSpawnPosition(rag::u32 spawn_index) const
         {
             const rag::scene::TransformComponent* camera_transform =
                 scene_.GetTransform(camera_entity_);
             if (camera_transform == nullptr)
             {
-                return rag::math::Vec3{0.0f, 2.0f, 0.0f};
+                return rag::math::Vec3{0.0f, 4.0f, 0.0f};
             }
 
             const rag::f32 cos_pitch = std::cos(camera_pitch_radians_);
@@ -1141,8 +1376,25 @@ namespace
                 -std::sin(camera_yaw_radians_) * cos_pitch,
                 std::sin(camera_pitch_radians_),
                 -std::cos(camera_yaw_radians_) * cos_pitch});
+            const rag::math::Vec3 right = rag::math::Normalize(rag::math::Vec3{
+                std::cos(camera_yaw_radians_),
+                0.0f,
+                -std::sin(camera_yaw_radians_)});
+
             constexpr rag::f32 spawn_distance = 6.0f;
-            return camera_transform->local_position + (forward * spawn_distance);
+            constexpr rag::f32 lane_spacing = 2.5f;
+            constexpr rag::f32 depth_spacing = 2.0f;
+            constexpr rag::i32 lane_offsets[] = {0, 1, -1, 2, -2};
+
+            const rag::u32 zero_based_index = spawn_index - 1;
+            const rag::u32 lane_index = zero_based_index % 5;
+            const rag::u32 depth_index = zero_based_index / 5;
+            rag::math::Vec3 position =
+                camera_transform->local_position +
+                (forward * (spawn_distance + depth_spacing * static_cast<rag::f32>(depth_index))) +
+                (right * (lane_spacing * static_cast<rag::f32>(lane_offsets[lane_index])));
+            position.y = std::max(position.y, 4.0f);
+            return position;
         }
 
         // The dockable Scene Hierarchy panel. Lists every live entity in the scene,
@@ -1309,11 +1561,10 @@ namespace
                     ImGui::TextDisabled("(%s)", CategoryFor(entity));
                     ImGui::Text("id: index %u, gen %u", entity.index, entity.generation);
 
-                    const bool physics_driven = IsPhysicsDriven(entity);
-                    if (physics_driven)
+                    if (IsPhysicsDriven(entity))
                     {
-                        // Read-only heads-up: this entity's pose is owned by Jolt, so
-                        // edits are teleported into the body and its velocities cleared.
+                        // Read-only heads-up: a dynamic body owns this entity's pose,
+                        // so edits are teleported into the body and velocities cleared.
                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.80f, 0.35f, 1.0f));
                         ImGui::TextWrapped(
                             "Physics-controlled: transform edits are applied to the "
@@ -1321,7 +1572,10 @@ namespace
                         ImGui::PopStyleColor();
                     }
 
-                    BuildInspectorTransform(entity, physics_driven);
+                    // Static and dynamic bodies both want transform edits pushed into
+                    // the collider; a None-mode entity is edited as a plain visual.
+                    BuildInspectorTransform(entity, HasActivePhysicsBody(entity));
+                    BuildInspectorPhysics(entity);
                     BuildInspectorLight(entity);
                     BuildInspectorCameraRenderable(entity);
                 }
@@ -1334,7 +1588,7 @@ namespace
         // stored radians. Any change marks the transform dirty (so Scene::Update
         // rebuilds the world matrix next frame) and, for a physics body, is pushed
         // into the simulation.
-        void BuildInspectorTransform(rag::scene::EntityId entity, bool physics_driven)
+        void BuildInspectorTransform(rag::scene::EntityId entity, bool push_into_body)
         {
             rag::scene::TransformComponent* transform = scene_.GetTransform(entity);
             if (transform == nullptr)
@@ -1366,11 +1620,12 @@ namespace
                 return;
             }
 
-            if (physics_driven)
+            if (push_into_body)
             {
-                // The body overwrites position + rotation every Step(), so editing the
-                // component alone would be undone next frame. Push the new pose into
-                // the body instead (teleport + clear velocity). Scale changes are
+                // A dynamic body overwrites position + rotation every Step(), so
+                // editing the component alone would be undone next frame; a static
+                // body must have its collider moved to match. Push the new pose into
+                // the body (teleport + clear velocity for dynamic). Scale changes are
                 // detected and applied to the collider before the next physics step.
                 if (rotation_changed)
                 {
@@ -1391,6 +1646,45 @@ namespace
             }
 
             scene_.MarkTransformDirty(entity);
+        }
+
+        // Per-object physics controls: body type (None/Static/Dynamic) and, for a
+        // dynamic body, a gravity toggle. Changes reconfigure the Jolt body live
+        // (create/destroy on a mode change, gravity factor on the toggle). Only
+        // entities the physics system manages show these controls.
+        void BuildInspectorPhysics(rag::scene::EntityId entity)
+        {
+#if defined(RAG_ENABLE_PHYSICS)
+            PhysicsBody* physics_body = FindPhysicsBody(entity);
+            if (physics_body == nullptr)
+            {
+                return;
+            }
+
+            ImGui::SeparatorText("Physics");
+
+            int mode = static_cast<int>(physics_body->desc.mode);
+            const char* const mode_labels[] = {"None", "Static", "Dynamic"};
+            if (ImGui::Combo("Body Type", &mode, mode_labels, 3))
+            {
+                SetEntityBodyMode(*physics_body, static_cast<rag::physics::BodyMode>(mode));
+            }
+
+            if (physics_body->desc.mode == rag::physics::BodyMode::Dynamic)
+            {
+                bool gravity = physics_body->desc.gravity_enabled;
+                if (ImGui::Checkbox("Gravity", &gravity))
+                {
+                    SetEntityGravityEnabled(*physics_body, gravity);
+                }
+            }
+            else if (physics_body->desc.mode == rag::physics::BodyMode::None)
+            {
+                ImGui::TextDisabled("Not simulated (visual only).");
+            }
+#else
+            (void)entity;
+#endif
         }
 
         // Editable light color/intensity (the light fields worth tweaking here).
@@ -1444,7 +1738,9 @@ namespace
             }
         }
 
-        // True when a dynamic physics body drives this entity's transform.
+        // True when a dynamic physics body drives this entity's transform (its pose
+        // is owned by Jolt and rewritten every Step()). Static/None bodies are not
+        // "driven" even though they are managed by the physics system.
         [[nodiscard]] bool IsPhysicsDriven(rag::scene::EntityId entity) const
         {
 #if defined(RAG_ENABLE_PHYSICS)
@@ -1452,7 +1748,8 @@ namespace
             {
                 if (physics_body.entity == entity)
                 {
-                    return true;
+                    return physics_body.body.IsValid() &&
+                        physics_body.desc.mode == rag::physics::BodyMode::Dynamic;
                 }
             }
 #endif
@@ -1460,9 +1757,26 @@ namespace
             return false;
         }
 
-        // Teleports a physics-driven entity's body to a pose and clears its velocity
-        // so an inspector edit sticks. A no-op for non-physics entities (and when the
-        // physics module is compiled out).
+        // True when the entity has a live collider (Static or Dynamic) that transform
+        // edits should be pushed into so the collider tracks gizmo/Inspector moves.
+        [[nodiscard]] bool HasActivePhysicsBody(rag::scene::EntityId entity) const
+        {
+#if defined(RAG_ENABLE_PHYSICS)
+            for (const PhysicsBody& physics_body : physics_bodies_)
+            {
+                if (physics_body.entity == entity)
+                {
+                    return physics_body.body.IsValid();
+                }
+            }
+#endif
+            (void)entity;
+            return false;
+        }
+
+        // Teleports a body to a pose so an editor edit sticks: a dynamic body also
+        // has its velocity cleared; a static body just has its collider moved. A
+        // no-op for entities with no active body (None / non-physics / module off).
         void PushTransformToPhysicsBody(
             rag::scene::EntityId entity,
             const rag::math::Vec3& position,
@@ -1471,7 +1785,10 @@ namespace
 #if defined(RAG_ENABLE_PHYSICS)
             if (PhysicsBody* physics_body = FindPhysicsBody(entity))
             {
-                physics_.ResetDynamicBody(physics_body->body, position, rotation);
+                if (physics_body->body.IsValid())
+                {
+                    physics_.SetBodyPose(physics_body->body, position, rotation);
+                }
             }
 #else
             (void)entity;
@@ -1841,12 +2158,13 @@ namespace
                 transform.local_rotation_radians = decomposed.rotation_radians;
             }
 
-            if (IsPhysicsDriven(entity))
+            if (HasActivePhysicsBody(entity))
             {
-                // Jolt overwrites position + rotation every Step(), so push the pose
-                // in (teleport + clear velocity). On a rotate drag recompute the quat
-                // from the edited Euler; otherwise reuse the live physics quat that
-                // StepPhysics keeps current, matching the Inspector's behavior.
+                // A dynamic body overwrites position + rotation every Step() and a
+                // static body must have its collider moved, so push the pose in
+                // (teleport + clear velocity for dynamic). On a rotate drag recompute
+                // the quat from the edited Euler; otherwise reuse the live physics
+                // quat that StepPhysics keeps current, matching the Inspector.
                 // Collider scale is synchronized before the next simulation step.
                 if (rotation_changed)
                 {

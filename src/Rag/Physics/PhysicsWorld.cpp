@@ -16,6 +16,7 @@
 #include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
+#include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
@@ -154,29 +155,52 @@ namespace rag::physics
         }
 #endif
 
-        // Adds a body to the simulation and records its id for later cleanup.
-        JPH::BodyID AddShapeBody(
-            JPH::BodyInterface& body_interface,
-            std::vector<JPH::BodyID>& tracked_bodies,
-            const JPH::Shape* shape,
-            const math::Vec3& position,
-            JPH::EMotionType motion_type,
-            JPH::ObjectLayer layer,
-            JPH::EActivation activation)
+        // Builds the unscaled base collider for a descriptor: a box or sphere,
+        // optionally wrapped in a RotatedTranslatedShape so the collider sits at
+        // BodyDesc::offset from the entity origin (for off-centre-pivot meshes).
+        // The transform scale is applied later so this base stays reusable.
+        JPH::ShapeSettings::ShapeResult BuildBaseShape(const BodyDesc& desc)
         {
-            JPH::BodyCreationSettings settings(
-                shape,
-                JPH::RVec3(position.x, position.y, position.z),
-                JPH::Quat::sIdentity(),
-                motion_type,
-                layer);
-
-            const JPH::BodyID id = body_interface.CreateAndAddBody(settings, activation);
-            if (!id.IsInvalid())
+            JPH::ShapeSettings::ShapeResult inner;
+            if (desc.shape == ColliderShape::Sphere)
             {
-                tracked_bodies.push_back(id);
+                JPH::SphereShapeSettings sphere(desc.sphere_radius);
+                sphere.SetEmbedded();
+                inner = sphere.Create();
             }
-            return id;
+            else
+            {
+                JPH::BoxShapeSettings box(JPH::Vec3(
+                    desc.box_half_extents.x,
+                    desc.box_half_extents.y,
+                    desc.box_half_extents.z));
+                box.SetEmbedded();
+                inner = box.Create();
+            }
+
+            if (inner.HasError())
+            {
+                return inner;
+            }
+
+            const bool has_offset =
+                desc.offset.x != 0.0f || desc.offset.y != 0.0f || desc.offset.z != 0.0f;
+            if (!has_offset)
+            {
+                return inner;
+            }
+
+            JPH::RotatedTranslatedShapeSettings offset_shape(
+                JPH::Vec3(desc.offset.x, desc.offset.y, desc.offset.z),
+                JPH::Quat::sIdentity(),
+                inner.Get());
+            offset_shape.SetEmbedded();
+            return offset_shape.Create();
+        }
+
+        JPH::EMotionType ToJoltMotionType(BodyMode mode)
+        {
+            return mode == BodyMode::Static ? JPH::EMotionType::Static : JPH::EMotionType::Dynamic;
         }
 
         constexpr f32 MinimumColliderScale = 0.01f;
@@ -206,21 +230,35 @@ namespace rag::physics
                 std::abs(left.y - right.y) <= ColliderScaleEpsilon &&
                 std::abs(left.z - right.z) <= ColliderScaleEpsilon;
         }
+
+        // The scale actually applied to a collider: sanitized against zero/NaN,
+        // and collapsed to the largest axis for spheres (Jolt only allows uniform
+        // sphere scale, so the collider conservatively encloses the visual).
+        math::Vec3 EffectiveScale(ColliderShape shape, const math::Vec3& raw_scale)
+        {
+            math::Vec3 scale = SanitizeScale(raw_scale);
+            if (shape == ColliderShape::Sphere)
+            {
+                const f32 uniform = std::max(scale.x, std::max(scale.y, scale.z));
+                scale = math::Vec3{uniform, uniform, uniform};
+            }
+            return scale;
+        }
     }
 
     struct PhysicsWorld::Impl
     {
-        enum class DynamicShapeType
+        // One record per live body (static and dynamic). base_shape is the
+        // immutable unscaled collider; every scale replacement derives from it,
+        // never from the current (already-scaled) shape, so repeated edits cannot
+        // drift. motion_type gates velocity/activation handling so operations are
+        // safe on static bodies.
+        struct BodyRecord
         {
-            Box,
-            Sphere
-        };
-
-        struct DynamicShapeRecord
-        {
-            JPH::BodyID body_id;
+            JPH::BodyID id;
             JPH::RefConst<JPH::Shape> base_shape;
-            DynamicShapeType type = DynamicShapeType::Box;
+            ColliderShape shape_type = ColliderShape::Box;
+            JPH::EMotionType motion_type = JPH::EMotionType::Dynamic;
             math::Vec3 applied_scale{1.0f, 1.0f, 1.0f};
         };
 
@@ -233,8 +271,19 @@ namespace rag::physics
         ObjectVsBroadPhaseFilterImpl object_vs_broad_phase_filter;
         ObjectLayerPairFilterImpl object_layer_pair_filter;
         JPH::PhysicsSystem physics_system;
-        std::vector<JPH::BodyID> bodies;
-        std::vector<DynamicShapeRecord> dynamic_shapes;
+        std::vector<BodyRecord> bodies;
+
+        BodyRecord* FindRecord(const JPH::BodyID& id)
+        {
+            for (BodyRecord& record : bodies)
+            {
+                if (record.id == id)
+                {
+                    return &record;
+                }
+            }
+            return nullptr;
+        }
     };
 
     PhysicsWorld::PhysicsWorld() = default;
@@ -324,16 +373,15 @@ namespace rag::physics
         if (impl_->initialized)
         {
             JPH::BodyInterface& body_interface = impl_->physics_system.GetBodyInterface();
-            for (const JPH::BodyID id : impl_->bodies)
+            for (const Impl::BodyRecord& record : impl_->bodies)
             {
-                if (!id.IsInvalid())
+                if (!record.id.IsInvalid())
                 {
-                    body_interface.RemoveBody(id);
-                    body_interface.DestroyBody(id);
+                    body_interface.RemoveBody(record.id);
+                    body_interface.DestroyBody(record.id);
                 }
             }
             impl_->bodies.clear();
-            impl_->dynamic_shapes.clear();
         }
 
         impl_->job_system.reset();
@@ -354,123 +402,129 @@ namespace rag::physics
         return impl_ && impl_->initialized;
     }
 
-    BodyHandle PhysicsWorld::CreateStaticBox(const math::Vec3& position, const math::Vec3& half_extents)
+    BodyHandle PhysicsWorld::CreateBody(const BodyDesc& desc)
     {
-        if (!IsInitialized())
+        if (!IsInitialized() || desc.mode == BodyMode::None)
         {
             return {};
         }
 
-        JPH::BoxShapeSettings shape_settings(JPH::Vec3(half_extents.x, half_extents.y, half_extents.z));
-        shape_settings.SetEmbedded();
-        const JPH::ShapeSettings::ShapeResult shape_result = shape_settings.Create();
-        if (shape_result.HasError())
+        const JPH::ShapeSettings::ShapeResult base_result = BuildBaseShape(desc);
+        if (base_result.HasError())
         {
-            RAG_LOG_ERROR("Physics: static box shape creation failed: ", shape_result.GetError().c_str());
+            RAG_LOG_ERROR("Physics: collider shape creation failed: ", base_result.GetError().c_str());
             return {};
         }
 
-        // shape_result owns the shape reference for the rest of this scope.
-        const JPH::Shape* shape = shape_result.Get();
-        const JPH::BodyID id = AddShapeBody(
-            impl_->physics_system.GetBodyInterface(),
-            impl_->bodies,
-            shape,
-            position,
-            JPH::EMotionType::Static,
-            Layers::NON_MOVING,
-            JPH::EActivation::DontActivate);
+        // base_shape is the immutable unscaled collider kept for later rescales;
+        // the transform scale is baked into the shape handed to the body so it
+        // spawns correctly sized without waiting for a scale-sync pass.
+        const JPH::RefConst<JPH::Shape> base_shape = base_result.Get();
+        const math::Vec3 applied_scale = EffectiveScale(desc.shape, desc.scale);
+
+        JPH::RefConst<JPH::Shape> body_shape = base_shape;
+        if (!ScalesMatch(applied_scale, math::Vec3{1.0f, 1.0f, 1.0f}))
+        {
+            const JPH::Shape::ShapeResult scaled = base_shape->ScaleShape(
+                JPH::Vec3(applied_scale.x, applied_scale.y, applied_scale.z));
+            if (scaled.HasError())
+            {
+                RAG_LOG_ERROR("Physics: initial collider scale failed: ", scaled.GetError().c_str());
+                return {};
+            }
+            body_shape = scaled.Get();
+        }
+
+        const JPH::EMotionType motion_type = ToJoltMotionType(desc.mode);
+        const bool is_dynamic = motion_type == JPH::EMotionType::Dynamic;
+
+        JPH::BodyCreationSettings settings(
+            body_shape.GetPtr(),
+            JPH::RVec3(desc.position.x, desc.position.y, desc.position.z),
+            JPH::Quat(desc.rotation.x, desc.rotation.y, desc.rotation.z, desc.rotation.w),
+            motion_type,
+            is_dynamic ? Layers::MOVING : Layers::NON_MOVING);
+
+        if (is_dynamic)
+        {
+            // CCD (linear cast) stops a fast prop from tunnelling through a thin
+            // or resting body; gravity factor 0 keeps a dynamic body in place
+            // while still colliding and reacting to pushes.
+            settings.mMotionQuality = desc.continuous_collision
+                ? JPH::EMotionQuality::LinearCast
+                : JPH::EMotionQuality::Discrete;
+            settings.mGravityFactor = desc.gravity_enabled ? 1.0f : 0.0f;
+        }
+
+        JPH::BodyInterface& body_interface = impl_->physics_system.GetBodyInterface();
+        const JPH::BodyID id = body_interface.CreateAndAddBody(
+            settings,
+            is_dynamic ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
         if (id.IsInvalid())
         {
-            RAG_LOG_ERROR("Physics: failed to create static box body (body limit reached?).");
+            RAG_LOG_ERROR("Physics: failed to create body (body limit reached?).");
             return {};
         }
 
+        impl_->bodies.push_back(Impl::BodyRecord{
+            id,
+            base_shape,
+            desc.shape,
+            motion_type,
+            applied_scale});
+
         return BodyHandle{id.GetIndexAndSequenceNumber()};
+    }
+
+    void PhysicsWorld::DestroyBody(BodyHandle handle)
+    {
+        if (!IsInitialized() || !handle.IsValid())
+        {
+            return;
+        }
+
+        const JPH::BodyID id(handle.id);
+        for (auto it = impl_->bodies.begin(); it != impl_->bodies.end(); ++it)
+        {
+            if (it->id == id)
+            {
+                JPH::BodyInterface& body_interface = impl_->physics_system.GetBodyInterface();
+                body_interface.RemoveBody(id);
+                body_interface.DestroyBody(id);
+                impl_->bodies.erase(it);
+                return;
+            }
+        }
+    }
+
+    BodyHandle PhysicsWorld::CreateStaticBox(const math::Vec3& position, const math::Vec3& half_extents)
+    {
+        BodyDesc desc;
+        desc.shape = ColliderShape::Box;
+        desc.box_half_extents = half_extents;
+        desc.position = position;
+        desc.mode = BodyMode::Static;
+        return CreateBody(desc);
     }
 
     BodyHandle PhysicsWorld::CreateDynamicBox(const math::Vec3& position, const math::Vec3& half_extents)
     {
-        if (!IsInitialized())
-        {
-            return {};
-        }
-
-        JPH::BoxShapeSettings shape_settings(JPH::Vec3(half_extents.x, half_extents.y, half_extents.z));
-        shape_settings.SetEmbedded();
-        const JPH::ShapeSettings::ShapeResult shape_result = shape_settings.Create();
-        if (shape_result.HasError())
-        {
-            RAG_LOG_ERROR("Physics: dynamic box shape creation failed: ", shape_result.GetError().c_str());
-            return {};
-        }
-
-        // shape_result owns the shape reference for the rest of this scope.
-        const JPH::Shape* shape = shape_result.Get();
-        const JPH::BodyID id = AddShapeBody(
-            impl_->physics_system.GetBodyInterface(),
-            impl_->bodies,
-            shape,
-            position,
-            JPH::EMotionType::Dynamic,
-            Layers::MOVING,
-            JPH::EActivation::Activate);
-        if (id.IsInvalid())
-        {
-            RAG_LOG_ERROR("Physics: failed to create dynamic box body (body limit reached?).");
-            return {};
-        }
-
-        // Hold an immutable reference to the unscaled shape. Every later scale
-        // replacement is derived from this shape, never from the current one.
-        impl_->dynamic_shapes.push_back(Impl::DynamicShapeRecord{
-            id,
-            shape,
-            Impl::DynamicShapeType::Box,
-            math::Vec3{1.0f, 1.0f, 1.0f}});
-
-        return BodyHandle{id.GetIndexAndSequenceNumber()};
+        BodyDesc desc;
+        desc.shape = ColliderShape::Box;
+        desc.box_half_extents = half_extents;
+        desc.position = position;
+        desc.mode = BodyMode::Dynamic;
+        return CreateBody(desc);
     }
 
     BodyHandle PhysicsWorld::CreateDynamicSphere(const math::Vec3& position, f32 radius)
     {
-        if (!IsInitialized())
-        {
-            return {};
-        }
-
-        JPH::SphereShapeSettings shape_settings(radius);
-        shape_settings.SetEmbedded();
-        const JPH::ShapeSettings::ShapeResult shape_result = shape_settings.Create();
-        if (shape_result.HasError())
-        {
-            RAG_LOG_ERROR("Physics: dynamic sphere shape creation failed: ", shape_result.GetError().c_str());
-            return {};
-        }
-
-        // shape_result owns the shape reference for the rest of this scope.
-        const JPH::Shape* shape = shape_result.Get();
-        const JPH::BodyID id = AddShapeBody(
-            impl_->physics_system.GetBodyInterface(),
-            impl_->bodies,
-            shape,
-            position,
-            JPH::EMotionType::Dynamic,
-            Layers::MOVING,
-            JPH::EActivation::Activate);
-        if (id.IsInvalid())
-        {
-            RAG_LOG_ERROR("Physics: failed to create dynamic sphere body (body limit reached?).");
-            return {};
-        }
-
-        impl_->dynamic_shapes.push_back(Impl::DynamicShapeRecord{
-            id,
-            shape,
-            Impl::DynamicShapeType::Sphere,
-            math::Vec3{1.0f, 1.0f, 1.0f}});
-
-        return BodyHandle{id.GetIndexAndSequenceNumber()};
+        BodyDesc desc;
+        desc.shape = ColliderShape::Sphere;
+        desc.sphere_radius = radius;
+        desc.position = position;
+        desc.mode = BodyMode::Dynamic;
+        return CreateBody(desc);
     }
 
     void PhysicsWorld::Step(f32 delta_seconds)
@@ -538,7 +592,7 @@ namespace rag::physics
         return state;
     }
 
-    bool PhysicsWorld::SetDynamicBodyScale(BodyHandle handle, const math::Vec3& scale)
+    bool PhysicsWorld::SetBodyScale(BodyHandle handle, const math::Vec3& scale)
     {
         if (!IsInitialized() || !handle.IsValid())
         {
@@ -546,31 +600,13 @@ namespace rag::physics
         }
 
         const JPH::BodyID id(handle.id);
-        Impl::DynamicShapeRecord* record = nullptr;
-        for (Impl::DynamicShapeRecord& candidate : impl_->dynamic_shapes)
-        {
-            if (candidate.body_id == id)
-            {
-                record = &candidate;
-                break;
-            }
-        }
-
+        Impl::BodyRecord* record = impl_->FindRecord(id);
         if (record == nullptr)
         {
             return false;
         }
 
-        math::Vec3 applied_scale = SanitizeScale(scale);
-        if (record->type == Impl::DynamicShapeType::Sphere)
-        {
-            // Jolt spheres require uniform scale. The largest visual axis keeps
-            // the collider from becoming smaller than the rendered ellipsoid.
-            const f32 uniform_scale =
-                std::max(applied_scale.x, std::max(applied_scale.y, applied_scale.z));
-            applied_scale = math::Vec3{uniform_scale, uniform_scale, uniform_scale};
-        }
-
+        const math::Vec3 applied_scale = EffectiveScale(record->shape_type, scale);
         if (ScalesMatch(record->applied_scale, applied_scale))
         {
             return true;
@@ -581,24 +617,49 @@ namespace rag::physics
         if (scaled_shape.HasError())
         {
             RAG_LOG_ERROR(
-                "Physics: failed to scale dynamic collider: ",
+                "Physics: failed to scale collider: ",
                 scaled_shape.GetError().c_str());
             return false;
         }
 
+        const bool is_dynamic = record->motion_type == JPH::EMotionType::Dynamic;
         JPH::BodyInterface& body_interface = impl_->physics_system.GetBodyInterface();
         body_interface.SetShape(
             id,
             scaled_shape.Get(),
-            true,
-            JPH::EActivation::Activate);
-        body_interface.SetLinearAndAngularVelocity(
-            id,
-            JPH::Vec3::sZero(),
-            JPH::Vec3::sZero());
-        body_interface.ActivateBody(id);
+            is_dynamic, // only dynamic bodies have mass properties to recompute
+            is_dynamic ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+        if (is_dynamic)
+        {
+            // Clear velocity so growing the collider into a neighbour does not
+            // fling the body; static bodies have no velocity to clear.
+            body_interface.SetLinearAndAngularVelocity(
+                id,
+                JPH::Vec3::sZero(),
+                JPH::Vec3::sZero());
+            body_interface.ActivateBody(id);
+        }
         record->applied_scale = applied_scale;
         return true;
+    }
+
+    void PhysicsWorld::SetBodyGravityEnabled(BodyHandle handle, bool enabled)
+    {
+        if (!IsInitialized() || !handle.IsValid())
+        {
+            return;
+        }
+
+        const JPH::BodyID id(handle.id);
+        const Impl::BodyRecord* record = impl_->FindRecord(id);
+        if (record == nullptr || record->motion_type != JPH::EMotionType::Dynamic)
+        {
+            return;
+        }
+
+        JPH::BodyInterface& body_interface = impl_->physics_system.GetBodyInterface();
+        body_interface.SetGravityFactor(id, enabled ? 1.0f : 0.0f);
+        body_interface.ActivateBody(id);
     }
 
     void PhysicsWorld::SetGravity(const math::Vec3& gravity)
@@ -612,7 +673,7 @@ namespace rag::physics
         impl_->physics_system.SetGravity(JPH::Vec3(gravity.x, gravity.y, gravity.z));
     }
 
-    void PhysicsWorld::ResetDynamicBody(
+    void PhysicsWorld::SetBodyPose(
         BodyHandle handle,
         const math::Vec3& position,
         const math::Quat& rotation)
@@ -623,13 +684,23 @@ namespace rag::physics
         }
 
         const JPH::BodyID id(handle.id);
+        const Impl::BodyRecord* record = impl_->FindRecord(id);
+        if (record == nullptr)
+        {
+            return;
+        }
+
+        const bool is_dynamic = record->motion_type == JPH::EMotionType::Dynamic;
         JPH::BodyInterface& body_interface = impl_->physics_system.GetBodyInterface();
         body_interface.SetPositionAndRotation(
             id,
             JPH::RVec3(position.x, position.y, position.z),
             JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w),
-            JPH::EActivation::Activate);
-        body_interface.SetLinearAndAngularVelocity(id, JPH::Vec3::sZero(), JPH::Vec3::sZero());
-        body_interface.ActivateBody(id);
+            is_dynamic ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
+        if (is_dynamic)
+        {
+            body_interface.SetLinearAndAngularVelocity(id, JPH::Vec3::sZero(), JPH::Vec3::sZero());
+            body_interface.ActivateBody(id);
+        }
     }
 }

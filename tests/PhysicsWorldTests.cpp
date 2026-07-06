@@ -63,10 +63,10 @@ int main()
 
     passed =
         Expect(
-            world.SetDynamicBodyScale(box, {2.0f, 3.0f, 2.0f}),
+            world.SetBodyScale(box, {2.0f, 3.0f, 2.0f}),
             "Box scale replacement should succeed.") &&
         Expect(
-            world.SetDynamicBodyScale(sphere, {1.0f, 2.0f, 3.0f}),
+            world.SetBodyScale(sphere, {1.0f, 2.0f, 3.0f}),
             "Sphere scale replacement should succeed.") &&
         passed;
 
@@ -88,10 +88,10 @@ int main()
     // compounded from the current collider, this would rest far above y=1.
     passed =
         Expect(
-            world.SetDynamicBodyScale(box, {2.0f, 2.0f, 2.0f}),
+            world.SetBodyScale(box, {2.0f, 2.0f, 2.0f}),
             "Second box scale replacement should succeed.") &&
         passed;
-    world.ResetDynamicBody(box, {-2.0f, 6.0f, 0.0f}, {});
+    world.SetBodyPose(box, {-2.0f, 6.0f, 0.0f}, {});
     Simulate(world, 360);
     passed =
         ExpectNear(
@@ -99,6 +99,81 @@ int main()
             1.0f,
             0.08f,
             "Repeated edits must derive collider size from the immutable base shape.") &&
+        passed;
+
+    // A static body created through the full descriptor must never fall, even
+    // when spawned high in the air, and must sit exactly where it was placed.
+    rag::physics::BodyDesc static_desc;
+    static_desc.shape = rag::physics::ColliderShape::Box;
+    static_desc.box_half_extents = {0.5f, 0.5f, 0.5f};
+    static_desc.position = {5.0f, 5.0f, 0.0f};
+    static_desc.mode = rag::physics::BodyMode::Static;
+    const rag::physics::BodyHandle static_box = world.CreateBody(static_desc);
+
+    // A dynamic body with gravity disabled should also hold its height (it stays
+    // put but can still collide / be pushed).
+    rag::physics::BodyDesc floater_desc;
+    floater_desc.shape = rag::physics::ColliderShape::Box;
+    floater_desc.box_half_extents = {0.5f, 0.5f, 0.5f};
+    floater_desc.position = {8.0f, 5.0f, 0.0f};
+    floater_desc.mode = rag::physics::BodyMode::Dynamic;
+    floater_desc.gravity_enabled = false;
+    const rag::physics::BodyHandle floater = world.CreateBody(floater_desc);
+
+    passed =
+        Expect(static_box.IsValid(), "Static descriptor body should be valid.") &&
+        Expect(floater.IsValid(), "Gravity-disabled body should be valid.") &&
+        passed;
+
+    Simulate(world, 180);
+    passed =
+        ExpectNear(
+            world.GetBodyState(static_box).position.y,
+            5.0f,
+            0.001f,
+            "A static body must not move under gravity.") &&
+        ExpectNear(
+            world.GetBodyState(floater).position.y,
+            5.0f,
+            0.05f,
+            "A dynamic body with gravity disabled must hold its height.") &&
+        passed;
+
+    // Re-enabling gravity must let the floater fall; destroying a body must make
+    // it untracked (both exercise the live-reconfiguration paths the editor uses).
+    world.SetBodyGravityEnabled(floater, true);
+    Simulate(world, 180);
+    passed =
+        Expect(
+            world.GetBodyState(floater).position.y < 4.0f,
+            "Enabling gravity must let a dynamic body fall.") &&
+        passed;
+
+    world.DestroyBody(static_box);
+    passed =
+        Expect(
+            !world.SetBodyScale(static_box, {2.0f, 2.0f, 2.0f}),
+            "Scaling a destroyed body must fail (record removed).") &&
+        passed;
+
+    // An offset box collider (used for off-centre-pivot meshes like the duck) must
+    // rest on its offset face, not its pivot: half-extents 0.5 pushed up by 1.0 put
+    // the collider bottom 0.5 above the pivot, so a drop rests the pivot at y=-0.5.
+    rag::physics::BodyDesc offset_desc;
+    offset_desc.shape = rag::physics::ColliderShape::Box;
+    offset_desc.box_half_extents = {0.5f, 0.5f, 0.5f};
+    offset_desc.offset = {0.0f, 1.0f, 0.0f};
+    offset_desc.position = {-5.0f, 5.0f, 0.0f};
+    offset_desc.mode = rag::physics::BodyMode::Dynamic;
+    const rag::physics::BodyHandle offset_box = world.CreateBody(offset_desc);
+    passed = Expect(offset_box.IsValid(), "Offset box body should be valid.") && passed;
+    Simulate(world, 360);
+    passed =
+        ExpectNear(
+            world.GetBodyState(offset_box).position.y,
+            -0.5f,
+            0.08f,
+            "An offset box must rest on its offset collider face, not its pivot.") &&
         passed;
 
     world.Shutdown();

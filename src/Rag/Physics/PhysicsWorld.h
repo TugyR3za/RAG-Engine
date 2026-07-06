@@ -45,10 +45,19 @@ namespace rag::physics
 
         [[nodiscard]] bool IsInitialized() const;
 
-        // Static (immovable) box collider, e.g. the ground plane.
-        BodyHandle CreateStaticBox(const math::Vec3& position, const math::Vec3& half_extents);
+        // Creates a body from a full descriptor (collider primitive + offset +
+        // pose + scale + motion type + gravity + CCD). This is the general entry
+        // point used by the editor to (re)build a body when its mode changes.
+        // Returns an invalid handle for BodyDesc::mode == None.
+        BodyHandle CreateBody(const BodyDesc& desc);
 
-        // Dynamic rigid bodies that fall under gravity and collide.
+        // Removes a body from the simulation and frees it. Safe on an invalid
+        // handle. Used when an entity switches to BodyMode::None (or is rebuilt).
+        void DestroyBody(BodyHandle handle);
+
+        // Convenience wrappers over CreateBody for the common primitives. Static
+        // boxes never move; dynamic boxes/spheres fall under gravity with CCD on.
+        BodyHandle CreateStaticBox(const math::Vec3& position, const math::Vec3& half_extents);
         BodyHandle CreateDynamicBox(const math::Vec3& position, const math::Vec3& half_extents);
         BodyHandle CreateDynamicSphere(const math::Vec3& position, f32 radius);
 
@@ -59,19 +68,27 @@ namespace rag::physics
         // Reads a body's current world transform back out of the simulation.
         [[nodiscard]] BodyState GetBodyState(BodyHandle handle) const;
 
-        // Replaces a dynamic body's collider with a shape derived from its
-        // immutable creation-time base shape. Box scale is per-axis. Sphere
-        // scale uses the largest axis uniformly so the collider conservatively
-        // encloses a non-uniformly scaled visual sphere. Returns false for an
-        // invalid/non-dynamic handle or if Jolt cannot create the scaled shape.
-        [[nodiscard]] bool SetDynamicBodyScale(BodyHandle handle, const math::Vec3& scale);
+        // Replaces a body's collider with a shape derived from its immutable
+        // creation-time base shape. Box scale is per-axis. Sphere scale uses the
+        // largest axis uniformly so the collider conservatively encloses a
+        // non-uniformly scaled visual sphere. For a dynamic body it also clears
+        // velocity so a resize does not fling the body; for a static body it
+        // simply swaps the shape. Returns false for an invalid handle or if Jolt
+        // cannot create the scaled shape.
+        [[nodiscard]] bool SetBodyScale(BodyHandle handle, const math::Vec3& scale);
+
+        // Enables/disables gravity on a dynamic body live (gravity factor 1/0). A
+        // dynamic body with gravity disabled stays put but still collides and can
+        // be pushed. No-op for a static/invalid body.
+        void SetBodyGravityEnabled(BodyHandle handle, bool enabled);
 
         // Updates world gravity live (used by the editor's gravity slider).
         void SetGravity(const math::Vec3& gravity);
 
-        // Teleports a dynamic body back to a pose, clears its velocity, and
-        // re-activates it (used by the editor's "reset bodies" button).
-        void ResetDynamicBody(BodyHandle handle, const math::Vec3& position, const math::Quat& rotation);
+        // Teleports a body to a pose. For a dynamic body it also clears velocity
+        // and re-activates it (used by transform edits and the "reset bodies"
+        // button); for a static body it just repositions the collider.
+        void SetBodyPose(BodyHandle handle, const math::Vec3& position, const math::Quat& rotation);
 
     private:
         struct Impl;
