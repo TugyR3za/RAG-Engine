@@ -9,6 +9,7 @@
 #include "Rag/RendererVK/Internal/VulkanMesh.h"
 #include "Rag/RendererVK/Internal/VulkanMeshLoader.h"
 #include "Rag/RendererVK/Internal/VulkanSelectionOutlinePipeline.h"
+#include "Rag/RendererVK/Internal/VulkanSkyboxPipeline.h"
 #include "Rag/RendererVK/Internal/VulkanShadowMap.h"
 #include "Rag/RendererVK/Internal/VulkanShadowPipeline.h"
 #include "Rag/RendererVK/Internal/VulkanSurface.h"
@@ -452,6 +453,9 @@ namespace rag::renderer::vk
                 }
             }
 
+            UpdateEnvironment(context.render_world != nullptr
+                ? context.render_world->environment : EnvironmentSettings{});
+
             VulkanFrameData& frame = frames_->CurrentFrame();
             RAG_VK_CHECK(vkWaitForFences(
                 device_->Device(),
@@ -594,6 +598,40 @@ namespace rag::renderer::vk
         }
 
     private:
+        void ResetSkybox()
+        {
+            // Caller has waited for GPU work before retiring any referenced set/image.
+            skybox_pipeline_.reset();
+            skybox_descriptors_.reset();
+            skybox_texture_.reset();
+        }
+
+        void UpdateEnvironment(const EnvironmentSettings& environment)
+        {
+            if (attempted_environment_ && *attempted_environment_ == environment) return;
+            RAG_VK_CHECK(vkDeviceWaitIdle(device_->Device()));
+            ResetSkybox();
+            // Cache failures too: retry only on configuration changes (off/on also
+            // retries), never perform disk I/O or log the same failure every frame.
+            attempted_environment_ = environment;
+            if (!environment.skybox_enabled) return;
+            try
+            {
+                skybox_texture_ = std::make_unique<VulkanTexture>(*device_, environment.skybox_faces);
+                const std::array<VulkanTexture*, 1> textures{skybox_texture_.get()};
+                skybox_descriptors_ = std::make_unique<VulkanTextureDescriptors>(*device_, textures);
+                skybox_pipeline_ = std::make_unique<VulkanSkyboxPipeline>(device_->Device(),
+                    swapchain_->RenderPass(), uniform_resources_->DescriptorSetLayout(),
+                    skybox_descriptors_->DescriptorSetLayout());
+            }
+            catch (const std::exception& exception)
+            {
+                ResetSkybox();
+                RAG_LOG_ERROR("Skybox starting at '", environment.skybox_faces[0], "': ",
+                    exception.what(), " Using the clear-color background. Toggle off/on to retry.");
+            }
+        }
+
         void RecordCommandBuffer(
             VkCommandBuffer command_buffer,
             u32 image_index,
@@ -648,6 +686,15 @@ namespace rag::renderer::vk
                 pipeline_->PushModelMatrix(command_buffer, model);
                 vkCmdDrawIndexed(command_buffer, meshes_[mesh_index]->IndexCount(), 1, 0, 0, 0);
             });
+
+            // Draw only untouched far-depth pixels, before outlines and overlays.
+            if (skybox_pipeline_ && UseRenderWorld(context.render_world))
+            {
+                skybox_pipeline_->Bind(command_buffer, swapchain_->Extent());
+                skybox_pipeline_->BindDescriptorSets(command_buffer, descriptor_set,
+                    skybox_descriptors_->DescriptorSet(0));
+                skybox_pipeline_->Draw(command_buffer);
+            }
 
             // Editor selection highlight: a colored line box around the selected
             // object, drawn on top of the shaded scene (but under the ImGui overlay).
@@ -739,6 +786,8 @@ namespace rag::renderer::vk
                 swapchain_->DepthFormat() != previous_depth_format)
             {
                 RAG_LOG_WARNING("Vulkan swapchain attachment format changed; rebuilding the 3D cube graphics pipeline.");
+                ResetSkybox();
+                attempted_environment_.reset(); // rebuild against the new render pass on the next frame
                 pipeline_ = std::make_unique<VulkanGraphicsPipeline>(
                     device_->Device(),
                     swapchain_->RenderPass(),
@@ -948,6 +997,10 @@ namespace rag::renderer::vk
         std::unique_ptr<VulkanTextureDescriptors> texture_descriptors_;
         std::unique_ptr<VulkanGraphicsPipeline> pipeline_;
         std::unique_ptr<VulkanSelectionOutlinePipeline> selection_outline_pipeline_;
+        std::unique_ptr<VulkanTexture> skybox_texture_;
+        std::unique_ptr<VulkanTextureDescriptors> skybox_descriptors_;
+        std::unique_ptr<VulkanSkyboxPipeline> skybox_pipeline_;
+        std::optional<EnvironmentSettings> attempted_environment_;
         std::unique_ptr<VulkanShadowMap> shadow_map_;
         std::unique_ptr<VulkanShadowPipeline> shadow_pipeline_;
 #if defined(RAG_SHADOW_DEBUG)

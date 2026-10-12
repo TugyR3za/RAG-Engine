@@ -67,6 +67,9 @@ namespace rag::scene
         void Update();
         void ExtractRenderWorld(renderer::RenderWorld& out_world) const;
 
+        [[nodiscard]] renderer::EnvironmentSettings& Environment() { return environment_; }
+        [[nodiscard]] const renderer::EnvironmentSettings& Environment() const { return environment_; }
+
     private:
         struct EntitySlot
         {
@@ -92,5 +95,6 @@ namespace rag::scene
         ComponentStorage<LightComponent> lights_;
 
         EntityId active_camera_{};
+        renderer::EnvironmentSettings environment_{};
     };
 }

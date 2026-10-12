@@ -3,6 +3,7 @@
 #include "Rag/Core/Base.h"
 #include "Rag/Core/Math.h"
 #include "Rag/Platform/Window.h"
+#include "Rag/Renderer/Environment.h"
 
 #include <array>
 #include <functional>
@@ -129,12 +130,14 @@ namespace rag::renderer
     struct RenderWorld
     {
         RenderCamera camera{};
+        EnvironmentSettings environment{};
         std::vector<RenderObject> objects;
         std::vector<RenderLight> lights;
 
         void Clear()
         {
             camera = RenderCamera{};
+            environment = EnvironmentSettings{};
             objects.clear();
             lights.clear();
         }

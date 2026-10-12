@@ -12,6 +12,7 @@ The engine currently includes:
 - Swapchain resize handling, depth buffering, command buffers, sync objects, and per-frame diagnostics.
 - Lit 3D rendering with directional diffuse/specular lighting.
 - Directional shadow mapping with PCF filtering.
+- Scene-level cubemap skybox with a bundled procedural sky, JSON persistence, and an Inspector toggle. See [skybox setup, face conventions, commands and validation](docs/skybox.md).
 - Textured materials using Vulkan sampled images and per-texture descriptor sets.
 - Hardcoded cube and ground geometry.
 - `.obj` loading for `models/sphere.obj`.

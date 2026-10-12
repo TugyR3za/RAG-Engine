@@ -1,4 +1,15 @@
 {
+  "environment": {
+    "skyboxEnabled": true,
+    "skyboxFaces": [
+      "assets/skyboxes/starter/px.png",
+      "assets/skyboxes/starter/nx.png",
+      "assets/skyboxes/starter/py.png",
+      "assets/skyboxes/starter/ny.png",
+      "assets/skyboxes/starter/pz.png",
+      "assets/skyboxes/starter/nz.png"
+    ]
+  },
   "entities": [
     {
       "name": "Cube 0",

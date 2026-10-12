@@ -87,9 +87,8 @@ namespace
 
             // Load the scene from the default scene file instead of building it in
             // code, so the same save/load path the editor uses is exercised every
-            // launch. If the file is missing or unreadable, fall back to building
-            // the hard-coded default scene and then save it once as the default so
-            // subsequent launches load it (proving the round-trip end to end).
+            // launch. Missing/unreadable files use an in-memory fallback only;
+            // saving must be explicit so startup never overwrites a user's scene.
             current_scene_path_ = DefaultScenePath();
             std::string scene_error;
             bool loaded = false;
@@ -102,18 +101,8 @@ namespace
             if (!loaded)
             {
                 RAG_LOG_INFO(
-                    "No usable default scene file; building the built-in scene and "
-                    "saving it to '",
-                    current_scene_path_.string(),
-                    "'.");
+                    "No usable default scene file; building the built-in scene in memory. ", scene_error);
                 BuildScene();
-
-                std::string save_error;
-                if (!SaveSceneToPath(current_scene_path_, save_error))
-                {
-                    RAG_LOG_WARNING(
-                        "Could not write the default scene file: ", save_error);
-                }
             }
 
             if (smoke_test_)
@@ -393,6 +382,10 @@ namespace
 
         void BuildScene()
         {
+            scene_.Environment() = {true, {
+                "assets/skyboxes/starter/px.png", "assets/skyboxes/starter/nx.png",
+                "assets/skyboxes/starter/py.png", "assets/skyboxes/starter/ny.png",
+                "assets/skyboxes/starter/pz.png", "assets/skyboxes/starter/nz.png"}};
             constexpr rag::u32 RingCubeCount = 8;
             constexpr rag::f32 RingRadius = 4.0f;
             constexpr rag::f32 CenterCubeScale = 1.5f;
@@ -1031,6 +1024,7 @@ namespace
         [[nodiscard]] rag::scene::SerializedScene CaptureScene()
         {
             rag::scene::SerializedScene out;
+            out.environment = scene_.Environment();
             scene_.ForEachEntity([this, &out](rag::scene::EntityId entity)
             {
                 rag::scene::SerializedEntity serialized;
@@ -1119,6 +1113,7 @@ namespace
         // selection + the extracted render world so nothing from the old scene lingers.
         void ClearSceneState()
         {
+            scene_.Environment() = {};
 #if defined(RAG_ENABLE_PHYSICS)
             for (PhysicsBody& physics_body : physics_bodies_)
             {
@@ -1156,6 +1151,7 @@ namespace
         void ApplyScene(const rag::scene::SerializedScene& data)
         {
             ClearSceneState();
+            scene_.Environment() = data.environment;
 
             rag::scene::EntityId active_camera{};
             rag::scene::EntityId first_camera{};
@@ -1447,7 +1443,14 @@ namespace
         void BuildDefaultDockLayout(ImGuiID dockspace_id, const ImVec2& size)
         {
             ImGui::DockBuilderRemoveNode(dockspace_id);
-            ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+            // Recreate the root with the same pass-through flag used by
+            // DockSpaceOverViewport above; otherwise the one-time layout reset
+            // replaces it with an opaque central node and hides the 3D scene.
+            ImGui::DockBuilderAddNode(
+                dockspace_id,
+                static_cast<ImGuiDockNodeFlags>(
+                    static_cast<int>(ImGuiDockNodeFlags_DockSpace) |
+                    static_cast<int>(ImGuiDockNodeFlags_PassthruCentralNode)));
             ImGui::DockBuilderSetNodeSize(dockspace_id, size);
 
             // SplitNode carves a node off the central area and reassigns the
@@ -2133,6 +2136,17 @@ namespace
         {
             if (ImGui::Begin("Inspector", &show_inspector_panel_))
             {
+                // Scene settings remain available even when no entity is selected.
+                if (ImGui::CollapsingHeader("Environment", ImGuiTreeNodeFlags_DefaultOpen))
+                {
+                    auto& environment = scene_.Environment();
+                    ImGui::Checkbox("Skybox Enabled", &environment.skybox_enabled);
+                    constexpr std::array face_names{"+X", "-X", "+Y", "-Y", "+Z", "-Z"};
+                    for (std::size_t i = 0; i < face_names.size(); ++i)
+                        ImGui::TextWrapped("%s: %s", face_names[i], environment.skybox_faces[i].empty()
+                            ? "(not configured)" : environment.skybox_faces[i].c_str());
+                    ImGui::Separator();
+                }
                 const rag::scene::EntityId entity = editor_.Selected();
                 if (!entity.IsValid() || !scene_.IsAlive(entity))
                 {

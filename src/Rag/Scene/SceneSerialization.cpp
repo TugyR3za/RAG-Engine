@@ -9,6 +9,7 @@
 #include <exception>
 #include <fstream>
 #include <sstream>
+#include <stdexcept>
 #include <string_view>
 
 namespace rag::scene
@@ -16,6 +17,34 @@ namespace rag::scene
     namespace
     {
         using nlohmann::json;
+
+        // Optional additive version-1 field. A bad environment never discards the
+        // entities: log once at load time and use the legacy disabled default.
+        [[nodiscard]] renderer::EnvironmentSettings ReadEnvironment(const json& node)
+        {
+            try
+            {
+                renderer::EnvironmentSettings environment;
+                if (!node.is_object()) throw std::runtime_error("expected an object");
+                environment.skybox_enabled = node.value("skyboxEnabled", false);
+                if (const auto faces = node.find("skyboxFaces"); faces != node.end())
+                {
+                    if (!faces->is_array() || faces->size() != 6)
+                        throw std::runtime_error("skyboxFaces must contain exactly six paths (+X,-X,+Y,-Y,+Z,-Z)");
+                    for (std::size_t i = 0; i < 6; ++i)
+                        environment.skybox_faces[i] = (*faces)[i].get<std::string>();
+                }
+                std::string error;
+                if (!renderer::ValidateEnvironment(environment, error)) throw std::runtime_error(error);
+                return environment;
+            }
+            catch (const std::exception& exception)
+            {
+                RAG_LOG_ERROR("Invalid scene environment ", node.dump(), ": ", exception.what(),
+                    " Using the clear-color background.");
+                return {};
+            }
+        }
 
         // --- value-type <-> JSON array helpers ---------------------------------
 
@@ -240,6 +269,9 @@ namespace rag::scene
         json root;
         root["sceneVersion"] = kCurrentSceneVersion;
         root["generator"] = "RAG Engine";
+        root["environment"] = json{
+            {"skyboxEnabled", scene.environment.skybox_enabled},
+            {"skyboxFaces", scene.environment.skybox_faces}};
 
         json entities = json::array();
         for (const SerializedEntity& entity : scene.entities)
@@ -275,6 +307,7 @@ namespace rag::scene
 
     bool ParseSceneFromJson(const std::string& text, SerializedScene& out_scene, std::string& out_error)
     {
+        out_error.clear();
         json root;
         try
         {
@@ -311,6 +344,8 @@ namespace rag::scene
 
         out_scene = SerializedScene{};
         out_scene.version = version;
+        if (const auto environment = root.find("environment"); environment != root.end())
+            out_scene.environment = ReadEnvironment(*environment);
 
         const auto entities = root.find("entities");
         if (entities == root.end() || !entities->is_array())

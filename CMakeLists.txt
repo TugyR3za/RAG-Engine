@@ -58,6 +58,8 @@ rag_configure_target(RagRuntime)
 target_link_libraries(RagRuntime PUBLIC RagCore RagPlatform)
 
 add_library(RagRenderer STATIC
+    src/Rag/Renderer/Environment.cpp
+    src/Rag/Renderer/Environment.h
     src/Rag/Renderer/Renderer.cpp
     src/Rag/Renderer/Renderer.h
 )
@@ -196,6 +198,12 @@ if(RAG_ENABLE_VULKAN)
     endif()
 
     add_library(RagRendererVK STATIC
+        src/Rag/RendererVK/Internal/VulkanCubemapData.cpp
+        src/Rag/RendererVK/Internal/VulkanCubemapData.h
+        src/Rag/RendererVK/Internal/VulkanSkyboxPipeline.cpp
+        src/Rag/RendererVK/Internal/VulkanSkyboxPipeline.h
+        src/Rag/RendererVK/Shaders/Skybox.vert
+        src/Rag/RendererVK/Shaders/Skybox.frag
         src/Rag/RendererVK/VulkanRenderer.cpp
         src/Rag/RendererVK/VulkanRenderer.h
         src/Rag/RendererVK/Internal/VulkanAssetPath.cpp
@@ -277,6 +285,8 @@ if(RAG_ENABLE_VULKAN)
     # "<source file>|<output spv name>" pairs. The output names are what the
     # renderer looks up at runtime, so keep them in sync with the *.cpp filenames.
     set(RAG_VULKAN_SHADER_DEFS
+        "Skybox.vert|skybox.vert.spv"
+        "Skybox.frag|skybox.frag.spv"
         "Triangle.vert|triangle.vert.spv"
         "Triangle.frag|triangle.frag.spv"
         "ShadowDepth.vert|shadow_depth.vert.spv"
@@ -377,17 +387,32 @@ if(RAG_BUILD_SANDBOX)
 endif()
 
 if(RAG_BUILD_TESTS)
+    enable_testing()
     add_executable(RagSceneTests tests/SceneRuntimeTests.cpp)
     rag_configure_target(RagSceneTests)
     target_link_libraries(RagSceneTests PRIVATE RagScene)
+    add_test(NAME SceneRuntime COMMAND RagSceneTests)
 
     add_executable(RagSceneSerializationTests tests/SceneSerializationTests.cpp)
     rag_configure_target(RagSceneSerializationTests)
     target_link_libraries(RagSceneSerializationTests PRIVATE RagScene)
+    add_test(NAME SceneSerialization COMMAND RagSceneSerializationTests)
+
+    if(RAG_ENABLE_VULKAN AND RAG_BUILD_SANDBOX)
+        add_executable(RagSkyboxTests tests/SkyboxTests.cpp)
+        rag_configure_target(RagSkyboxTests)
+        target_link_libraries(RagSkyboxTests PRIVATE RagScene RagRendererVK)
+        # Sandbox's existing post-build copies provide runtime assets/shaders in
+        # the shared executable directory; no additional asset staging system.
+        add_dependencies(RagSkyboxTests RagSandbox)
+        add_test(NAME SkyboxAssets COMMAND RagSkyboxTests)
+        set_tests_properties(SkyboxAssets PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+    endif()
 
     if(RAG_ENABLE_PHYSICS)
         add_executable(RagPhysicsTests tests/PhysicsWorldTests.cpp)
         rag_configure_target(RagPhysicsTests)
         target_link_libraries(RagPhysicsTests PRIVATE RagPhysics)
+        add_test(NAME PhysicsWorld COMMAND RagPhysicsTests)
     endif()
 endif()

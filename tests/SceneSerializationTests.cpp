@@ -32,6 +32,8 @@ namespace
     {
         using namespace rag::scene;
         SerializedScene scene;
+        scene.environment = {true, {"assets/sky/px.png", "assets/sky/nx.png",
+            "assets/sky/py.png", "assets/sky/ny.png", "assets/sky/pz.png", "assets/sky/nz.png"}};
 
         SerializedEntity cube;
         cube.name = "Center Cube";
@@ -99,7 +101,7 @@ namespace
 
     bool ScenesMatch(const rag::scene::SerializedScene& a, const rag::scene::SerializedScene& b)
     {
-        if (a.entities.size() != b.entities.size())
+        if (a.entities.size() != b.entities.size() || a.environment != b.environment)
         {
             return false;
         }
@@ -232,6 +234,47 @@ int main()
     {
         return 1;
     }
+
+    // Optional additive version-1 data; parsing into a reused object must reset it.
+    parsed = original;
+    if (!Expect(ParseSceneFromJson(R"({"sceneVersion":1,"entities":[]})", parsed, error), "Legacy v1 must load.") ||
+        !Expect(parsed.environment == rag::renderer::EnvironmentSettings{}, "Legacy scene must clear prior environment."))
+        return 1;
+
+    auto disabled = original;
+    disabled.environment.skybox_enabled = false;
+    if (!Expect(ParseSceneFromJson(WriteSceneToJson(disabled), parsed, error), "Disabled sky must parse.") ||
+        !Expect(ScenesMatch(disabled, parsed), "Disabled sky must retain all face paths."))
+        return 1;
+
+    // Malformed optional environment is isolated: entities survive and sky is off.
+    const std::string bad_environments[] = {
+        "null", "[]", "42", R"({"skyboxEnabled":"yes"})",
+        R"({"skyboxEnabled":true})", R"({"skyboxFaces":["a.png"]})",
+        R"({"skyboxEnabled":true,"skyboxFaces":[1,2,3,4,5,6]})",
+        R"({"skyboxEnabled":true,"skyboxFaces":["a","b","c","d","e","../escape.png"]})"
+    };
+    for (const std::string& bad : bad_environments)
+    {
+        parsed = original;
+        if (!Expect(ParseSceneFromJson("{\"sceneVersion\":1,\"entities\":[{\"name\":\"kept\"}],\"environment\":" +
+                bad + "}", parsed, error), "Invalid environment must not reject the scene.") ||
+            !Expect(parsed.environment == rag::renderer::EnvironmentSettings{}, "Invalid environment must reset to disabled.") ||
+            !Expect(parsed.entities.size() == 1 && parsed.entities[0].name == "kept", "Entities must survive invalid environment."))
+            return 1;
+    }
+
+    const std::string bad_paths[] = {"", "/absolute.png", "C:/absolute.png", "C:relative.png",
+        "assets\\px.png", "assets/../px.png", "./px.png", "assets//px.png", "assets/", std::string("nul\0.png", 8)};
+    for (const std::string& bad : bad_paths)
+    {
+        auto environment = original.environment;
+        environment.skybox_faces[2] = bad;
+        if (!Expect(!rag::renderer::ValidateEnvironment(environment, error), "Nonportable/incomplete paths must be rejected.") ||
+            !Expect(error.find("+Y") != std::string::npos, "Invalid path must identify the affected face."))
+            return 1;
+    }
+    if (!Expect(rag::renderer::ValidateEnvironment({}, error), "Unconfigured disabled environment is valid.")) return 1;
 
     RAG_LOG_INFO("Scene serialization tests passed.");
     return 0;

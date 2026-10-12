@@ -2,6 +2,7 @@
 
 #include "Rag/Core/Log.h"
 #include "Rag/RendererVK/Internal/VulkanAssetPath.h"
+#include "Rag/RendererVK/Internal/VulkanCubemapData.h"
 
 #if defined(_MSC_VER)
     #pragma warning(push, 0)
@@ -154,6 +155,15 @@ namespace rag::renderer::vk
             ", RGBA8 sRGB (VK_FORMAT_R8G8B8A8_SRGB), staged and uploaded to GPU.");
     }
 
+    VulkanTexture::VulkanTexture(VulkanDevice& device, const SkyboxFaces& faces)
+        : device_(device), layer_count_(6)
+    {
+        const CubemapData data = LoadCubemapData(faces, device.Properties().limits.maxImageDimensionCube);
+        width_ = height_ = data.size;
+        Initialize(data.pixels);
+        RAG_LOG_INFO("Loaded skybox: ", faces[0], " (+X), six ", width_, "x", height_, " RGBA8 sRGB faces.");
+    }
+
     VulkanTexture::~VulkanTexture()
     {
         Cleanup();
@@ -209,7 +219,8 @@ namespace rag::renderer::vk
         image_info.imageType = VK_IMAGE_TYPE_2D;
         image_info.extent = VkExtent3D{width_, height_, 1};
         image_info.mipLevels = 1;
-        image_info.arrayLayers = 1;
+        image_info.arrayLayers = layer_count_;
+        image_info.flags = layer_count_ == 6 ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
         image_info.format = format_;
         image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
         image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -324,7 +335,7 @@ namespace rag::renderer::vk
             to_transfer.subresourceRange.baseMipLevel = 0;
             to_transfer.subresourceRange.levelCount = 1;
             to_transfer.subresourceRange.baseArrayLayer = 0;
-            to_transfer.subresourceRange.layerCount = 1;
+            to_transfer.subresourceRange.layerCount = layer_count_;
             vkCmdPipelineBarrier(
                 command_buffer,
                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -344,7 +355,7 @@ namespace rag::renderer::vk
             copy_region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             copy_region.imageSubresource.mipLevel = 0;
             copy_region.imageSubresource.baseArrayLayer = 0;
-            copy_region.imageSubresource.layerCount = 1;
+            copy_region.imageSubresource.layerCount = layer_count_;
             copy_region.imageOffset = VkOffset3D{0, 0, 0};
             copy_region.imageExtent = VkExtent3D{width_, height_, 1};
             vkCmdCopyBufferToImage(
@@ -413,13 +424,13 @@ namespace rag::renderer::vk
         VkImageViewCreateInfo view_info{};
         view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         view_info.image = image_;
-        view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        view_info.viewType = layer_count_ == 6 ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
         view_info.format = format_;
         view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         view_info.subresourceRange.baseMipLevel = 0;
         view_info.subresourceRange.levelCount = 1;
         view_info.subresourceRange.baseArrayLayer = 0;
-        view_info.subresourceRange.layerCount = 1;
+        view_info.subresourceRange.layerCount = layer_count_;
         RAG_VK_CHECK(vkCreateImageView(
             device_.Device(),
             &view_info,
@@ -434,9 +445,9 @@ namespace rag::renderer::vk
         sampler_info.magFilter = VK_FILTER_LINEAR;
         sampler_info.minFilter = VK_FILTER_LINEAR;
         sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-        sampler_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        sampler_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        sampler_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        sampler_info.addressModeU = layer_count_ == 6 ? VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE : VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        sampler_info.addressModeV = sampler_info.addressModeU;
+        sampler_info.addressModeW = sampler_info.addressModeU;
         sampler_info.anisotropyEnable = VK_FALSE;
         sampler_info.compareEnable = VK_FALSE;
         sampler_info.minLod = 0.0f;

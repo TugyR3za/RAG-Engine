@@ -274,6 +274,7 @@ namespace rag::scene
     void Scene::ExtractRenderWorld(renderer::RenderWorld& out_world) const
     {
         out_world.Clear();
+        out_world.environment = environment_;
         out_world.objects.reserve(renderables_.Size());
         out_world.lights.reserve(lights_.Size());
 

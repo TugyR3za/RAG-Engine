@@ -124,6 +124,7 @@ namespace rag::scene
     struct SerializedScene
     {
         int version = kCurrentSceneVersion;
+        renderer::EnvironmentSettings environment{};
         std::vector<SerializedEntity> entities;
     };
 

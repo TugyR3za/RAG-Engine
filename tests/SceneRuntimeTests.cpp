@@ -66,7 +66,13 @@ int main()
     }
 
     rag::renderer::RenderWorld render_world;
+    scene.Environment() = {true, {"px", "nx", "py", "ny", "pz", "nz"}};
     scene.ExtractRenderWorld(render_world);
+    if (!Expect(render_world.environment == scene.Environment(), "Extraction must carry scene environment.")) return 1;
+    scene.Environment() = {};
+    scene.ExtractRenderWorld(render_world);
+    if (!Expect(!render_world.environment.skybox_enabled && render_world.environment.skybox_faces[0].empty(),
+            "Extraction must clear stale environment settings.")) return 1;
     if (!Expect(render_world.camera.valid, "Render extraction should include an active camera.") ||
         !Expect(render_world.objects.size() == 1, "Render extraction should include one render object.") ||
         !Expect(render_world.lights.size() == 1, "Render extraction should include one light."))
