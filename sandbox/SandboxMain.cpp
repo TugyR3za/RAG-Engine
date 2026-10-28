@@ -67,8 +67,52 @@
 #include <variant>
 #include <vector>
 
+#if !defined(RAG_BUILD_CONFIGURATION)
+    #define RAG_BUILD_CONFIGURATION "unknown"
+#endif
+
+#if !defined(RAG_CMAKE_BUILD_DIRECTORY)
+    #define RAG_CMAKE_BUILD_DIRECTORY "unknown"
+#endif
+
+#if !defined(RAG_PROJECT_VERSION)
+    #define RAG_PROJECT_VERSION "unknown"
+#endif
+
 namespace
 {
+    void LogBuildIdentity(int argc, char** argv)
+    {
+        std::filesystem::path executable_path = rag::platform::ExecutableDirectory();
+        if (argc > 0 && argv != nullptr && argv[0] != nullptr)
+        {
+            executable_path /= std::filesystem::path(argv[0]).filename();
+        }
+        else
+        {
+            executable_path /= "RagSandbox.exe";
+        }
+
+        std::error_code working_directory_error;
+        const std::filesystem::path working_directory =
+            std::filesystem::current_path(working_directory_error);
+
+        RAG_LOG_INFO(
+            "Build: RAG Engine ", RAG_PROJECT_VERSION, " | ", RAG_BUILD_CONFIGURATION,
+            " | compiled ", __DATE__, " ", __TIME__);
+        RAG_LOG_INFO("Executable: ", executable_path.lexically_normal().string());
+        RAG_LOG_INFO("CMake build directory: ", RAG_CMAKE_BUILD_DIRECTORY);
+        if (working_directory_error)
+        {
+            RAG_LOG_WARNING(
+                "Working directory unavailable: ", working_directory_error.message());
+        }
+        else
+        {
+            RAG_LOG_INFO("Working directory: ", working_directory.lexically_normal().string());
+        }
+    }
+
     class SandboxClient final : public rag::core::IApplicationClient
     {
     public:
@@ -927,12 +971,18 @@ namespace
 
         // --- Scene serialization: save / load / new ----------------------------
 
-        // The directory scene files live in: a "scenes" folder next to the
-        // executable (where the app can always write). Save targets this; load also
-        // falls back to the working directory (see ResolveExistingScenePath).
+        // The canonical tooling starts in the repository root, making its scenes/
+        // directory the editable source of truth. A direct launch from elsewhere
+        // still gets a writable scenes/ directory relative to that working folder.
+        // Executable-relative scenes remain a legacy load fallback below.
         [[nodiscard]] std::filesystem::path ScenesDirectory() const
         {
-            return rag::platform::ExecutableDirectory() / "scenes";
+            std::error_code error;
+            const std::filesystem::path working_directory =
+                std::filesystem::current_path(error);
+            return error
+                ? rag::platform::ExecutableDirectory() / "scenes"
+                : working_directory / "scenes";
         }
 
         [[nodiscard]] std::filesystem::path DefaultScenePath() const
@@ -940,16 +990,15 @@ namespace
             return ScenesDirectory() / DefaultSceneFilename;
         }
 
-        // Resolves a scene file for loading: prefer the copy next to the executable,
-        // then the one under the current working directory, mirroring how the
-        // renderer resolves models/ and assets/. Returns nothing if neither exists.
+        // Resolve the editable working-directory scene first. The executable copy
+        // is only a compatibility fallback for legacy build folders.
         [[nodiscard]] std::optional<std::filesystem::path> ResolveExistingScenePath(
             const std::string& filename) const
         {
             std::error_code error;
             const std::array<std::filesystem::path, 2> candidates = {
-                rag::platform::ExecutableDirectory() / "scenes" / filename,
                 std::filesystem::current_path(error) / "scenes" / filename,
+                rag::platform::ExecutableDirectory() / "scenes" / filename,
             };
             for (const std::filesystem::path& candidate : candidates)
             {
@@ -1061,6 +1110,7 @@ namespace
                     r.texture = TextureIdentifier(renderable->mesh);
                     r.material_index = renderable->material.index;
                     r.material_generation = renderable->material.generation;
+                    r.material_settings = renderable->material_settings;
                     r.local_bounds = renderable->local_bounds;
                     r.visibility_layer = renderable->visibility_layer;
                     r.visible = renderable->visible;
@@ -1188,6 +1238,7 @@ namespace
                     renderable.mesh = MeshHandleFromIdentifier(source.mesh);
                     renderable.material = rag::renderer::MaterialHandle{
                         source.material_index, source.material_generation};
+                    renderable.material_settings = source.material_settings;
                     renderable.local_bounds = source.local_bounds;
                     renderable.visibility_layer = source.visibility_layer;
                     renderable.visible = source.visible;
@@ -2177,6 +2228,7 @@ namespace
                     BuildInspectorPhysics(entity);
                     BuildInspectorLight(entity);
                     BuildInspectorCameraRenderable(entity);
+                    BuildInspectorMaterial(entity);
                 }
             }
             ImGui::End();
@@ -2335,6 +2387,39 @@ namespace
                 ImGui::Text("Mesh handle: %u", renderable->mesh.index);
                 ImGui::Text("Visible: %s", renderable->visible ? "yes" : "no");
             }
+        }
+
+        // Per-object base color, shown only for renderables. Widgets edit this
+        // entity's own MaterialSettings in place; the next ExtractRenderWorld picks
+        // the change up, so edits appear immediately and never touch other entities
+        // that share the mesh or texture. The picker works in sRGB display values
+        // (what the swatch/hex show); extraction converts them to linear.
+        void BuildInspectorMaterial(rag::scene::EntityId entity)
+        {
+            rag::scene::RenderableComponent* renderable = scene_.GetRenderable(entity);
+            if (renderable == nullptr)
+            {
+                return;
+            }
+
+            rag::renderer::MaterialSettings& material = renderable->material_settings;
+            ImGui::SeparatorText("Material");
+            ImGui::ColorEdit3("Base Color##material", &material.base_color.x);
+            ImGui::SetItemTooltip(
+                "sRGB color. Multiplies the texture when it is used; "
+                "otherwise it is the surface color.");
+            ImGui::Checkbox("Use Base-Color Texture##material", &material.use_base_color_texture);
+            ImGui::TextDisabled(
+                "Texture: %s%s",
+                TextureIdentifier(renderable->mesh).c_str(),
+                material.use_base_color_texture ? "" : " (not used)");
+
+            ImGui::BeginDisabled(material == rag::renderer::MaterialSettings{});
+            if (ImGui::Button("Reset to Defaults##material"))
+            {
+                material = rag::renderer::MaterialSettings{};
+            }
+            ImGui::EndDisabled();
         }
 
         // True when a dynamic physics body drives this entity's transform (its pose
@@ -2983,6 +3068,7 @@ int main(int argc, char** argv)
 {
     try
     {
+        LogBuildIdentity(argc, argv);
         const bool smoke_test = argc > 1 && std::string_view(argv[1]) == "--smoke-test";
         SandboxClient client(smoke_test);
 

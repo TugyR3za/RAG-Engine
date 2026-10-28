@@ -305,6 +305,10 @@ namespace rag::scene
             object.material = renderable.material;
             object.local_bounds = renderable.local_bounds;
             object.visibility_layer = renderable.visibility_layer;
+            // The single sRGB -> linear conversion for authored base colors.
+            object.base_color_linear =
+                renderer::SrgbToLinear(renderable.material_settings.base_color);
+            object.use_base_color_texture = renderable.material_settings.use_base_color_texture;
             out_world.objects.push_back(object);
         }
 

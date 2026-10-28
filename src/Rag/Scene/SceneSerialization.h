@@ -69,6 +69,12 @@ namespace rag::scene
         u32 material_index = UINT32_MAX;
         u32 material_generation = 0;
 
+        // Per-object base-color authoring values (sRGB color + texture toggle),
+        // written as optional additive version-1 fields inside "material". Files
+        // that predate them load with these defaults, which preserve the original
+        // textured appearance. Out-of-range colors are clamped to [0, 1] on load.
+        renderer::MaterialSettings material_settings{};
+
         renderer::Bounds local_bounds{};
         u32 visibility_layer = 1;
         bool visible = true;

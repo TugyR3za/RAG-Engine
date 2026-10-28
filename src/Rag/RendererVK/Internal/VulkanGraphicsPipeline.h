@@ -24,6 +24,8 @@ namespace rag::renderer::vk
             VkDescriptorSet frame_descriptor_set,
             VkDescriptorSet texture_descriptor_set) const;
         void PushModelMatrix(VkCommandBuffer command_buffer, const math::Mat4& model) const;
+        // Per-object linear-space tint multiplied with the bound base-color texture.
+        void PushBaseColorFactor(VkCommandBuffer command_buffer, const math::Vec3& linear_base_color) const;
 
     private:
         void Create(

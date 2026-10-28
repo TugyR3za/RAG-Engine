@@ -26,7 +26,17 @@ layout(set = 0, binding = 0) uniform CameraUniforms
 
 // Directional shadow map sampled through a depth-comparison sampler.
 layout(set = 0, binding = 1) uniform sampler2DShadow shadow_map;
+// The object's base-color texture, or a 1x1 white texture when the object has
+// its texture disabled or none is available (see VulkanRenderer).
 layout(set = 1, binding = 0) uniform sampler2D color_texture;
+
+// Fragment-stage range of the per-object push constants; bytes 0..63 hold the
+// vertex stage's model matrix. rgb is the per-object base-color tint, already in
+// linear space (converted once from sRGB during scene extraction); a is unused.
+layout(push_constant) uniform ObjectPushConstants
+{
+    layout(offset = 64) vec4 base_color_factor;
+} object;
 
 // Depth bias (in light clip-space depth units) used to fight shadow acne.
 // Increase if you see acne (self-shadowing stripes); decrease if shadows
@@ -87,7 +97,8 @@ void main()
     const vec3 ambient = vec3(0.1);
     const vec3 diffuse = diffuse_factor * camera.light_color * camera.light_intensity;
     const vec3 specular = specular_factor * camera.light_color * camera.light_intensity;
-    const vec3 albedo = texture(color_texture, texture_uv).rgb;
+    // Both factors are linear: the sRGB texture is decoded by the sampler.
+    const vec3 albedo = texture(color_texture, texture_uv).rgb * object.base_color_factor.rgb;
 
     // Keep a configurable fraction of direct light in fully shadowed areas so
     // shadows read as natural dark gray instead of near-black.

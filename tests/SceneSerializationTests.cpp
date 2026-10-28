@@ -46,6 +46,7 @@ namespace
         SerializedRenderable cube_renderable;
         cube_renderable.mesh = "builtin:cube";
         cube_renderable.texture = "assets/texture.png";
+        cube_renderable.material_settings = rag::renderer::MaterialSettings{{1.0f, 0.0f, 0.0f}, false};
         cube.renderable = cube_renderable;
         SerializedPhysics cube_physics;
         cube_physics.mode = "Dynamic";
@@ -71,6 +72,17 @@ namespace
         sphere_physics.sphere_radius = 1.0f;
         sphere.physics = sphere_physics;
         scene.entities.push_back(sphere);
+
+        // Shares the cube's mesh but keeps its texture with a non-trivial tint.
+        SerializedEntity tinted_cube;
+        tinted_cube.name = "Cube 1";
+        tinted_cube.transform = SerializedTransform{};
+        SerializedRenderable tinted_renderable;
+        tinted_renderable.mesh = "builtin:cube";
+        tinted_renderable.texture = "assets/texture.png";
+        tinted_renderable.material_settings = rag::renderer::MaterialSettings{{0.25f, 0.5f, 0.75f}, true};
+        tinted_cube.renderable = tinted_renderable;
+        scene.entities.push_back(tinted_cube);
 
         SerializedEntity camera;
         camera.name = "Camera";
@@ -134,7 +146,11 @@ namespace
             if (left.renderable.has_value())
             {
                 if (left.renderable->mesh != right.renderable->mesh ||
-                    left.renderable->texture != right.renderable->texture)
+                    left.renderable->texture != right.renderable->texture ||
+                    !Vec3Equal(left.renderable->material_settings.base_color,
+                        right.renderable->material_settings.base_color) ||
+                    left.renderable->material_settings.use_base_color_texture !=
+                        right.renderable->material_settings.use_base_color_texture)
                 {
                     return false;
                 }
@@ -275,6 +291,71 @@ int main()
             return 1;
     }
     if (!Expect(rag::renderer::ValidateEnvironment({}, error), "Unconfigured disabled environment is valid.")) return 1;
+
+    // Material authoring values are stored inside the existing "material" object
+    // as plain values (no GPU handles) and the version stays at 1.
+    if (!Expect(json_text.find("\"baseColor\"") != std::string::npos &&
+                json_text.find("\"useBaseColorTexture\"") != std::string::npos,
+            "Written scenes must contain the material fields.") ||
+        !Expect(kCurrentSceneVersion == 1, "Additive material fields must not bump the scene version."))
+    {
+        return 1;
+    }
+
+    // Older files: a renderable with the legacy handle-only "material" object (as
+    // in scenes/default.ragscene) or with no "material" at all loads with defaults.
+    const std::string legacy_renderables = R"({"sceneVersion":1,"entities":[
+        {"name":"Cube 0","renderable":{"mesh":"builtin:cube","texture":"assets/texture.png",
+            "material":{"generation":0,"index":4294967295},"visible":true}},
+        {"name":"Duck","renderable":{"mesh":"models/Duck.glb"}}]})";
+    if (!Expect(ParseSceneFromJson(legacy_renderables, parsed, error), "Legacy renderables must load.") ||
+        !Expect(parsed.entities.size() == 2 && parsed.entities[0].renderable && parsed.entities[1].renderable,
+            "Legacy renderables must be kept.") ||
+        !Expect(parsed.entities[0].renderable->material_settings == rag::renderer::MaterialSettings{} &&
+                parsed.entities[1].renderable->material_settings == rag::renderer::MaterialSettings{},
+            "Missing material fields must default to white + texture.") ||
+        !Expect(parsed.entities[0].renderable->material_index == UINT32_MAX,
+            "The legacy material handle passthrough must still load."))
+    {
+        return 1;
+    }
+
+    // Invalid optional material values fall back per field and never drop the
+    // entity; out-of-range colors are clamped to the displayable [0, 1] range.
+    const auto parse_material = [&](const std::string& material_json, rag::renderer::MaterialSettings& out) {
+        SerializedScene scene;
+        const bool ok = ParseSceneFromJson(
+            R"({"sceneVersion":1,"entities":[{"name":"kept","renderable":{"material":)" + material_json + "}}]}",
+            scene, error);
+        if (ok && scene.entities.size() == 1 && scene.entities[0].renderable)
+        {
+            out = scene.entities[0].renderable->material_settings;
+            return true;
+        }
+        return false;
+    };
+    const std::string bad_materials[] = {
+        R"({"baseColor":"red","useBaseColorTexture":"yes"})",
+        R"({"baseColor":[1,0],"useBaseColorTexture":1})",
+        R"({"baseColor":[1,"x",0],"useBaseColorTexture":null})",
+        R"({"baseColor":null})"};
+    for (const std::string& bad : bad_materials)
+    {
+        rag::renderer::MaterialSettings settings{{0.1f, 0.2f, 0.3f}, false};
+        if (!Expect(parse_material(bad, settings), "Invalid material fields must not reject the entity.") ||
+            !Expect(settings == rag::renderer::MaterialSettings{}, "Invalid material fields must use defaults."))
+        {
+            return 1;
+        }
+    }
+    rag::renderer::MaterialSettings clamped;
+    if (!Expect(parse_material(R"({"baseColor":[2.0,-1.0,0.5],"useBaseColorTexture":false})", clamped),
+            "Out-of-range material must load.") ||
+        !Expect(Vec3Equal(clamped.base_color, rag::math::Vec3{1.0f, 0.0f, 0.5f}) && !clamped.use_base_color_texture,
+            "Out-of-range base color must be clamped and the toggle kept."))
+    {
+        return 1;
+    }
 
     RAG_LOG_INFO("Scene serialization tests passed.");
     return 0;

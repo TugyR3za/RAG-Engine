@@ -14,6 +14,7 @@ The engine currently includes:
 - Directional shadow mapping with PCF filtering.
 - Scene-level cubemap skybox with a bundled procedural sky, JSON persistence, and an Inspector toggle. See [skybox setup, face conventions, commands and validation](docs/skybox.md).
 - Textured materials using Vulkan sampled images and per-texture descriptor sets.
+- Per-object base-color materials (sRGB tint + texture toggle) edited in the Inspector and saved with the scene. See [material behavior, color convention and data flow](docs/materials.md).
 - Hardcoded cube and ground geometry.
 - `.obj` loading for `models/sphere.obj`.
 - `.glb` loading for `models/Duck.glb`, including its embedded base-color texture.
@@ -32,63 +33,87 @@ The engine currently includes:
 - `RagPhysics`: Jolt-backed physics world hidden behind engine types and opaque body handles.
 - `sandbox`: sample application that wires the scene, renderer, camera controls, assets, and physics together.
 
-## Assets
+## Source Assets And Scenes
 
-These folders are part of the project and should be committed:
+The repository folders `assets/`, `models/`, and `scenes/` are the source of
+truth and should be committed. In particular, the starter content includes:
 
 - `assets/texture.png`
+- `assets/skyboxes/starter/`
 - `models/sphere.obj`
 - `models/Duck.glb`
+- `scenes/default.ragscene`
 - `third_party/stb_image.h`
 - `third_party/tiny_obj_loader.h`
 - `third_party/tiny_gltf.h`
 - `third_party/json.hpp`
 
-Generated files such as `build/`, `.spv` shader outputs, `.vs/`, `.vscode/`, `.exe`, `.pdb`, and other local artifacts are ignored.
+Each canonical build refreshes generated runtime copies of `assets/`, `models/`,
+and compiled shaders beside `RagSandbox.exe`. Do not edit those copies. Scenes
+are not copied during the build: the canonical launcher uses the repository root
+as its working directory, so scene loading and explicit editor saves use the
+source `scenes/` directory directly.
+
+Generated files such as `build/`, `.spv` shader outputs, `.vs/`, `.vscode/`,
+`.exe`, `.pdb`, and other local artifacts are ignored.
 
 ## Requirements
 
 - Windows
-- Visual Studio 2022 with C++ desktop build tools
+- Visual Studio with C++ desktop build tools (the current canonical cache uses
+  Visual Studio 18 2026)
 - CMake 3.22 or newer
 - LunarG Vulkan SDK
 - Git
-- Internet access on first configure if `RAG_ENABLE_PHYSICS=ON`, because CMake fetches Jolt Physics `v5.5.0`
+- Internet access on first configure when the retained dependency sources are
+  unavailable, because CMake fetches Jolt Physics, Dear ImGui, and ImGuizmo
 
-## Build And Run
+## Canonical Development Build And Run
 
-From the repository root:
+The one development build directory is `build/skybox`, and its Debug executable
+is `build/skybox/Debug/RagSandbox.exe`. From the repository root, use:
 
 ```powershell
-cmake -S . -B build
-cmake --build build --config Debug --parallel
-.\build\Debug\RagSandbox.exe
+.\tools\build-and-run.ps1
 ```
 
-Run the scene/runtime tests:
+The script resolves the repository from its own location, builds the exact Debug
+target, stops on any configure/build failure, then launches that executable with
+the repository root as its working directory. Both the script and application
+log the executable, working directory, configuration, and build identity.
+
+If `build/skybox/CMakeCache.txt` does not exist, the script configures it. When
+all three retained dependency source trees are present under
+`build-vs2026/_deps`, it uses them with FetchContent's fully disconnected mode;
+otherwise the first configure may need network access. Do not delete or move
+`build-vs2026/_deps` while the canonical cache or offline configure depends on it.
+
+Visual Studio users may open `build/skybox/RAGEngine.slnx` after configuration.
+CMake marks `RagSandbox` as the startup project and sets its debugger working
+directory to the repository root. The PowerShell command above remains the
+primary workflow.
+
+## Tests
+
+Build and run the complete Debug test suite:
 
 ```powershell
-.\build\Debug\RagSceneTests.exe
+cmake --build .\build\skybox --config Debug --target RagSceneTests RagSceneSerializationTests RagSkyboxTests RagPhysicsTests --parallel
+ctest --test-dir .\build\skybox -C Debug --output-on-failure
 ```
 
 Run a one-frame sandbox smoke test:
 
 ```powershell
-.\build\Debug\RagSandbox.exe --smoke-test
+.\tools\build-and-run.ps1 -SmokeTest
 ```
 
-Build without Vulkan if the Vulkan SDK is unavailable:
+For an intentionally separate, non-canonical experiment without Vulkan or
+physics, use a different build directory so the canonical cache is not changed:
 
 ```powershell
-cmake -S . -B build -DRAG_ENABLE_VULKAN=OFF
-cmake --build build --config Debug --parallel
-```
-
-Build without physics if you do not want CMake to fetch Jolt:
-
-```powershell
-cmake -S . -B build -DRAG_ENABLE_PHYSICS=OFF
-cmake --build build --config Debug --parallel
+cmake -S . -B build/no-vulkan -DRAG_ENABLE_VULKAN=OFF -DRAG_ENABLE_PHYSICS=OFF
+cmake --build build/no-vulkan --config Debug --parallel
 ```
 
 ## Controls

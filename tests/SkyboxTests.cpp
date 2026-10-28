@@ -97,6 +97,19 @@ namespace
         world.camera.view = rag::math::InverseRigidTransform(rag::math::Translation({0, 2, 6}));
         world.objects.push_back({}); // Built-in cube and texture fallback.
         world.objects[0].world_transform = rag::math::Identity();
+        // Per-object materials: an untextured red cube (white texture slot) and a
+        // tinted textured duck keep the material push constants and per-object
+        // texture switching under validation for the whole sequence below.
+        rag::renderer::RenderObject red_cube{};
+        red_cube.world_transform = rag::math::Translation({1.5f, 0.0f, 0.0f});
+        red_cube.base_color_linear = {1.0f, 0.0f, 0.0f};
+        red_cube.use_base_color_texture = false;
+        world.objects.push_back(red_cube);
+        rag::renderer::RenderObject tinted_duck{};
+        tinted_duck.world_transform = rag::math::Translation({-1.5f, 0.0f, 0.0f});
+        tinted_duck.mesh = {3, 0};
+        tinted_duck.base_color_linear = {0.2f, 0.5f, 1.0f};
+        world.objects.push_back(tinted_duck);
         rag::renderer::RenderFrameContext frame;
         frame.render_world = &world;
         frame.selection_highlight.active = true;

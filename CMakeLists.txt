@@ -60,6 +60,8 @@ target_link_libraries(RagRuntime PUBLIC RagCore RagPlatform)
 add_library(RagRenderer STATIC
     src/Rag/Renderer/Environment.cpp
     src/Rag/Renderer/Environment.h
+    src/Rag/Renderer/Material.cpp
+    src/Rag/Renderer/Material.h
     src/Rag/Renderer/Renderer.cpp
     src/Rag/Renderer/Renderer.h
 )
@@ -329,6 +331,21 @@ if(RAG_BUILD_SANDBOX)
     )
     rag_configure_target(RagSandbox)
     target_link_libraries(RagSandbox PRIVATE RagEngine)
+    target_compile_definitions(RagSandbox PRIVATE
+        RAG_BUILD_CONFIGURATION="$<CONFIG>"
+        RAG_CMAKE_BUILD_DIRECTORY="${CMAKE_BINARY_DIR}"
+        RAG_PROJECT_VERSION="${PROJECT_VERSION}"
+    )
+
+    # Keep command-line and Visual Studio launches consistent. The canonical
+    # development workflow runs from the repository root, so source scenes are
+    # found in scenes/ while generated models/assets live beside the executable.
+    set(RAG_SANDBOX_RUNTIME_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
+    set_target_properties(RagSandbox PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${RAG_SANDBOX_RUNTIME_DIRECTORY}"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    )
+    set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT RagSandbox)
 
     # The editor UI (dockspace, panels, menu bar) is a developer-only layer built
     # on the ImGui overlay. Defining RAG_EDITOR only when ImGui is also enabled
@@ -344,17 +361,26 @@ if(RAG_BUILD_SANDBOX)
 
     if(RAG_ENABLE_VULKAN)
         add_dependencies(RagSandbox RagRendererVKShaders)
-        add_custom_command(
-            TARGET RagSandbox
-            POST_BUILD
+
+        # This target is intentionally always out of date. Building RagSandbox
+        # therefore refreshes runtime files even when only an asset or generated
+        # shader changed and the executable itself does not need to relink.
+        add_custom_target(RagSandboxRuntimeFiles
             COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:RagSandbox>/shaders"
-            COMMENT "Preparing RAG Engine shader directory next to RagSandbox"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_CURRENT_SOURCE_DIR}/models"
+                "$<TARGET_FILE_DIR:RagSandbox>/models"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+                "$<TARGET_FILE_DIR:RagSandbox>/assets"
+            COMMENT "Refreshing RAG Engine runtime files next to RagSandbox"
             VERBATIM
         )
+        add_dependencies(RagSandboxRuntimeFiles RagRendererVKShaders)
         foreach(shader_spv IN LISTS RAG_VULKAN_SHADER_SPV_FILES)
             get_filename_component(shader_spv_name "${shader_spv}" NAME)
             add_custom_command(
-                TARGET RagSandbox
+                TARGET RagSandboxRuntimeFiles
                 POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
                     "${shader_spv}"
@@ -363,26 +389,7 @@ if(RAG_BUILD_SANDBOX)
                 VERBATIM
             )
         endforeach()
-
-        add_custom_command(
-            TARGET RagSandbox
-            POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-                "${CMAKE_CURRENT_SOURCE_DIR}/models"
-                "$<TARGET_FILE_DIR:RagSandbox>/models"
-            COMMENT "Copying RAG Engine model assets next to RagSandbox"
-            VERBATIM
-        )
-
-        add_custom_command(
-            TARGET RagSandbox
-            POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-                "${CMAKE_CURRENT_SOURCE_DIR}/assets"
-                "$<TARGET_FILE_DIR:RagSandbox>/assets"
-            COMMENT "Copying RAG Engine texture assets next to RagSandbox"
-            VERBATIM
-        )
+        add_dependencies(RagSandbox RagSandboxRuntimeFiles)
     endif()
 endif()
 

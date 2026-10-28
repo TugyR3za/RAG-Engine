@@ -97,8 +97,9 @@ namespace rag::renderer::vk
         constexpr u32 CubeMeshIndex = 0;
         constexpr u32 GroundMeshIndex = 2;
         constexpr u32 DuckMeshIndex = 3;
-        constexpr u32 CheckerTextureIndex = 0;
-        constexpr u32 DuckTextureIndex = 1;
+        // Texture slot 0 is always the built-in white texture (see Impl()).
+        constexpr u32 WhiteTextureIndex = 0;
+        constexpr std::array<u8, 4> WhitePixel{255, 255, 255, 255};
         constexpr std::string_view ModelMeshFilename = "sphere.obj";
         constexpr std::string_view GltfModelFilename = "Duck.glb";
         constexpr std::string_view ColorTextureFilename = "texture.png";
@@ -228,13 +229,40 @@ namespace rag::renderer::vk
                 *device_,
                 desc_.frames_in_flight);
 
-            // Texture slot 0 is the shared checker used by built-in and OBJ
-            // meshes. The duck's embedded base-color image becomes slot 1.
+            // Texture slot 0: a 1x1 opaque-white texture built from memory, so it
+            // cannot fail to load. Objects with their base-color texture disabled
+            // bind it, as does any mesh whose texture is unavailable; texture *
+            // tint then equals the tint alone. One shared GPU image, never per object.
             textures_.push_back(std::make_unique<VulkanTexture>(
                 *device_,
-                ColorTextureFilename));
+                "built-in 1x1 white base-color fallback",
+                1,
+                1,
+                WhitePixel));
 
+            // The shared checker used by built-in and OBJ meshes. A load failure
+            // is logged, not fatal: those meshes draw with the white fallback.
+            u32 checker_texture_index = WhiteTextureIndex;
+            try
+            {
+                textures_.push_back(std::make_unique<VulkanTexture>(
+                    *device_,
+                    ColorTextureFilename));
+                checker_texture_index = static_cast<u32>(textures_.size() - 1);
+            }
+            catch (const std::exception& exception)
+            {
+                RAG_LOG_ERROR(
+                    "Failed to load texture '",
+                    ColorTextureFilename,
+                    "': ",
+                    exception.what(),
+                    " Meshes using it will draw with the white base-color fallback.");
+            }
+
+            // The duck's embedded base-color image follows the checker.
             std::optional<GltfMeshData> duck_data;
+            u32 duck_texture_index = WhiteTextureIndex;
             try
             {
                 duck_data.emplace(LoadGltfMesh(GltfModelFilename, ModelBaseColor));
@@ -244,6 +272,7 @@ namespace rag::renderer::vk
                     duck_data->texture_width,
                     duck_data->texture_height,
                     duck_data->base_color_pixels));
+                duck_texture_index = static_cast<u32>(textures_.size() - 1);
             }
             catch (const std::exception& exception)
             {
@@ -312,7 +341,7 @@ namespace rag::renderer::vk
 
             // Mesh slot 0: the built-in cube every existing entity uses.
             meshes_.push_back(std::make_unique<VulkanMesh>(*device_, CubeVertices, CubeIndices));
-            mesh_texture_indices_.push_back(CheckerTextureIndex);
+            mesh_texture_indices_.push_back(checker_texture_index);
 
             // Mesh slot 1: the OBJ model. A load failure is logged but not
             // fatal; handles pointing at the missing slot draw the cube instead.
@@ -323,7 +352,7 @@ namespace rag::renderer::vk
                     *device_,
                     model_data.vertices,
                     model_data.indices));
-                mesh_texture_indices_.push_back(CheckerTextureIndex);
+                mesh_texture_indices_.push_back(checker_texture_index);
             }
             catch (const std::exception& exception)
             {
@@ -334,7 +363,7 @@ namespace rag::renderer::vk
                     exception.what(),
                     " Objects referencing it will fall back to the built-in cube mesh.");
                 meshes_.push_back(nullptr);
-                mesh_texture_indices_.push_back(CheckerTextureIndex);
+                mesh_texture_indices_.push_back(checker_texture_index);
             }
 
             // Mesh slot 2: same cube geometry with repeated UVs for the floor.
@@ -348,7 +377,7 @@ namespace rag::renderer::vk
                 *device_,
                 ground_vertices,
                 CubeIndices));
-            mesh_texture_indices_.push_back(CheckerTextureIndex);
+            mesh_texture_indices_.push_back(checker_texture_index);
 
             // Mesh slot 3: first primitive from Duck.glb. Its node transform is
             // already baked into the uploaded vertices by the glTF loader.
@@ -356,18 +385,18 @@ namespace rag::renderer::vk
             {
                 throw VulkanError("Vulkan mesh registry duck slot is inconsistent.");
             }
-            if (duck_data.has_value() && textures_.size() > DuckTextureIndex)
+            if (duck_data.has_value())
             {
                 meshes_.push_back(std::make_unique<VulkanMesh>(
                     *device_,
                     duck_data->vertices,
                     duck_data->indices));
-                mesh_texture_indices_.push_back(DuckTextureIndex);
+                mesh_texture_indices_.push_back(duck_texture_index);
             }
             else
             {
                 meshes_.push_back(nullptr);
-                mesh_texture_indices_.push_back(CheckerTextureIndex);
+                mesh_texture_indices_.push_back(checker_texture_index);
             }
 
             frames_ = std::make_unique<VulkanFrameResources>(
@@ -652,13 +681,13 @@ namespace rag::renderer::vk
             shadow_pipeline_->Bind(command_buffer, shadow_map_->Extent());
             shadow_pipeline_->BindDescriptorSet(command_buffer, descriptor_set);
             u32 shadow_bound_mesh = std::numeric_limits<u32>::max();
-            ForEachSceneModel(context, [&](const math::Mat4& model, u32 mesh_index) {
+            ForEachSceneModel(context, [&](const RenderObject& object, u32 mesh_index) {
                 if (mesh_index != shadow_bound_mesh)
                 {
                     meshes_[mesh_index]->Bind(command_buffer);
                     shadow_bound_mesh = mesh_index;
                 }
-                shadow_pipeline_->PushModelMatrix(command_buffer, model);
+                shadow_pipeline_->PushModelMatrix(command_buffer, object.world_transform);
                 vkCmdDrawIndexed(command_buffer, meshes_[mesh_index]->IndexCount(), 1, 0, 0, 0);
             });
             shadow_map_->EndPass(command_buffer);
@@ -668,13 +697,19 @@ namespace rag::renderer::vk
             pipeline_->Bind(command_buffer, swapchain_->Extent());
             u32 main_bound_mesh = std::numeric_limits<u32>::max();
             u32 main_bound_texture = std::numeric_limits<u32>::max();
-            ForEachSceneModel(context, [&](const math::Mat4& model, u32 mesh_index) {
+            ForEachSceneModel(context, [&](const RenderObject& object, u32 mesh_index) {
                 if (mesh_index != main_bound_mesh)
                 {
                     meshes_[mesh_index]->Bind(command_buffer);
                     main_bound_mesh = mesh_index;
                 }
-                const u32 texture_index = mesh_texture_indices_[mesh_index];
+                // Per-object material: the object picks which shared, already
+                // uploaded texture to bind and pushes its own tint. Disabling the
+                // texture binds the white slot so the tint alone is the albedo;
+                // no mesh, texture or descriptor shared with other objects changes.
+                const u32 texture_index = object.use_base_color_texture
+                    ? mesh_texture_indices_[mesh_index]
+                    : WhiteTextureIndex;
                 if (texture_index != main_bound_texture)
                 {
                     pipeline_->BindDescriptorSets(
@@ -683,7 +718,8 @@ namespace rag::renderer::vk
                         texture_descriptors_->DescriptorSet(texture_index));
                     main_bound_texture = texture_index;
                 }
-                pipeline_->PushModelMatrix(command_buffer, model);
+                pipeline_->PushModelMatrix(command_buffer, object.world_transform);
+                pipeline_->PushBaseColorFactor(command_buffer, object.base_color_linear);
                 vkCmdDrawIndexed(command_buffer, meshes_[mesh_index]->IndexCount(), 1, 0, 0, 0);
             });
 
@@ -728,8 +764,9 @@ namespace rag::renderer::vk
             RAG_VK_CHECK(vkEndCommandBuffer(command_buffer));
         }
 
-        // Visits every (model matrix, mesh index) pair the frame should draw, so
-        // the shadow pass and the main pass always render the exact same geometry.
+        // Visits every (render object, resolved mesh index) pair the frame should
+        // draw, so the shadow pass and the main pass always render the exact same
+        // geometry. Without a render world, a default-material spinning cube is drawn.
         template <typename DrawModelFn>
         void ForEachSceneModel(const RenderFrameContext& context, DrawModelFn&& draw_model) const
         {
@@ -737,12 +774,14 @@ namespace rag::renderer::vk
             {
                 for (const RenderObject& object : context.render_world->objects)
                 {
-                    draw_model(object.world_transform, ResolveMeshIndex(object.mesh));
+                    draw_model(object, ResolveMeshIndex(object.mesh));
                 }
             }
             else
             {
-                draw_model(FallbackModelMatrix(), CubeMeshIndex);
+                RenderObject fallback{};
+                fallback.world_transform = FallbackModelMatrix();
+                draw_model(fallback, CubeMeshIndex);
             }
         }
 

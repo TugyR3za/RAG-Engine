@@ -48,7 +48,11 @@ namespace rag::scene
     struct RenderableComponent
     {
         renderer::MeshHandle mesh{};
+        // Legacy handle passthrough; the renderer does not read it. Per-object
+        // appearance lives in material_settings below.
         renderer::MaterialHandle material{};
+        // Owned by value, so entities sharing a mesh/texture stay independent.
+        renderer::MaterialSettings material_settings{};
         renderer::Bounds local_bounds{};
         u32 visibility_layer = 1;
         bool visible = true;

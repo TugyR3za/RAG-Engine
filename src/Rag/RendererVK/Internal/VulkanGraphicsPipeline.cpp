@@ -13,6 +13,28 @@ namespace rag::renderer::vk
     {
         constexpr std::string_view VertexShaderFilename = "triangle.vert.spv";
         constexpr std::string_view FragmentShaderFilename = "triangle.frag.spv";
+
+        // Per-object push constants, split by stage to mirror the shaders:
+        // bytes [0, 64) are the vertex stage's model matrix and [64, 80) the
+        // fragment stage's ObjectPushConstants.base_color_factor (a vec4, so the
+        // tint's padding float is explicit and the std430 offset is exactly 64).
+        struct MaterialPushConstants
+        {
+            math::Vec3 base_color_factor;
+            f32 base_color_factor_padding = 1.0f;
+        };
+
+        constexpr u32 ModelPushConstantOffset = 0;
+        constexpr u32 ModelPushConstantSize = sizeof(math::Mat4);
+        constexpr u32 MaterialPushConstantOffset = ModelPushConstantOffset + ModelPushConstantSize;
+        constexpr u32 MaterialPushConstantSize = sizeof(MaterialPushConstants);
+
+        static_assert(sizeof(math::Mat4) == 64);
+        static_assert(sizeof(MaterialPushConstants) == 16);
+        static_assert(MaterialPushConstantOffset == 64);
+        // 128 bytes is the minimum maxPushConstantsSize every Vulkan device must
+        // support, so this layout needs no runtime device-limit check.
+        static_assert(MaterialPushConstantOffset + MaterialPushConstantSize <= 128);
     }
 
     VulkanGraphicsPipeline::VulkanGraphicsPipeline(
@@ -83,14 +105,28 @@ namespace rag::renderer::vk
         VkCommandBuffer command_buffer,
         const math::Mat4& model) const
     {
-        static_assert(sizeof(math::Mat4) == 64);
         vkCmdPushConstants(
             command_buffer,
             layout_,
             VK_SHADER_STAGE_VERTEX_BIT,
-            0,
-            sizeof(math::Mat4),
+            ModelPushConstantOffset,
+            ModelPushConstantSize,
             model.elements.data());
+    }
+
+    void VulkanGraphicsPipeline::PushBaseColorFactor(
+        VkCommandBuffer command_buffer,
+        const math::Vec3& linear_base_color) const
+    {
+        MaterialPushConstants push{};
+        push.base_color_factor = linear_base_color;
+        vkCmdPushConstants(
+            command_buffer,
+            layout_,
+            VK_SHADER_STAGE_FRAGMENT_BIT,
+            MaterialPushConstantOffset,
+            MaterialPushConstantSize,
+            &push);
     }
 
     void VulkanGraphicsPipeline::Create(
@@ -184,10 +220,16 @@ namespace rag::renderer::vk
         dynamic_state.dynamicStateCount = static_cast<u32>(std::size(dynamic_states));
         dynamic_state.pDynamicStates = dynamic_states;
 
-        VkPushConstantRange push_constant_range{};
-        push_constant_range.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        push_constant_range.offset = 0;
-        push_constant_range.size = sizeof(math::Mat4);
+        const std::array<VkPushConstantRange, 2> push_constant_ranges{
+            VkPushConstantRange{
+                VK_SHADER_STAGE_VERTEX_BIT,
+                ModelPushConstantOffset,
+                ModelPushConstantSize},
+            VkPushConstantRange{
+                VK_SHADER_STAGE_FRAGMENT_BIT,
+                MaterialPushConstantOffset,
+                MaterialPushConstantSize},
+        };
 
         VkPipelineLayoutCreateInfo layout_info{};
         layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -196,8 +238,8 @@ namespace rag::renderer::vk
             texture_descriptor_set_layout};
         layout_info.setLayoutCount = static_cast<u32>(descriptor_set_layouts.size());
         layout_info.pSetLayouts = descriptor_set_layouts.data();
-        layout_info.pushConstantRangeCount = 1;
-        layout_info.pPushConstantRanges = &push_constant_range;
+        layout_info.pushConstantRangeCount = static_cast<u32>(push_constant_ranges.size());
+        layout_info.pPushConstantRanges = push_constant_ranges.data();
         RAG_VK_CHECK(vkCreatePipelineLayout(device_, &layout_info, nullptr, &layout_));
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
@@ -226,7 +268,7 @@ namespace rag::renderer::vk
 
         RAG_LOG_INFO(
             "Created Vulkan graphics pipeline with frame descriptors in set 0, "
-            "per-texture descriptors in set 1, a model push constant, and depth testing using shaders ",
+            "per-texture descriptors in set 1, model + base-color push constants, and depth testing using shaders ",
             VertexShaderFilename,
             " and ",
             FragmentShaderFilename,

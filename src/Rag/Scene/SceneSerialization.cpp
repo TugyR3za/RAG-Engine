@@ -6,6 +6,7 @@
 // never lands in anyone else's include path (RagScene stays otherwise header-light).
 #include <json.hpp>
 
+#include <algorithm>
 #include <exception>
 #include <fstream>
 #include <sstream>
@@ -152,7 +153,11 @@ namespace rag::scene
             json node;
             node["mesh"] = r.mesh;
             node["texture"] = r.texture;
-            node["material"] = json{{"index", r.material_index}, {"generation", r.material_generation}};
+            node["material"] = json{
+                {"index", r.material_index},
+                {"generation", r.material_generation},
+                {"baseColor", ToJson(r.material_settings.base_color)},
+                {"useBaseColorTexture", r.material_settings.use_base_color_texture}};
             node["boundsCenter"] = ToJson(r.local_bounds.center);
             node["boundsExtents"] = ToJson(r.local_bounds.extents);
             node["visibilityLayer"] = r.visibility_layer;
@@ -216,6 +221,44 @@ namespace rag::scene
             return c;
         }
 
+        // Optional additive version-1 fields. Like the environment, a bad value never
+        // rejects the scene: it is logged and that field keeps its default.
+        [[nodiscard]] renderer::MaterialSettings ReadMaterialSettings(const json& material)
+        {
+            renderer::MaterialSettings settings;
+            if (const auto color = material.find("baseColor"); color != material.end())
+            {
+                const bool valid = color->is_array() && color->size() == 3 &&
+                    std::all_of(color->begin(), color->end(),
+                        [](const json& channel) { return channel.is_number(); });
+                if (valid)
+                {
+                    const auto channel = [&](std::size_t index) {
+                        return std::clamp((*color)[index].get<f32>(), 0.0f, 1.0f);
+                    };
+                    settings.base_color = math::Vec3{channel(0), channel(1), channel(2)};
+                }
+                else
+                {
+                    RAG_LOG_WARNING("Invalid material baseColor ", color->dump(),
+                        " (expected three numbers); using white.");
+                }
+            }
+            if (const auto use_texture = material.find("useBaseColorTexture"); use_texture != material.end())
+            {
+                if (use_texture->is_boolean())
+                {
+                    settings.use_base_color_texture = use_texture->get<bool>();
+                }
+                else
+                {
+                    RAG_LOG_WARNING("Invalid material useBaseColorTexture ", use_texture->dump(),
+                        " (expected true/false); using the texture.");
+                }
+            }
+            return settings;
+        }
+
         [[nodiscard]] SerializedRenderable ReadRenderable(const json& node)
         {
             SerializedRenderable r;
@@ -225,6 +268,7 @@ namespace rag::scene
             {
                 r.material_index = material->value("index", r.material_index);
                 r.material_generation = material->value("generation", r.material_generation);
+                r.material_settings = ReadMaterialSettings(*material);
             }
             r.local_bounds.center = Vec3FromJson(node.value("boundsCenter", json{}), r.local_bounds.center);
             r.local_bounds.extents = Vec3FromJson(node.value("boundsExtents", json{}), r.local_bounds.extents);

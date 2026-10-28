@@ -4,6 +4,7 @@
 #include "Rag/Core/Math.h"
 #include "Rag/Platform/Window.h"
 #include "Rag/Renderer/Environment.h"
+#include "Rag/Renderer/Material.h"
 
 #include <array>
 #include <functional>
@@ -111,6 +112,12 @@ namespace rag::renderer
         MaterialHandle material{};
         Bounds local_bounds{};
         u32 visibility_layer = 1;
+
+        // Per-object material, draw-ready: the entity's sRGB MaterialSettings color
+        // already converted to linear by scene extraction (see Material.h). The
+        // defaults draw the mesh's texture unmodified, as before materials existed.
+        math::Vec3 base_color_linear{1.0f, 1.0f, 1.0f};
+        bool use_base_color_texture = true;
     };
 
     struct RenderLight
