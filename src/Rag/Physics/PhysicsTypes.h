@@ -75,4 +75,64 @@ namespace rag::physics
         bool gravity_enabled = true;
         bool continuous_collision = true; // CCD via Jolt LinearCast motion quality
     };
+
+    // Opaque handle to a character controller living inside a PhysicsWorld. Like
+    // BodyHandle it carries no Jolt type; characters are counted separately from
+    // bodies (see PhysicsWorld::CharacterCount) because they are not rigid bodies.
+    struct CharacterHandle
+    {
+        u32 id = 0xFFFFFFFFu;
+
+        [[nodiscard]] bool IsValid() const
+        {
+            return id != 0xFFFFFFFFu;
+        }
+    };
+
+    // An upright capsule moved by collision sweeps (Jolt CharacterVirtual), used
+    // for the first-person player. It is NOT a rigid body: it slides along static
+    // and dynamic colliders, pushes dynamic bodies with at most max_push_force and
+    // presses on whatever it stands on with its weight, but rigid bodies do not
+    // collide with it (a falling prop passes through, and props cannot push it).
+    struct CharacterDesc
+    {
+        // Bottom of the capsule (the feet), in world space.
+        math::Vec3 feet_position{};
+
+        // Capsule radius and TOTAL height (both hemispheres included), metres.
+        // height must exceed 2 * radius; the caller validates authoring values.
+        f32 radius = 0.3f;
+        f32 height = 1.8f;
+
+        // Steeper ground counts as a wall: the character slides down it, cannot
+        // walk up it, and is not "on ground" for jumping.
+        f32 max_slope_radians = 0.87266f; // 50 degrees
+
+        // Weight pressed onto supporting dynamic bodies, and the force limit (N)
+        // for shoving dynamic bodies it walks into. Dynamic bodies use Jolt's
+        // default density (1000 kg/m^3) and friction (0.2), so 600 N slides props
+        // up to roughly 300 kg (a 0.67 m cube); a 1 m cube (~1 t) just blocks.
+        f32 mass_kg = 70.0f;
+        f32 max_push_force = 600.0f;
+    };
+
+    // What supports the character after a move.
+    //   OnGround      - standing on walkable ground (may jump).
+    //   OnSteepGround - touching ground steeper than max_slope_radians (slides).
+    //   NotSupported  - touching something, but nothing that can hold it up.
+    //   InAir         - touching nothing.
+    enum class CharacterGround : u8
+    {
+        OnGround,
+        OnSteepGround,
+        NotSupported,
+        InAir
+    };
+
+    struct CharacterState
+    {
+        math::Vec3 feet_position{};
+        CharacterGround ground = CharacterGround::InAir;
+        math::Vec3 ground_normal{0.0f, 1.0f, 0.0f};
+    };
 }

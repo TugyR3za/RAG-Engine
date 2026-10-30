@@ -32,7 +32,20 @@ namespace rag::core
         [[nodiscard]] f32 ScrollDeltaX() const;
         [[nodiscard]] f32 ScrollDeltaY() const;
 
+        // Relative mouse motion accumulated from raw input since BeginFrame, in
+        // device counts (not pixels). It is independent of the cursor, so it keeps
+        // reporting motion while the cursor is hidden and confined to the window.
+        [[nodiscard]] i32 RawMouseDeltaX() const;
+        [[nodiscard]] i32 RawMouseDeltaY() const;
+
+        // Whether the window currently has keyboard focus. Losing focus releases
+        // every held key and button (reported as released this frame), because the
+        // matching key-up messages go to whichever window took focus instead.
+        [[nodiscard]] bool HasFocus() const;
+
     private:
+        void ReleaseAll();
+
         static constexpr std::size_t KeyCount = static_cast<std::size_t>(KeyCode::Count);
         static constexpr std::size_t MouseButtonCount = static_cast<std::size_t>(MouseButton::Count);
 
@@ -42,5 +55,8 @@ namespace rag::core
         i32 mouse_y_ = 0;
         f32 scroll_delta_x_ = 0.0f;
         f32 scroll_delta_y_ = 0.0f;
+        i32 raw_mouse_delta_x_ = 0;
+        i32 raw_mouse_delta_y_ = 0;
+        bool focused_ = true;
     };
 }

@@ -72,6 +72,8 @@ add_library(RagScene STATIC
     src/Rag/Scene/ComponentStorage.h
     src/Rag/Scene/Components.h
     src/Rag/Scene/Entity.h
+    src/Rag/Scene/PlayerStart.cpp
+    src/Rag/Scene/PlayerStart.h
     src/Rag/Scene/Scene.cpp
     src/Rag/Scene/Scene.h
     src/Rag/Scene/SceneSerialization.cpp
@@ -327,7 +329,10 @@ if(RAG_BUILD_SANDBOX)
     add_executable(RagSandbox
         sandbox/AssetBrowser.h
         sandbox/EditorContext.h
+        sandbox/PlayerController.h
         sandbox/SandboxMain.cpp
+        sandbox/SceneDocument.h
+        sandbox/SimulationController.h
     )
     rag_configure_target(RagSandbox)
     target_link_libraries(RagSandbox PRIVATE RagEngine)
@@ -405,6 +410,29 @@ if(RAG_BUILD_TESTS)
     target_link_libraries(RagSceneSerializationTests PRIVATE RagScene)
     add_test(NAME SceneSerialization COMMAND RagSceneSerializationTests)
 
+    # The Edit/Playing/Paused lifecycle is a header-only sandbox helper with no
+    # engine dependencies beyond RagCore's base types, so it is tested directly.
+    add_executable(RagSimulationControllerTests
+        sandbox/SimulationController.h
+        tests/SimulationControllerTests.cpp
+    )
+    rag_configure_target(RagSimulationControllerTests)
+    target_include_directories(RagSimulationControllerTests PRIVATE ${PROJECT_SOURCE_DIR}/sandbox)
+    target_link_libraries(RagSimulationControllerTests PRIVATE RagCore)
+    add_test(NAME SimulationController COMMAND RagSimulationControllerTests)
+
+    # Scene document identity (which file Save writes; Untitled after New) is a
+    # header-only sandbox helper. It is tested with real scene serialization
+    # against disposable files in the system temp directory, never scenes/.
+    add_executable(RagSceneDocumentTests
+        sandbox/SceneDocument.h
+        tests/SceneDocumentTests.cpp
+    )
+    rag_configure_target(RagSceneDocumentTests)
+    target_include_directories(RagSceneDocumentTests PRIVATE ${PROJECT_SOURCE_DIR}/sandbox)
+    target_link_libraries(RagSceneDocumentTests PRIVATE RagScene)
+    add_test(NAME SceneDocument COMMAND RagSceneDocumentTests)
+
     if(RAG_ENABLE_VULKAN AND RAG_BUILD_SANDBOX)
         add_executable(RagSkyboxTests tests/SkyboxTests.cpp)
         rag_configure_target(RagSkyboxTests)
@@ -414,12 +442,49 @@ if(RAG_BUILD_TESTS)
         add_dependencies(RagSkyboxTests RagSandbox)
         add_test(NAME SkyboxAssets COMMAND RagSkyboxTests)
         set_tests_properties(SkyboxAssets PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+
+        # Scripted Play/Pause/Step/Stop run inside the real editor (real Scene,
+        # Jolt and Vulkan renderer). It opens a window for a few seconds, so it is
+        # labelled "gpu" and can be skipped with `ctest -LE gpu`. It only uses
+        # in-memory scenes; nothing under scenes/ is written.
+        if(RAG_EDITOR AND RAG_ENABLE_IMGUI AND RAG_ENABLE_PHYSICS)
+            add_test(NAME SandboxPlayMode COMMAND RagSandbox --play-mode-self-test)
+            set_tests_properties(SandboxPlayMode PROPERTIES
+                WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+                LABELS "gpu"
+                TIMEOUT 180
+            )
+        endif()
     endif()
+
+    # First-person movement rules (walk speed, diagonals, jump gating, air
+    # control, fall reset, lifecycle gating) are a header-only, engine-free
+    # sandbox helper tested against an analytic stand-in for collision.
+    add_executable(RagPlayerControllerTests
+        sandbox/PlayerController.h
+        tests/PlayerControllerTests.cpp
+    )
+    rag_configure_target(RagPlayerControllerTests)
+    target_include_directories(RagPlayerControllerTests PRIVATE ${PROJECT_SOURCE_DIR}/sandbox)
+    target_link_libraries(RagPlayerControllerTests PRIVATE RagCore)
+    add_test(NAME PlayerController COMMAND RagPlayerControllerTests)
 
     if(RAG_ENABLE_PHYSICS)
         add_executable(RagPhysicsTests tests/PhysicsWorldTests.cpp)
         rag_configure_target(RagPhysicsTests)
         target_link_libraries(RagPhysicsTests PRIVATE RagPhysics)
         add_test(NAME PhysicsWorld COMMAND RagPhysicsTests)
+
+        # The same movement rules driving a real Jolt character through
+        # PhysicsWorld: floors, walls, ledges, ceilings, dynamic props, slopes,
+        # frame rates and long frames. No window or GPU.
+        add_executable(RagPlayerPhysicsTests
+            sandbox/PlayerController.h
+            tests/PlayerPhysicsTests.cpp
+        )
+        rag_configure_target(RagPlayerPhysicsTests)
+        target_include_directories(RagPlayerPhysicsTests PRIVATE ${PROJECT_SOURCE_DIR}/sandbox)
+        target_link_libraries(RagPlayerPhysicsTests PRIVATE RagPhysics RagScene)
+        add_test(NAME PlayerPhysics COMMAND RagPlayerPhysicsTests)
     endif()
 endif()

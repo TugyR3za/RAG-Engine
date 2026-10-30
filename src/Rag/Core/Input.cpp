@@ -41,6 +41,21 @@ namespace rag::core
 
         scroll_delta_x_ = 0.0f;
         scroll_delta_y_ = 0.0f;
+        raw_mouse_delta_x_ = 0;
+        raw_mouse_delta_y_ = 0;
+    }
+
+    void InputState::ReleaseAll()
+    {
+        for (ButtonState& state : keys_)
+        {
+            Release(state);
+        }
+
+        for (ButtonState& state : mouse_buttons_)
+        {
+            Release(state);
+        }
     }
 
     void InputState::ApplyEvent(const Event& event)
@@ -99,6 +114,27 @@ namespace rag::core
             const auto& scroll_event = std::get<MouseScrollEvent>(event.payload);
             scroll_delta_x_ += scroll_event.delta_x;
             scroll_delta_y_ += scroll_event.delta_y;
+            break;
+        }
+        case EventType::MouseRawMotion:
+        {
+            const auto& motion_event = std::get<MouseRawMotionEvent>(event.payload);
+            raw_mouse_delta_x_ += motion_event.delta_x;
+            raw_mouse_delta_y_ += motion_event.delta_y;
+            break;
+        }
+        case EventType::WindowFocus:
+        {
+            const auto& focus_event = std::get<WindowFocusEvent>(event.payload);
+            focused_ = focus_event.focused;
+            if (!focused_)
+            {
+                // Key-up for anything held now goes to the other window, so the
+                // key would otherwise stay "down" here forever (stuck movement).
+                ReleaseAll();
+                raw_mouse_delta_x_ = 0;
+                raw_mouse_delta_y_ = 0;
+            }
             break;
         }
         default:
@@ -160,5 +196,20 @@ namespace rag::core
     f32 InputState::ScrollDeltaY() const
     {
         return scroll_delta_y_;
+    }
+
+    i32 InputState::RawMouseDeltaX() const
+    {
+        return raw_mouse_delta_x_;
+    }
+
+    i32 InputState::RawMouseDeltaY() const
+    {
+        return raw_mouse_delta_y_;
+    }
+
+    bool InputState::HasFocus() const
+    {
+        return focused_;
     }
 }

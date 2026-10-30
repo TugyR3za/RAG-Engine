@@ -73,4 +73,37 @@ namespace rag::scene
         u32 visibility_layer = 1;
         bool visible = true;
     };
+
+    // Authoring configuration for the first-person player spawned when Play
+    // starts. Pure data: no runtime velocity, camera or input state lives here.
+    // The spawn point is the entity's transform position (the player's FEET);
+    // transform rotation and scale are ignored -- facing comes from yaw_radians.
+    // Units: metres, seconds, radians; see PlayerStart.h for valid ranges and
+    // SanitizePlayerStart for how out-of-range values are corrected.
+    struct PlayerStartComponent
+    {
+        // Initial facing about the world up axis, same convention as the editor
+        // camera: 0 looks down -Z, positive turns left (counter-clockwise from above).
+        f32 yaw_radians = 0.0f;
+
+        // Ground walking speed, m/s (diagonal input is normalized to this).
+        f32 move_speed = 4.5f;
+
+        // Degrees of view rotation per raw mouse count.
+        f32 mouse_sensitivity_degrees = 0.1f;
+
+        // Apex height of a standing jump in metres, under the current world
+        // gravity (the take-off speed is derived from it). 0 disables jumping.
+        f32 jump_height = 1.0f;
+
+        // Capsule radius and TOTAL height (hemispheres included), metres, and
+        // the camera height above the feet.
+        f32 capsule_radius = 0.3f;
+        f32 capsule_height = 1.8f;
+        f32 eye_height = 1.6f;
+
+        // World-space Y (metres). Feet falling below it return the player to
+        // this start with motion cleared.
+        f32 fall_reset_height = -25.0f;
+    };
 }

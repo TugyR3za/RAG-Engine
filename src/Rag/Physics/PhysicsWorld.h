@@ -45,6 +45,10 @@ namespace rag::physics
 
         [[nodiscard]] bool IsInitialized() const;
 
+        // Number of bodies Jolt currently holds (static and dynamic). Lets callers
+        // verify that destroying/rebuilding a scene leaves no leaked or ghost body.
+        [[nodiscard]] u32 BodyCount() const;
+
         // Creates a body from a full descriptor (collider primitive + offset +
         // pose + scale + motion type + gravity + CCD). This is the general entry
         // point used by the editor to (re)build a body when its mode changes.
@@ -89,6 +93,48 @@ namespace rag::physics
         // and re-activates it (used by transform edits and the "reset bodies"
         // button); for a static body it just repositions the collider.
         void SetBodyPose(BodyHandle handle, const math::Vec3& position, const math::Quat& rotation);
+
+        // --- Character controllers (first-person player) ----------------------
+        //
+        // A character is moved explicitly with MoveCharacter, never by Step: the
+        // caller decides its velocity (gameplay rules live outside physics) and
+        // interleaves MoveCharacter with Step. Destroying it, or Shutdown, frees
+        // it; it never adds to BodyCount.
+
+        // Creates an upright capsule character at desc.feet_position. Returns an
+        // invalid handle if the world is not initialized or the capsule is
+        // degenerate (height must exceed 2 * radius). It does not check for
+        // overlap; use IsCharacterSpaceFree first to avoid spawning inside geometry.
+        CharacterHandle CreateCharacter(const CharacterDesc& desc);
+        void DestroyCharacter(CharacterHandle handle);
+        [[nodiscard]] u32 CharacterCount() const;
+
+        // Sweeps the capsule along velocity * delta_seconds, sliding along
+        // whatever it hits; it does not move through static or dynamic colliders.
+        // Dynamic bodies in the way receive an impulse limited by the character's
+        // max_push_force. When the character walks off a step (and is not rising)
+        // it is kept on the floor up to 0.5 m below. There is no stair climbing.
+        // gravity_y only weights what the character stands on; the velocity
+        // passed in already includes any gravity the caller integrated.
+        CharacterState MoveCharacter(
+            CharacterHandle handle,
+            const math::Vec3& velocity,
+            f32 delta_seconds,
+            f32 gravity_y);
+
+        [[nodiscard]] CharacterState GetCharacterState(CharacterHandle handle) const;
+
+        // Teleports the character's feet to feet_position and refreshes its
+        // contacts (so the ground state is valid immediately). No sweep is done.
+        void SetCharacterPosition(CharacterHandle handle, const math::Vec3& feet_position);
+
+        // True when an upright capsule (radius, total height) with its feet at
+        // feet_position would not penetrate any static or dynamic collider by more
+        // than a centimetre. Touching (e.g. resting on the floor) counts as free.
+        [[nodiscard]] bool IsCharacterSpaceFree(
+            f32 radius,
+            f32 height,
+            const math::Vec3& feet_position) const;
 
     private:
         struct Impl;

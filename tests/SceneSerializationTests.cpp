@@ -1,8 +1,11 @@
 #include "Rag/Core/Log.h"
+#include "Rag/Scene/PlayerStart.h"
 #include "Rag/Scene/SceneSerialization.h"
 
 #include <cmath>
 #include <filesystem>
+#include <limits>
+#include <optional>
 #include <string>
 
 namespace
@@ -108,7 +111,35 @@ namespace
         light.light = light_component;
         scene.entities.push_back(light);
 
+        SerializedEntity start;
+        start.name = "Player Start";
+        start.transform = SerializedTransform{};
+        start.transform->position = rag::math::Vec3{2.0f, 0.5f, -4.0f};
+        SerializedPlayerStart start_component;
+        start_component.config.yaw_radians = 1.25f;
+        start_component.config.move_speed = 6.0f;
+        start_component.config.mouse_sensitivity_degrees = 0.2f;
+        start_component.config.jump_height = 1.4f;
+        start_component.config.capsule_radius = 0.4f;
+        start_component.config.capsule_height = 2.0f;
+        start_component.config.eye_height = 1.7f;
+        start_component.config.fall_reset_height = -12.0f;
+        start.player_start = start_component;
+        scene.entities.push_back(start);
+
         return scene;
+    }
+
+    bool PlayerStartsMatch(const rag::scene::PlayerStartComponent& a, const rag::scene::PlayerStartComponent& b)
+    {
+        return NearlyEqual(a.yaw_radians, b.yaw_radians) &&
+               NearlyEqual(a.move_speed, b.move_speed) &&
+               NearlyEqual(a.mouse_sensitivity_degrees, b.mouse_sensitivity_degrees) &&
+               NearlyEqual(a.jump_height, b.jump_height) &&
+               NearlyEqual(a.capsule_radius, b.capsule_radius) &&
+               NearlyEqual(a.capsule_height, b.capsule_height) &&
+               NearlyEqual(a.eye_height, b.eye_height) &&
+               NearlyEqual(a.fall_reset_height, b.fall_reset_height);
     }
 
     bool ScenesMatch(const rag::scene::SerializedScene& a, const rag::scene::SerializedScene& b)
@@ -128,7 +159,14 @@ namespace
                 left.camera.has_value() != right.camera.has_value() ||
                 left.renderable.has_value() != right.renderable.has_value() ||
                 left.light.has_value() != right.light.has_value() ||
-                left.physics.has_value() != right.physics.has_value())
+                left.physics.has_value() != right.physics.has_value() ||
+                left.player_start.has_value() != right.player_start.has_value())
+            {
+                return false;
+            }
+
+            if (left.player_start.has_value() &&
+                !PlayerStartsMatch(left.player_start->config, right.player_start->config))
             {
                 return false;
             }
@@ -355,6 +393,123 @@ int main()
             "Out-of-range base color must be clamped and the toggle kept."))
     {
         return 1;
+    }
+
+    // --- Player Start (optional additive version-1 "playerStart" object) ----
+
+    // Written only for entities that have one; the round-trip above already
+    // compared every field of the sample's non-default start.
+    if (!Expect(json_text.find("\"playerStart\"") != std::string::npos &&
+                json_text.find("\"mouseSensitivityDegrees\"") != std::string::npos,
+            "Written scenes must contain the Player Start fields.") ||
+        !Expect(ParseSceneFromJson(json_text, parsed, error) && parsed.entities.size() == original.entities.size(),
+            "The sample must reparse for the Player Start checks.") ||
+        !Expect(!parsed.entities.front().player_start.has_value() && parsed.entities.back().player_start.has_value(),
+            "Only the entity that had a Player Start has one after the round-trip."))
+    {
+        return 1;
+    }
+
+    // Older files (scenes/default.ragscene has no Player Start) load unchanged.
+    if (!Expect(ParseSceneFromJson(legacy_renderables, parsed, error), "Legacy scene must load.") ||
+        !Expect(!parsed.entities[0].player_start.has_value() && !parsed.entities[1].player_start.has_value(),
+            "A scene without \"playerStart\" has no Player Start."))
+    {
+        return 1;
+    }
+
+    // Defaults: an empty object is a valid default configuration.
+    const auto parse_start = [&](const std::string& start_json, std::optional<PlayerStartComponent>& out) {
+        SerializedScene scene;
+        out.reset();
+        const bool ok = ParseSceneFromJson(
+            R"({"sceneVersion":1,"entities":[{"name":"kept","playerStart":)" + start_json + "}]}", scene, error);
+        if (ok && scene.entities.size() == 1 && scene.entities[0].name == "kept")
+        {
+            if (scene.entities[0].player_start.has_value())
+            {
+                out = scene.entities[0].player_start->config;
+            }
+            return true;
+        }
+        return false;
+    };
+    std::optional<PlayerStartComponent> start;
+    if (!Expect(parse_start("{}", start), "An empty playerStart must load.") ||
+        !Expect(start.has_value() && PlayerStartsMatch(*start, PlayerStartComponent{}),
+            "An empty playerStart takes every default."))
+    {
+        return 1;
+    }
+
+    // A non-object never rejects the scene or drops the entity; it just has no start.
+    for (const std::string bad : {"5", "null", "\"yes\"", "[1,2]"})
+    {
+        if (!Expect(parse_start(bad, start), "A malformed playerStart must not reject the scene.") ||
+            !Expect(!start.has_value(), "A malformed playerStart is ignored."))
+        {
+            return 1;
+        }
+    }
+
+    // Non-numbers take the default; out-of-range numbers are clamped in
+    // dependency order (radius, then height >= 2r + 0.1, then eye <= height);
+    // yaw is wrapped.
+    if (!Expect(parse_start(R"({"moveSpeed":"fast","capsuleRadius":0.5,"capsuleHeight":0.2,
+                "eyeHeight":9,"yawRadians":10,"fallResetHeight":null,"jumpHeight":-3,
+                "mouseSensitivityDegrees":1e9})", start), "An out-of-range playerStart must load.") ||
+        !Expect(start.has_value(), "An out-of-range playerStart is kept (corrected)."))
+    {
+        return 1;
+    }
+    const PlayerStartComponent defaults{};
+    if (!Expect(NearlyEqual(start->move_speed, defaults.move_speed), "A non-number speed takes the default.") ||
+        !Expect(NearlyEqual(start->capsule_radius, 0.5f), "A valid radius is kept.") ||
+        !Expect(NearlyEqual(start->capsule_height, 1.1f), "Height is raised to 2 x radius + 0.1.") ||
+        !Expect(NearlyEqual(start->eye_height, 1.1f), "Eye height is clamped into the capsule.") ||
+        !Expect(NearlyEqual(start->yaw_radians, 10.0f - (4.0f * rag::math::Pi)), "Yaw is wrapped into [-pi, pi].") ||
+        !Expect(NearlyEqual(start->fall_reset_height, defaults.fall_reset_height), "A null reset height takes the default.") ||
+        !Expect(NearlyEqual(start->jump_height, 0.0f), "A negative jump height is clamped to 0 (no jumping).") ||
+        !Expect(NearlyEqual(start->mouse_sensitivity_degrees, PlayerStartLimits::MaxMouseSensitivityDegrees),
+            "A huge sensitivity is clamped."))
+    {
+        return 1;
+    }
+
+    // SanitizePlayerStart directly: valid input is untouched and reported as
+    // such; non-finite values fall back to defaults; every correction is listed.
+    PlayerStartComponent valid = original.entities.back().player_start->config;
+    if (!Expect(SanitizePlayerStart(valid).empty() && PlayerStartsMatch(valid, original.entities.back().player_start->config),
+            "A valid configuration is not changed."))
+    {
+        return 1;
+    }
+    PlayerStartComponent broken;
+    broken.move_speed = std::numeric_limits<rag::f32>::quiet_NaN();
+    broken.capsule_height = std::numeric_limits<rag::f32>::infinity();
+    broken.yaw_radians = -std::numeric_limits<rag::f32>::infinity();
+    const std::string report = SanitizePlayerStart(broken);
+    if (!Expect(PlayerStartsMatch(broken, PlayerStartComponent{}), "Non-finite values take the defaults.") ||
+        !Expect(report.find("moveSpeed") != std::string::npos && report.find("capsuleHeight") != std::string::npos &&
+                report.find("yawRadians") != std::string::npos,
+            "Every correction is reported."))
+    {
+        return 1;
+    }
+    for (rag::f32 radius = PlayerStartLimits::MinCapsuleRadius; radius <= PlayerStartLimits::MaxCapsuleRadius; radius += 0.05f)
+    {
+        PlayerStartComponent wide;
+        wide.capsule_radius = radius;
+        wide.capsule_height = 0.0f;
+        wide.eye_height = 100.0f;
+        (void)SanitizePlayerStart(wide);
+        if (!Expect(wide.capsule_height >= (2.0f * wide.capsule_radius) + PlayerStartLimits::MinCylinderHeight - 0.0001f &&
+                    wide.capsule_height <= PlayerStartLimits::MaxCapsuleHeight &&
+                    wide.eye_height <= wide.capsule_height && wide.eye_height >= PlayerStartLimits::MinEyeHeight,
+                "Every allowed radius yields a valid capsule (cylinder > 0, eye inside)."))
+        {
+            return 1;
+        }
     }
 
     RAG_LOG_INFO("Scene serialization tests passed.");

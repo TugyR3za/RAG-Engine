@@ -21,6 +21,8 @@ The engine currently includes:
 - Scene runtime with entities, transforms, cameras, renderables, lights, and render extraction.
 - Free-fly camera controls in the sandbox.
 - Jolt Physics integration with gravity, static ground collision, dynamic boxes, and a dynamic sphere.
+- Editor Play / Pause / Step / Stop scene testing: the editor starts in Edit (nothing simulates), Play snapshots the scene in memory, Stop restores it exactly. See [play mode lifecycle, timing, restore guarantees and limitations](docs/play-mode.md).
+- First-person player: a Player Start (Hierarchy > Add Player Start, saved with the scene) spawns a Jolt capsule character on Play with WASD walking, mouse look, grounded jumping, collision with static and dynamic objects, and a fall reset. Scenes without one keep the free-fly camera. See [player start, controls, camera policy and limitations](docs/player-controller.md).
 
 ## Modules
 
@@ -30,7 +32,7 @@ The engine currently includes:
 - `RagRenderer`: backend-neutral renderer API, render world structs, mesh/material handles, lights, cameras, and stats.
 - `RagRendererVK`: Vulkan backend. Owns Vulkan instance/device/surface/swapchain, pipelines, shaders, buffers, textures, shadow maps, mesh loading, and GPU submission.
 - `RagScene`: entity IDs, component storage, transforms, cameras, renderables, lights, scene update, and render-world extraction.
-- `RagPhysics`: Jolt-backed physics world hidden behind engine types and opaque body handles.
+- `RagPhysics`: Jolt-backed physics world and first-person character controller, hidden behind engine types and opaque body/character handles.
 - `sandbox`: sample application that wires the scene, renderer, camera controls, assets, and physics together.
 
 ## Source Assets And Scenes
@@ -52,7 +54,10 @@ Each canonical build refreshes generated runtime copies of `assets/`, `models/`,
 and compiled shaders beside `RagSandbox.exe`. Do not edit those copies. Scenes
 are not copied during the build: the canonical launcher uses the repository root
 as its working directory, so scene loading and explicit editor saves use the
-source `scenes/` directory directly.
+source `scenes/` directory directly. Launched directly from `build\skybox\Debug`,
+the sandbox finds no `scenes\default.ragscene`. It then starts from the built-in
+scene as an Untitled document, and its startup log names every path it checked.
+See [scene documents](docs/scene-documents.md).
 
 Generated files such as `build/`, `.spv` shader outputs, `.vs/`, `.vscode/`,
 `.exe`, `.pdb`, and other local artifacts are ignored.
@@ -98,11 +103,21 @@ primary workflow.
 Build and run the complete Debug test suite:
 
 ```powershell
-cmake --build .\build\skybox --config Debug --target RagSceneTests RagSceneSerializationTests RagSkyboxTests RagPhysicsTests --parallel
+cmake --build .\build\skybox --config Debug --parallel
 ctest --test-dir .\build\skybox -C Debug --output-on-failure
 ```
 
-Run a one-frame sandbox smoke test:
+`SandboxPlayMode` opens the editor window for a few seconds to run the scripted
+Play/Pause/Step/Stop and first-person player checks
+(`RagSandbox --play-mode-self-test`, in-memory scenes only). It is labelled
+`gpu`; skip it on a machine without a GPU/desktop with:
+
+```powershell
+ctest --test-dir .\build\skybox -C Debug --output-on-failure -LE gpu
+```
+
+Run the sandbox smoke test (one rendered frame each in Edit, Playing, then Edit
+again after Stop):
 
 ```powershell
 .\tools\build-and-run.ps1 -SmokeTest
@@ -123,8 +138,29 @@ cmake --build build/no-vulkan --config Debug --parallel
 - `Left Ctrl` or `Q`: move down
 - Hold right mouse button: mouse look
 - Hold `Left Shift`: sprint
+- `F5`: Play (in Edit) / Stop (restores the pre-play scene)
+- `F6`: Pause / Resume
+- `F7`: Step one 1/60 s tick (while Paused)
+- `Delete`: delete the selected entity (Stop brings back entities deleted during a run)
+- `F1`: hide/show the editor UI (game view); does not change Play/Pause/Stop
 - `F11`: toggle fullscreen
-- `Escape`: quit
+- `Escape`: release the player's mouse if it is captured; otherwise quit
+
+With a Player Start, Play shows the player's view instead:
+
+- Left-click the game view: capture the mouse and control the player
+- `W`, `A`, `S`, `D`: walk; mouse: look; `Space`: jump
+- `Escape`: release the mouse (does not quit); Pause, Stop and focus loss also release it
+- Paused: the editor camera inspects the scene from the player's eyes; Resume returns to the player
+
+The same Play / Pause / Step / Stop controls are buttons in the editor menu bar
+and items in its Simulation menu. File > New/Load/Save are disabled until Stop.
+
+File > New Scene makes an Untitled document, shown as `Scene: Untitled` in the
+menu bar. Save on an Untitled scene opens a Save As prompt and never reuses the
+previously open file. Save As and Load adopt a file only when they succeed.
+See [scene documents](docs/scene-documents.md). There is no unsaved-change
+tracking yet.
 
 ## Git Milestone
 

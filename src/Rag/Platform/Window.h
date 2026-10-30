@@ -46,6 +46,15 @@ namespace rag::platform
         // No-op by default; platforms with a native message pump override this.
         virtual void SetNativeMessageHook(NativeMessageHook hook) { (void)hook; }
 
+        // First-person mouse capture: hides the OS cursor and confines it to the
+        // client area (centring it on both capture and release) so mouse look can
+        // read raw motion without the cursor leaving the window. The platform also
+        // drops the capture by itself when the window loses focus; callers learn
+        // that from the WindowFocus event and from IsCursorCaptured(). No-op on
+        // platforms without support.
+        virtual void SetCursorCaptured(bool captured) { (void)captured; }
+        [[nodiscard]] virtual bool IsCursorCaptured() const { return false; }
+
         [[nodiscard]] virtual bool ShouldClose() const = 0;
         [[nodiscard]] virtual bool IsFullscreen() const = 0;
         [[nodiscard]] virtual bool IsWindowMinimized() const = 0;

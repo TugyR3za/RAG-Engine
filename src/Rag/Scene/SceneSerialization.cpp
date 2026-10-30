@@ -1,6 +1,7 @@
 #include "Rag/Scene/SceneSerialization.h"
 
 #include "Rag/Core/Log.h"
+#include "Rag/Scene/PlayerStart.h"
 
 // nlohmann/json is vendored as a single header; keep it confined to this TU so it
 // never lands in anyone else's include path (RagScene stays otherwise header-light).
@@ -194,6 +195,21 @@ namespace rag::scene
             return node;
         }
 
+        [[nodiscard]] json WritePlayerStart(const SerializedPlayerStart& p)
+        {
+            const PlayerStartComponent& c = p.config;
+            json node;
+            node["yawRadians"] = c.yaw_radians;
+            node["moveSpeed"] = c.move_speed;
+            node["mouseSensitivityDegrees"] = c.mouse_sensitivity_degrees;
+            node["jumpHeight"] = c.jump_height;
+            node["capsuleRadius"] = c.capsule_radius;
+            node["capsuleHeight"] = c.capsule_height;
+            node["eyeHeight"] = c.eye_height;
+            node["fallResetHeight"] = c.fall_reset_height;
+            return node;
+        }
+
         // --- component readers -------------------------------------------------
 
         [[nodiscard]] SerializedTransform ReadTransform(const json& node)
@@ -306,6 +322,49 @@ namespace rag::scene
             p.continuous_collision = node.value("continuousCollision", p.continuous_collision);
             return p;
         }
+
+        // Optional additive version-1 object. Like materials, a bad value never
+        // rejects the scene or drops the entity: a non-number keeps that field's
+        // default, then SanitizePlayerStart clamps the rest into range. Both are
+        // logged once at load time.
+        [[nodiscard]] SerializedPlayerStart ReadPlayerStart(const json& node, const std::string& entity_name)
+        {
+            SerializedPlayerStart p;
+            PlayerStartComponent& c = p.config;
+            const auto read = [&](const char* key, f32& field)
+            {
+                const auto it = node.find(key);
+                if (it == node.end())
+                {
+                    return;
+                }
+                if (it->is_number())
+                {
+                    field = it->get<f32>();
+                }
+                else
+                {
+                    RAG_LOG_WARNING("Player Start '", entity_name, "': invalid ", key, " ", it->dump(),
+                        " (expected a number); using the default.");
+                }
+            };
+            read("yawRadians", c.yaw_radians);
+            read("moveSpeed", c.move_speed);
+            read("mouseSensitivityDegrees", c.mouse_sensitivity_degrees);
+            read("jumpHeight", c.jump_height);
+            read("capsuleRadius", c.capsule_radius);
+            read("capsuleHeight", c.capsule_height);
+            read("eyeHeight", c.eye_height);
+            read("fallResetHeight", c.fall_reset_height);
+
+            const std::string corrections = SanitizePlayerStart(c);
+            if (!corrections.empty())
+            {
+                RAG_LOG_WARNING("Player Start '", entity_name, "': out-of-range values corrected on load: ",
+                    corrections, ".");
+            }
+            return p;
+        }
     }
 
     std::string WriteSceneToJson(const SerializedScene& scene)
@@ -341,6 +400,10 @@ namespace rag::scene
             if (entity.physics.has_value())
             {
                 node["physics"] = WritePhysics(*entity.physics);
+            }
+            if (entity.player_start.has_value())
+            {
+                node["playerStart"] = WritePlayerStart(*entity.player_start);
             }
             entities.push_back(std::move(node));
         }
@@ -428,6 +491,18 @@ namespace rag::scene
                 if (const auto it = node.find("physics"); it != node.end() && it->is_object())
                 {
                     entity.physics = ReadPhysics(*it);
+                }
+                if (const auto it = node.find("playerStart"); it != node.end())
+                {
+                    if (it->is_object())
+                    {
+                        entity.player_start = ReadPlayerStart(*it, entity.name);
+                    }
+                    else
+                    {
+                        RAG_LOG_WARNING("Entity '", entity.name, "': \"playerStart\" ", it->dump(),
+                            " is not an object; the entity is loaded without a Player Start.");
+                    }
                 }
                 out_scene.entities.push_back(std::move(entity));
             }

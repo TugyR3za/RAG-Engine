@@ -16,7 +16,14 @@ namespace rag::core
         MouseButtonPressed,
         MouseButtonReleased,
         MouseMoved,
-        MouseScrolled
+        MouseScrolled,
+        // Relative device motion (Win32 raw input), independent of the cursor
+        // position: it keeps arriving while the cursor is hidden and confined, so
+        // first-person mouse look reads it instead of cursor deltas.
+        MouseRawMotion,
+        // The window gained or lost keyboard focus (activation, Alt+Tab, a click
+        // on another window). Held keys/buttons are released on focus loss.
+        WindowFocus
     };
 
     struct WindowCloseEvent
@@ -158,13 +165,26 @@ namespace rag::core
         f32 delta_y = 0.0f;
     };
 
+    struct MouseRawMotionEvent
+    {
+        i32 delta_x = 0;
+        i32 delta_y = 0;
+    };
+
+    struct WindowFocusEvent
+    {
+        bool focused = false;
+    };
+
     using EventPayload = std::variant<
         WindowCloseEvent,
         WindowResizeEvent,
         KeyEvent,
         MouseButtonEvent,
         MouseMoveEvent,
-        MouseScrollEvent>;
+        MouseScrollEvent,
+        MouseRawMotionEvent,
+        WindowFocusEvent>;
 
     struct Event
     {
@@ -209,6 +229,16 @@ namespace rag::core
         static Event MouseScrolled(f32 delta_x, f32 delta_y)
         {
             return Event{EventType::MouseScrolled, MouseScrollEvent{delta_x, delta_y}};
+        }
+
+        static Event MouseRawMotion(i32 delta_x, i32 delta_y)
+        {
+            return Event{EventType::MouseRawMotion, MouseRawMotionEvent{delta_x, delta_y}};
+        }
+
+        static Event WindowFocus(bool focused)
+        {
+            return Event{EventType::WindowFocus, WindowFocusEvent{focused}};
         }
     };
 }

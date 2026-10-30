@@ -289,6 +289,22 @@ namespace rag::platform
 
         RAG_ASSERT(hwnd_ != nullptr, "CreateWindowExW failed.");
 
+        // Raw mouse input (WM_INPUT) reports relative device motion even while the
+        // cursor is hidden and confined, which first-person mouse look needs. The
+        // legacy mouse messages keep flowing (no RIDEV_NOLEGACY), so the cursor,
+        // ImGui and editor picking are unaffected. Delivered only while focused.
+        RAWINPUTDEVICE mouse_device{};
+        mouse_device.usUsagePage = 0x01; // HID_USAGE_PAGE_GENERIC
+        mouse_device.usUsage = 0x02;     // HID_USAGE_GENERIC_MOUSE
+        mouse_device.dwFlags = 0;
+        mouse_device.hwndTarget = static_cast<HWND>(hwnd_);
+        if (RegisterRawInputDevices(&mouse_device, 1, sizeof(mouse_device)) == FALSE)
+        {
+            RAG_LOG_WARNING(
+                "RegisterRawInputDevices failed (error ", GetLastError(),
+                "); first-person mouse look will not receive motion.");
+        }
+
         ShowWindow(static_cast<HWND>(hwnd_), SW_SHOW);
         UpdateWindow(static_cast<HWND>(hwnd_));
 
@@ -297,6 +313,7 @@ namespace rag::platform
 
     Win32Window::~Win32Window()
     {
+        SetCursorCaptured(false);
         if (hwnd_ != nullptr)
         {
             DestroyWindow(static_cast<HWND>(hwnd_));
@@ -401,6 +418,81 @@ namespace rag::platform
         RAG_LOG_INFO("Exited borderless fullscreen.");
     }
 
+    void Win32Window::SetCursorCaptured(bool captured)
+    {
+        if (captured == cursor_captured_ || hwnd_ == nullptr)
+        {
+            return;
+        }
+
+        HWND hwnd = static_cast<HWND>(hwnd_);
+        if (captured && GetFocus() != hwnd)
+        {
+            // Never hide or confine the cursor on behalf of a window the user is
+            // not interacting with.
+            RAG_LOG_WARNING("Cursor capture ignored: the window does not have keyboard focus.");
+            return;
+        }
+
+        cursor_captured_ = captured;
+        if (captured)
+        {
+            CenterCursor();
+            ApplyCursorClip();
+            // ShowCursor keeps a display counter; drive it to "hidden" regardless
+            // of what it was, and back to "visible" on release.
+            while (ShowCursor(FALSE) >= 0)
+            {
+            }
+        }
+        else
+        {
+            ClipCursor(nullptr);
+            CenterCursor();
+            while (ShowCursor(TRUE) < 0)
+            {
+            }
+        }
+    }
+
+    bool Win32Window::IsCursorCaptured() const
+    {
+        return cursor_captured_;
+    }
+
+    void Win32Window::ApplyCursorClip() const
+    {
+        if (hwnd_ == nullptr)
+        {
+            return;
+        }
+
+        HWND hwnd = static_cast<HWND>(hwnd_);
+        RECT client{};
+        GetClientRect(hwnd, &client);
+        POINT top_left{client.left, client.top};
+        POINT bottom_right{client.right, client.bottom};
+        ClientToScreen(hwnd, &top_left);
+        ClientToScreen(hwnd, &bottom_right);
+        const RECT screen_rect{top_left.x, top_left.y, bottom_right.x, bottom_right.y};
+        ClipCursor(&screen_rect);
+    }
+
+    void Win32Window::CenterCursor() const
+    {
+        if (hwnd_ == nullptr)
+        {
+            return;
+        }
+
+        HWND hwnd = static_cast<HWND>(hwnd_);
+        RECT client{};
+        GetClientRect(hwnd, &client);
+        POINT center{(client.left + client.right) / 2, (client.top + client.bottom) / 2};
+        ClientToScreen(hwnd, &center);
+        SetCursorPos(center.x, center.y);
+    }
+
     bool Win32Window::ShouldClose() const
     {
         return should_close_;
@@ -495,6 +587,10 @@ namespace rag::platform
             width_ = static_cast<u32>(LOWORD(l_param));
             height_ = static_cast<u32>(HIWORD(l_param));
             minimized_ = w_param == SIZE_MINIMIZED;
+            if (cursor_captured_ && !minimized_)
+            {
+                ApplyCursorClip();
+            }
 
             if (event_callback_)
             {
@@ -503,6 +599,74 @@ namespace rag::platform
 
             result = 0;
             handled = true;
+            break;
+        }
+
+        case WM_MOVE:
+            if (cursor_captured_)
+            {
+                ApplyCursorClip();
+            }
+            break;
+
+        case WM_SETFOCUS:
+            if (event_callback_)
+            {
+                event_callback_(core::Event::WindowFocus(true));
+            }
+            break;
+
+        case WM_KILLFOCUS:
+            // Alt+Tab, a click on another window, a modal OS dialog: give the
+            // cursor back before anything else sees the focus change.
+            SetCursorCaptured(false);
+            if (event_callback_)
+            {
+                event_callback_(core::Event::WindowFocus(false));
+            }
+            break;
+
+        case WM_INPUT:
+        {
+            RAWINPUT raw{};
+            UINT size = sizeof(raw);
+            const UINT read = GetRawInputData(
+                reinterpret_cast<HRAWINPUT>(l_param),
+                RID_INPUT,
+                &raw,
+                &size,
+                sizeof(RAWINPUTHEADER));
+            if (read != static_cast<UINT>(-1) && raw.header.dwType == RIM_TYPEMOUSE && event_callback_)
+            {
+                const RAWMOUSE& mouse = raw.data.mouse;
+                if ((mouse.usFlags & MOUSE_MOVE_ABSOLUTE) == 0)
+                {
+                    if (mouse.lLastX != 0 || mouse.lLastY != 0)
+                    {
+                        event_callback_(core::Event::MouseRawMotion(mouse.lLastX, mouse.lLastY));
+                    }
+                }
+                else
+                {
+                    // Remote desktop / VMs report absolute positions in 0..65535;
+                    // turn them into pixel-scale deltas.
+                    const bool virtual_desktop = (mouse.usFlags & MOUSE_VIRTUAL_DESKTOP) != 0;
+                    const int screen_width =
+                        GetSystemMetrics(virtual_desktop ? SM_CXVIRTUALSCREEN : SM_CXSCREEN);
+                    const int screen_height =
+                        GetSystemMetrics(virtual_desktop ? SM_CYVIRTUALSCREEN : SM_CYSCREEN);
+                    const i32 x = static_cast<i32>((static_cast<i64>(mouse.lLastX) * screen_width) / 65535);
+                    const i32 y = static_cast<i32>((static_cast<i64>(mouse.lLastY) * screen_height) / 65535);
+                    if (has_absolute_mouse_ && (x != absolute_mouse_x_ || y != absolute_mouse_y_))
+                    {
+                        event_callback_(core::Event::MouseRawMotion(x - absolute_mouse_x_, y - absolute_mouse_y_));
+                    }
+                    absolute_mouse_x_ = x;
+                    absolute_mouse_y_ = y;
+                    has_absolute_mouse_ = true;
+                }
+            }
+            // Not handled: DefWindowProc must still run for WM_INPUT cleanup.
             break;
         }
 

@@ -115,6 +115,16 @@ namespace rag::scene
         bool continuous_collision = true;
     };
 
+    // First-person Player Start authoring values, written as an optional additive
+    // version-1 "playerStart" object (files without it simply have no player).
+    // Same fields and units as PlayerStartComponent; the spawn position is the
+    // entity transform. Values are sanitized on load (SanitizePlayerStart): a
+    // bad or out-of-range field is corrected and logged, never fatal.
+    struct SerializedPlayerStart
+    {
+        PlayerStartComponent config{};
+    };
+
     // One entity: its display name plus whichever components it carries. Absent
     // components stay unset so the writer emits only the keys that apply.
     struct SerializedEntity
@@ -125,6 +135,7 @@ namespace rag::scene
         std::optional<SerializedRenderable> renderable;
         std::optional<SerializedLight> light;
         std::optional<SerializedPhysics> physics;
+        std::optional<SerializedPlayerStart> player_start;
     };
 
     struct SerializedScene

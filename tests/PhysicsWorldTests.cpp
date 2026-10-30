@@ -176,7 +176,19 @@ int main()
             "An offset box must rest on its offset collider face, not its pivot.") &&
         passed;
 
+    // BodyCount reports what Jolt really holds, so callers can prove a scene
+    // rebuild leaves no leaked or ghost body behind.
+    const rag::u32 bodies_before = world.BodyCount();
+    const rag::physics::BodyHandle counted = world.CreateDynamicBox({8.0f, 3.0f, 0.0f}, {0.5f, 0.5f, 0.5f});
+    passed = Expect(world.BodyCount() == bodies_before + 1, "Creating a body must raise BodyCount by one.") && passed;
+    world.DestroyBody(counted);
+    passed = Expect(world.BodyCount() == bodies_before, "Destroying a body must lower BodyCount by one.") && passed;
+    world.DestroyBody(counted);
+    world.DestroyBody(rag::physics::BodyHandle{});
+    passed = Expect(world.BodyCount() == bodies_before, "Destroying stale/invalid handles must not change BodyCount.") && passed;
+
     world.Shutdown();
+    passed = Expect(world.BodyCount() == 0, "BodyCount must be zero after Shutdown.") && passed;
     if (!passed)
     {
         return 1;

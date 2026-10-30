@@ -2,6 +2,7 @@
 #include "Rag/Scene/Scene.h"
 
 #include <cmath>
+#include <vector>
 
 namespace
 {
@@ -221,6 +222,112 @@ int main()
         !Expect(recycled != child && recycled != parent, "Recycled entity should have a new generation."))
     {
         return 1;
+    }
+
+    // DestroyAllEntities: every id goes stale, and a rebuild reuses slots 0, 1,
+    // 2, ... in order even after holes and out-of-order destruction, so a scene
+    // rebuilt from a description iterates in the order it was described.
+    {
+        rag::scene::Scene rebuilt;
+        std::vector<rag::scene::EntityId> originals;
+        for (int index = 0; index < 5; ++index)
+        {
+            originals.push_back(rebuilt.CreateEntity());
+            rebuilt.AddTransform(originals.back());
+        }
+        rebuilt.AddCamera(originals[0]);
+        rebuilt.SetActiveCamera(originals[0]);
+        rebuilt.AddRenderable(originals[1]);
+        if (!Expect(rebuilt.SetParent(originals[3], originals[2]), "Test setup must parent an entity."))
+        {
+            return 1;
+        }
+        rebuilt.DestroyEntity(originals[4]); // a hole in the free list before the reset
+
+        rebuilt.DestroyAllEntities();
+        bool all_stale = rebuilt.EntityCount() == 0 && !rebuilt.ActiveCamera().IsValid();
+        for (const rag::scene::EntityId original : originals)
+        {
+            all_stale = all_stale && !rebuilt.IsAlive(original) && rebuilt.GetTransform(original) == nullptr;
+        }
+        if (!Expect(all_stale, "DestroyAllEntities must destroy every entity and clear the active camera."))
+        {
+            return 1;
+        }
+
+        bool in_order = true;
+        for (rag::u32 index = 0; index < 6; ++index)
+        {
+            const rag::scene::EntityId entity = rebuilt.CreateEntity();
+            in_order = in_order && entity.index == index;
+            in_order = in_order && (index >= originals.size() || entity != originals[index]);
+        }
+        std::vector<rag::u32> visited;
+        rebuilt.ForEachEntity([&visited](rag::scene::EntityId entity) { visited.push_back(entity.index); });
+        if (!Expect(in_order, "Entities created after DestroyAllEntities must reuse slots in ascending order with new generations.") ||
+            !Expect(visited == std::vector<rag::u32>({0, 1, 2, 3, 4, 5}), "A rebuilt scene must iterate in creation order."))
+        {
+            return 1;
+        }
+
+        rebuilt.DestroyAllEntities();
+        rebuilt.DestroyAllEntities();
+        if (!Expect(rebuilt.EntityCount() == 0 && rebuilt.CreateEntity().index == 0,
+                "DestroyAllEntities must be repeatable and safe on an empty scene."))
+        {
+            return 1;
+        }
+    }
+
+    // Player Start storage: plain authoring data on an entity, removed with it,
+    // and FirstPlayerStart picks deterministically by slot (Hierarchy) order no
+    // matter in which order the components were added or removed.
+    {
+        rag::scene::Scene starts;
+        if (!Expect(!starts.FirstPlayerStart().IsValid() && starts.PlayerStartCount() == 0,
+                "A scene without Player Starts must report none."))
+        {
+            return 1;
+        }
+
+        const rag::scene::EntityId first = starts.CreateEntity();
+        const rag::scene::EntityId second = starts.CreateEntity();
+        const rag::scene::EntityId third = starts.CreateEntity();
+        starts.AddPlayerStart(third).move_speed = 3.0f;
+        starts.AddPlayerStart(second).move_speed = 2.0f;
+        const rag::scene::PlayerStartComponent defaults{};
+        if (!Expect(starts.GetPlayerStart(first) == nullptr, "Entities have no Player Start by default.") ||
+            !Expect(starts.PlayerStartCount() == 2, "Two Player Starts were added.") ||
+            !Expect(starts.FirstPlayerStart() == second, "The lowest slot wins, not the first one added.") ||
+            !Expect(NearlyEqual(starts.GetPlayerStart(third)->move_speed, 3.0f) &&
+                    NearlyEqual(starts.GetPlayerStart(third)->jump_height, defaults.jump_height),
+                "Player Start values are stored per entity."))
+        {
+            return 1;
+        }
+
+        starts.AddPlayerStart(first);
+        starts.DestroyEntity(first);
+        if (!Expect(starts.GetPlayerStart(first) == nullptr && starts.PlayerStartCount() == 2,
+                "Destroying an entity removes its Player Start.") ||
+            !Expect(starts.FirstPlayerStart() == second, "The next start in slot order takes over."))
+        {
+            return 1;
+        }
+
+        if (!Expect(starts.RemovePlayerStart(second) && !starts.RemovePlayerStart(second),
+                "RemovePlayerStart removes once.") ||
+            !Expect(starts.FirstPlayerStart() == third, "With one start left it is the one used."))
+        {
+            return 1;
+        }
+
+        starts.DestroyAllEntities();
+        if (!Expect(starts.PlayerStartCount() == 0 && !starts.FirstPlayerStart().IsValid(),
+                "DestroyAllEntities removes every Player Start."))
+        {
+            return 1;
+        }
     }
 
     RAG_LOG_INFO("Scene runtime tests passed.");

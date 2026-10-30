@@ -20,6 +20,12 @@ namespace rag::scene
 
         [[nodiscard]] EntityId CreateEntity();
         void DestroyEntity(EntityId entity);
+
+        // Destroys every live entity (each id becomes stale, as with DestroyEntity)
+        // and resets slot reuse so the following CreateEntity calls hand out slots
+        // 0, 1, 2, ... in order. A scene rebuilt from a description after this
+        // therefore iterates in the same order the description lists entities.
+        void DestroyAllEntities();
         [[nodiscard]] bool IsAlive(EntityId entity) const;
         [[nodiscard]] std::size_t EntityCount() const;
 
@@ -60,6 +66,18 @@ namespace rag::scene
         [[nodiscard]] LightComponent* GetLight(EntityId entity);
         [[nodiscard]] const LightComponent* GetLight(EntityId entity) const;
 
+        PlayerStartComponent& AddPlayerStart(EntityId entity);
+        [[nodiscard]] bool RemovePlayerStart(EntityId entity);
+        [[nodiscard]] PlayerStartComponent* GetPlayerStart(EntityId entity);
+        [[nodiscard]] const PlayerStartComponent* GetPlayerStart(EntityId entity) const;
+        [[nodiscard]] std::size_t PlayerStartCount() const;
+
+        // The Player Start that Play uses when several exist: the first one in
+        // entity slot order -- the order ForEachEntity and the Hierarchy list
+        // entities, which after a load or Stop is the scene file's own order.
+        // Invalid when there is none.
+        [[nodiscard]] EntityId FirstPlayerStart() const;
+
         [[nodiscard]] bool SetParent(EntityId child, EntityId parent);
         void ClearParent(EntityId child);
         void MarkTransformDirty(EntityId entity);
@@ -93,6 +111,7 @@ namespace rag::scene
         ComponentStorage<CameraComponent> cameras_;
         ComponentStorage<RenderableComponent> renderables_;
         ComponentStorage<LightComponent> lights_;
+        ComponentStorage<PlayerStartComponent> player_starts_;
 
         EntityId active_camera_{};
         renderer::EnvironmentSettings environment_{};

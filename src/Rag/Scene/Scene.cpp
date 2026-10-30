@@ -48,6 +48,29 @@ namespace rag::scene
         }
     }
 
+    void Scene::DestroyAllEntities()
+    {
+        // Every entity goes, so hierarchy links need no detaching: removing each
+        // entity's components (transform included) drops them all.
+        for (u32 index = 0; index < static_cast<u32>(entity_slots_.size()); ++index)
+        {
+            if (entity_slots_[index].alive)
+            {
+                DestroyEntityInternal(EntityId{index, entity_slots_[index].generation});
+            }
+        }
+
+        // Rebuild the free list so the lowest slot is reused first. Destruction
+        // order (and any earlier holes) would otherwise permute the slots that a
+        // rebuilt scene lands in, changing its iteration order.
+        free_entities_.clear();
+        for (u32 index = static_cast<u32>(entity_slots_.size()); index > 0; --index)
+        {
+            free_entities_.push_back(index - 1);
+        }
+        active_camera_ = EntityId{};
+    }
+
     bool Scene::IsAlive(EntityId entity) const
     {
         return entity.IsValid() &&
@@ -196,6 +219,48 @@ namespace rag::scene
     const LightComponent* Scene::GetLight(EntityId entity) const
     {
         return lights_.Get(entity);
+    }
+
+    PlayerStartComponent& Scene::AddPlayerStart(EntityId entity)
+    {
+        RAG_ASSERT(IsAlive(entity), "Cannot add PlayerStartComponent to a dead entity.");
+        return player_starts_.Add(entity);
+    }
+
+    bool Scene::RemovePlayerStart(EntityId entity)
+    {
+        return player_starts_.Remove(entity);
+    }
+
+    PlayerStartComponent* Scene::GetPlayerStart(EntityId entity)
+    {
+        return player_starts_.Get(entity);
+    }
+
+    const PlayerStartComponent* Scene::GetPlayerStart(EntityId entity) const
+    {
+        return player_starts_.Get(entity);
+    }
+
+    std::size_t Scene::PlayerStartCount() const
+    {
+        return player_starts_.Size();
+    }
+
+    EntityId Scene::FirstPlayerStart() const
+    {
+        // Dense storage order changes with swap-removal, so pick by slot index:
+        // the order ForEachEntity (and so the Hierarchy) walks.
+        EntityId first{};
+        for (std::size_t index = 0; index < player_starts_.Size(); ++index)
+        {
+            const EntityId candidate = player_starts_.EntityAt(index);
+            if (IsAlive(candidate) && (!first.IsValid() || candidate.index < first.index))
+            {
+                first = candidate;
+            }
+        }
+        return first;
     }
 
     bool Scene::SetParent(EntityId child, EntityId parent)
@@ -353,6 +418,7 @@ namespace rag::scene
         (void)RemoveCamera(entity);
         (void)RemoveRenderable(entity);
         (void)RemoveLight(entity);
+        (void)RemovePlayerStart(entity);
         transforms_.Remove(entity);
 
         EntitySlot& slot = entity_slots_[entity.index];

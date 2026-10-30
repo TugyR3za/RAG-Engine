@@ -15,7 +15,11 @@
 #include <Jolt/Core/JobSystemThreadPool.h>
 #include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Physics/Character/CharacterVirtual.h>
+#include <Jolt/Physics/Collision/CollideShape.h>
+#include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
+#include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/PhysicsSettings.h>
@@ -231,6 +235,36 @@ namespace rag::physics
                 std::abs(left.z - right.z) <= ColliderScaleEpsilon;
         }
 
+        // Upright capsule standing on its feet. Jolt's capsule is centred on its
+        // origin, so it is lifted by half the total height: the character's
+        // position is then the capsule bottom, which is what gameplay reasons in.
+        // Returns null for a degenerate capsule (height must exceed 2 * radius).
+        JPH::RefConst<JPH::Shape> BuildCharacterShape(f32 radius, f32 height)
+        {
+            const f32 half_cylinder = (0.5f * height) - radius;
+            if (!std::isfinite(radius) || !std::isfinite(height) || radius <= 0.0f || half_cylinder <= 0.0f)
+            {
+                return nullptr;
+            }
+
+            JPH::RotatedTranslatedShapeSettings settings(
+                JPH::Vec3(0.0f, 0.5f * height, 0.0f),
+                JPH::Quat::sIdentity(),
+                new JPH::CapsuleShape(half_cylinder, radius));
+            settings.SetEmbedded();
+            const JPH::ShapeSettings::ShapeResult result = settings.Create();
+            if (result.HasError())
+            {
+                RAG_LOG_ERROR("Physics: character capsule creation failed: ", result.GetError().c_str());
+                return nullptr;
+            }
+            return result.Get();
+        }
+
+        // Penetration a spawn probe tolerates: resting on a surface reports a
+        // depth of about zero, which must not count as "inside" it.
+        constexpr f32 CharacterSpawnPenetrationTolerance = 0.01f;
+
         // The scale actually applied to a collider: sanitized against zero/NaN,
         // and collapsed to the largest axis for spheres (Jolt only allows uniform
         // sphere scale, so the collider conservatively encloses the visual).
@@ -262,6 +296,14 @@ namespace rag::physics
             math::Vec3 applied_scale{1.0f, 1.0f, 1.0f};
         };
 
+        // One record per live character. Characters are not bodies: Jolt does not
+        // track them, so they are listed (and freed) here.
+        struct CharacterRecord
+        {
+            u32 id = 0;
+            JPH::Ref<JPH::CharacterVirtual> character;
+        };
+
         PhysicsWorldDesc desc{};
         bool initialized = false;
 
@@ -272,6 +314,8 @@ namespace rag::physics
         ObjectLayerPairFilterImpl object_layer_pair_filter;
         JPH::PhysicsSystem physics_system;
         std::vector<BodyRecord> bodies;
+        std::vector<CharacterRecord> characters;
+        u32 next_character_id = 0;
 
         BodyRecord* FindRecord(const JPH::BodyID& id)
         {
@@ -283,6 +327,62 @@ namespace rag::physics
                 }
             }
             return nullptr;
+        }
+
+        JPH::CharacterVirtual* FindCharacter(CharacterHandle handle) const
+        {
+            if (!handle.IsValid())
+            {
+                return nullptr;
+            }
+            for (const CharacterRecord& record : characters)
+            {
+                if (record.id == handle.id)
+                {
+                    return record.character.GetPtr();
+                }
+            }
+            return nullptr;
+        }
+
+        // A character sweeps like a moving body: it collides with both static
+        // (NON_MOVING) and dynamic (MOVING) colliders.
+        JPH::DefaultBroadPhaseLayerFilter CharacterBroadPhaseFilter() const
+        {
+            return physics_system.GetDefaultBroadPhaseLayerFilter(Layers::MOVING);
+        }
+
+        JPH::DefaultObjectLayerFilter CharacterLayerFilter() const
+        {
+            return physics_system.GetDefaultLayerFilter(Layers::MOVING);
+        }
+
+        static CharacterState ReadCharacterState(const JPH::CharacterVirtual& character)
+        {
+            CharacterState state{};
+            const JPH::RVec3 position = character.GetPosition();
+            state.feet_position = math::Vec3{
+                static_cast<f32>(position.GetX()),
+                static_cast<f32>(position.GetY()),
+                static_cast<f32>(position.GetZ())};
+            switch (character.GetGroundState())
+            {
+                case JPH::CharacterBase::EGroundState::OnGround:
+                    state.ground = CharacterGround::OnGround;
+                    break;
+                case JPH::CharacterBase::EGroundState::OnSteepGround:
+                    state.ground = CharacterGround::OnSteepGround;
+                    break;
+                case JPH::CharacterBase::EGroundState::NotSupported:
+                    state.ground = CharacterGround::NotSupported;
+                    break;
+                case JPH::CharacterBase::EGroundState::InAir:
+                    state.ground = CharacterGround::InAir;
+                    break;
+            }
+            const JPH::Vec3 normal = character.GetGroundNormal();
+            state.ground_normal = math::Vec3{normal.GetX(), normal.GetY(), normal.GetZ()};
+            return state;
         }
     };
 
@@ -372,6 +472,8 @@ namespace rag::physics
 
         if (impl_->initialized)
         {
+            impl_->characters.clear();
+
             JPH::BodyInterface& body_interface = impl_->physics_system.GetBodyInterface();
             for (const Impl::BodyRecord& record : impl_->bodies)
             {
@@ -400,6 +502,11 @@ namespace rag::physics
     bool PhysicsWorld::IsInitialized() const
     {
         return impl_ && impl_->initialized;
+    }
+
+    u32 PhysicsWorld::BodyCount() const
+    {
+        return IsInitialized() ? impl_->physics_system.GetNumBodies() : 0u;
     }
 
     BodyHandle PhysicsWorld::CreateBody(const BodyDesc& desc)
@@ -702,5 +809,192 @@ namespace rag::physics
             body_interface.SetLinearAndAngularVelocity(id, JPH::Vec3::sZero(), JPH::Vec3::sZero());
             body_interface.ActivateBody(id);
         }
+    }
+
+    CharacterHandle PhysicsWorld::CreateCharacter(const CharacterDesc& desc)
+    {
+        if (!IsInitialized())
+        {
+            return {};
+        }
+
+        const JPH::RefConst<JPH::Shape> shape = BuildCharacterShape(desc.radius, desc.height);
+        if (shape == nullptr)
+        {
+            RAG_LOG_ERROR(
+                "Physics: invalid character capsule (radius ", desc.radius, ", height ", desc.height,
+                "); the height must exceed twice the radius.");
+            return {};
+        }
+
+        JPH::Ref<JPH::CharacterVirtualSettings> settings = new JPH::CharacterVirtualSettings();
+        settings->mShape = shape;
+        settings->mUp = JPH::Vec3::sAxisY();
+        settings->mMaxSlopeAngle = desc.max_slope_radians;
+        settings->mMass = desc.mass_kg;
+        settings->mMaxStrength = desc.max_push_force;
+        // Only contacts below the centre of the lower hemisphere can support the
+        // character, so a wall touching the capsule's side never counts as floor.
+        settings->mSupportingVolume = JPH::Plane(JPH::Vec3::sAxisY(), -desc.radius);
+
+        const math::Vec3& feet = desc.feet_position;
+        JPH::Ref<JPH::CharacterVirtual> character = new JPH::CharacterVirtual(
+            settings,
+            JPH::RVec3(feet.x, feet.y, feet.z),
+            JPH::Quat::sIdentity(),
+            0,
+            &impl_->physics_system);
+
+        // Establish the initial contacts so the ground state is valid before the
+        // first move (a character spawned on the floor starts OnGround).
+        character->RefreshContacts(
+            impl_->CharacterBroadPhaseFilter(),
+            impl_->CharacterLayerFilter(),
+            {},
+            {},
+            *impl_->temp_allocator);
+
+        const u32 id = impl_->next_character_id++;
+        impl_->characters.push_back(Impl::CharacterRecord{id, character});
+        return CharacterHandle{id};
+    }
+
+    void PhysicsWorld::DestroyCharacter(CharacterHandle handle)
+    {
+        if (!IsInitialized() || !handle.IsValid())
+        {
+            return;
+        }
+
+        std::vector<Impl::CharacterRecord>& characters = impl_->characters;
+        characters.erase(
+            std::remove_if(
+                characters.begin(),
+                characters.end(),
+                [handle](const Impl::CharacterRecord& record) { return record.id == handle.id; }),
+            characters.end());
+    }
+
+    u32 PhysicsWorld::CharacterCount() const
+    {
+        return IsInitialized() ? static_cast<u32>(impl_->characters.size()) : 0u;
+    }
+
+    CharacterState PhysicsWorld::MoveCharacter(
+        CharacterHandle handle,
+        const math::Vec3& velocity,
+        f32 delta_seconds,
+        f32 gravity_y)
+    {
+        if (!IsInitialized())
+        {
+            return {};
+        }
+
+        JPH::CharacterVirtual* character = impl_->FindCharacter(handle);
+        if (character == nullptr)
+        {
+            return {};
+        }
+
+        if (delta_seconds > 0.0f && std::isfinite(delta_seconds))
+        {
+            character->SetLinearVelocity(JPH::Vec3(velocity.x, velocity.y, velocity.z));
+
+            // Stick-to-floor keeps the character on the ground walking down a
+            // slope or off a small lip instead of hopping; stair climbing is off.
+            JPH::CharacterVirtual::ExtendedUpdateSettings update_settings;
+            update_settings.mWalkStairsStepUp = JPH::Vec3::sZero();
+
+            character->ExtendedUpdate(
+                delta_seconds,
+                JPH::Vec3(0.0f, gravity_y, 0.0f),
+                update_settings,
+                impl_->CharacterBroadPhaseFilter(),
+                impl_->CharacterLayerFilter(),
+                {},
+                {},
+                *impl_->temp_allocator);
+        }
+
+        return Impl::ReadCharacterState(*character);
+    }
+
+    CharacterState PhysicsWorld::GetCharacterState(CharacterHandle handle) const
+    {
+        if (!IsInitialized())
+        {
+            return {};
+        }
+
+        const JPH::CharacterVirtual* character = impl_->FindCharacter(handle);
+        return character != nullptr ? Impl::ReadCharacterState(*character) : CharacterState{};
+    }
+
+    void PhysicsWorld::SetCharacterPosition(CharacterHandle handle, const math::Vec3& feet_position)
+    {
+        if (!IsInitialized())
+        {
+            return;
+        }
+
+        JPH::CharacterVirtual* character = impl_->FindCharacter(handle);
+        if (character == nullptr)
+        {
+            return;
+        }
+
+        character->SetPosition(JPH::RVec3(feet_position.x, feet_position.y, feet_position.z));
+        character->SetLinearVelocity(JPH::Vec3::sZero());
+        character->RefreshContacts(
+            impl_->CharacterBroadPhaseFilter(),
+            impl_->CharacterLayerFilter(),
+            {},
+            {},
+            *impl_->temp_allocator);
+    }
+
+    bool PhysicsWorld::IsCharacterSpaceFree(
+        f32 radius,
+        f32 height,
+        const math::Vec3& feet_position) const
+    {
+        const f32 half_cylinder = (0.5f * height) - radius;
+        if (!IsInitialized() || !std::isfinite(radius) || !std::isfinite(height) ||
+            radius <= 0.0f || half_cylinder <= 0.0f)
+        {
+            return false;
+        }
+
+        // The bare capsule is centred on its origin, so probe at the capsule's
+        // centre (feet + half the height).
+        JPH::CapsuleShape capsule(half_cylinder, radius);
+        capsule.SetEmbedded();
+
+        JPH::CollideShapeSettings settings;
+        settings.mActiveEdgeMode = JPH::EActiveEdgeMode::CollideOnlyWithActive;
+        settings.mBackFaceMode = JPH::EBackFaceMode::CollideWithBackFaces;
+        settings.mMaxSeparationDistance = 0.0f;
+
+        JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> collector;
+        impl_->physics_system.GetNarrowPhaseQuery().CollideShape(
+            &capsule,
+            JPH::Vec3::sReplicate(1.0f),
+            JPH::RMat44::sTranslation(
+                JPH::RVec3(feet_position.x, feet_position.y + (0.5f * height), feet_position.z)),
+            settings,
+            JPH::RVec3::sZero(),
+            collector,
+            impl_->CharacterBroadPhaseFilter(),
+            impl_->CharacterLayerFilter());
+
+        for (const JPH::CollideShapeResult& hit : collector.mHits)
+        {
+            if (hit.mPenetrationDepth > CharacterSpawnPenetrationTolerance)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 }
